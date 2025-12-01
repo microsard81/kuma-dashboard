@@ -29,6 +29,7 @@ from config import (
     PUSH_NOTIFY_ON,
 )
 from push_utils import add_subscription, send_push_to_all
+from redis_history import get_global_state, set_global_state
 import os
 
 app = Flask(__name__)
@@ -210,42 +211,45 @@ def push_subscribe():
 @app.route("/")
 @login_required
 def dashboard():
-    global LAST_GLOBAL_STATE
-
     rows, global_state = build_dashboard_data()
-    previous = LAST_GLOBAL_STATE
-    LAST_GLOBAL_STATE = global_state
+
+    # ---- Notifiche push basate su transizione di stato globale ----
+    previous = get_global_state()
+    set_global_state(global_state)  # aggiorniamo sempre lo stato in Redis
 
     if PUSH_ENABLED and previous is not None:
+        # 1) DOWN definitivo (RED)
         if (
-            PUSH_NOTIFY_ON.get("final_down")
+            PUSH_NOTIFY_ON.get("final_down", False)
             and previous != "RED"
             and global_state == "RED"
         ):
             send_push_to_all(
                 "🔔 Servizio IN.VA DOWN",
-                "Una o più risorse sono DOWN su entrambe le sonde.",
+                "Una o più risorse risultano DOWN su entrambe le sonde.",
                 {"state": "RED"},
             )
 
+        # 2) Mismatch tra sonde (YELLOW)
         if (
-            PUSH_NOTIFY_ON.get("probe_mismatch")
+            PUSH_NOTIFY_ON.get("probe_mismatch", False)
             and previous != "YELLOW"
             and global_state == "YELLOW"
         ):
             send_push_to_all(
-                "🔔 Incongruenza sonde",
-                "Una o più risorse hanno stato differente tra le sonde.",
+                "🔔 Incongruenza tra sonde",
+                "Una o più risorse hanno stato diverso tra le sonde.",
                 {"state": "YELLOW"},
             )
 
+        # 3) Ritorno a tutto OK (GREEN)
         if (
-            PUSH_NOTIFY_ON.get("back_to_green")
+            PUSH_NOTIFY_ON.get("back_to_green", False)
             and previous in ("RED", "YELLOW")
             and global_state == "GREEN"
         ):
             send_push_to_all(
-                "✅ Tutto OK",
+                "✅ IN.VA – tutto OK",
                 "Tutte le risorse risultano UP su entrambe le sonde.",
                 {"state": "GREEN"},
             )
