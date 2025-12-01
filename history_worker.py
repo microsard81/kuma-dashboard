@@ -3,7 +3,14 @@
 import time
 import logging
 
-from config import STATUS_URL, STATUS_TOKEN, KUMA1, KUMA2
+from config import (
+    STATUS_URL,
+    STATUS_TOKEN,
+    KUMA1,
+    KUMA2,
+    PUSH_ENABLED,
+    PUSH_NOTIFY_ON,
+)
 from kuma_client import load_monitors
 from status_client import load_status
 from redis_history import save_point, get_global_state, set_global_state
@@ -19,68 +26,81 @@ PROBE_TIM = "Sestu TIM"
 
 
 # ------------------------------------------------------
-# Calcolo severità per singolo monitor
+# Calcolo severità (0 verde, 1 giallo, 2 rosso)
 # ------------------------------------------------------
 def compute_severity(bg, tim):
     if bg == 1 and tim == 1:
-        return 0      # verde
+        return 0
     if bg != tim:
-        return 1      # giallo (mismatch)
-    return 2          # rosso (entrambe down)
+        return 1
+    return 2
 
 
 # ------------------------------------------------------
-# Calcolo stato globale (per notifiche)
+# Determina stato globale: GREEN / YELLOW / RED
 # ------------------------------------------------------
 def compute_global_state(all_rows):
-    any_red = any(sev == 2 for sev in all_rows)
-    any_yellow = any(sev == 1 for sev in all_rows)
-
-    if any_red:
+    if any(sev == 2 for sev in all_rows):
         return "RED"
-    if any_yellow:
+    if any(sev == 1 for sev in all_rows):
         return "YELLOW"
     return "GREEN"
 
 
 # ------------------------------------------------------
-# Invia push se c’è un cambio di stato globale
+# Notifiche push basate su transizioni stato globale
 # ------------------------------------------------------
 def maybe_send_global_push(new_state):
-    previous = get_global_state()   # Leggi stato precedente da Redis
-    set_global_state(new_state)     # Aggiorna comunque
+    previous = get_global_state()
+    set_global_state(new_state)
 
+    # Primo avvio → niente notifiche
     if previous is None:
-        # Primo avvio → non notifichiamo nulla
         return
 
-    ## RED
-    if previous != "RED" and new_state == "RED":
+    # Push disabilitate
+    if not PUSH_ENABLED:
+        return
+
+    # 🔴 RED – finale DOWN
+    if (
+        PUSH_NOTIFY_ON.get("final_down", False)
+        and previous != "RED"
+        and new_state == "RED"
+    ):
         send_push_to_all(
-            "🔔 Servizio IN.VA DOWN",
+            "🔴 Servizi DOWN",
             "Una o più risorse risultano DOWN su entrambe le sonde.",
             {"state": "RED"},
         )
 
-    ## YELLOW
-    if previous != "YELLOW" and new_state == "YELLOW":
+    # 🟡 YELLOW – mismatch
+    if (
+        PUSH_NOTIFY_ON.get("probe_mismatch", False)
+        and previous != "YELLOW"
+        and new_state == "YELLOW"
+    ):
         send_push_to_all(
-            "🔔 Incongruenza tra sonde",
+            "🟡 Incongruenza tra sonde",
             "Una o più risorse hanno stato diverso tra le sonde.",
             {"state": "YELLOW"},
         )
 
-    ## GREEN
-    if previous in ("RED", "YELLOW") and new_state == "GREEN":
+    # 🟢 GREEN – ritorno alla normalità
+    if (
+        PUSH_NOTIFY_ON.get("back_to_green", False)
+        and previous in ("RED", "YELLOW")
+        and new_state == "GREEN"
+    ):
         send_push_to_all(
-            "✅ IN.VA – tutto OK",
+            "🟢 Tutto OK",
             "Tutte le risorse risultano UP su entrambe le sonde.",
             {"state": "GREEN"},
         )
 
 
 # ------------------------------------------------------
-# Ciclo singolo: aggiorna storico + controlla push
+# Ciclo unico del worker
 # ------------------------------------------------------
 def loop_once():
     statuses = load_status()
@@ -89,26 +109,25 @@ def loop_once():
     m2 = load_monitors(KUMA2["host"], KUMA2["slug"])
 
     common = sorted(set(m1.keys()) & set(m2.keys()))
-    severities = []   # usato per determinare lo stato globale
+    severities = []
 
-    # Caso: nessun dato → tutto UP
+    # Nessun dato → tutto green
     if not statuses:
         logging.info("Status vuoto → tutti UP.")
+
         for name_norm in common:
             save_point(name_norm, 0)
             severities.append(0)
             logging.info(f"[ALL-UP] {m1[name_norm]} → sev=0")
 
-        # dopo aver raccolto i dati → notifichiamo
-        global_state = compute_global_state(severities)
-        maybe_send_global_push(global_state)
+        new_state = compute_global_state(severities)
+        maybe_send_global_push(new_state)
         return
 
-    # Processa ogni monitor
+    # Processa monitor
     for name_norm in common:
         display_name = m1[name_norm]
 
-        # Trova nel dizionario /status
         info = None
         for url, data in statuses.items():
             if data.get("last_name") == display_name:
@@ -127,19 +146,18 @@ def loop_once():
         severities.append(severity)
 
         save_point(name_norm, severity)
-
         logging.info(f"[OK] {display_name} → sev={severity}")
 
-    # Finito tutto → calcola stato globale e invia push
-    global_state = compute_global_state(severities)
-    maybe_send_global_push(global_state)
+    # Calcola stato globale
+    new_state = compute_global_state(severities)
+    maybe_send_global_push(new_state)
 
 
 # ------------------------------------------------------
 # MAIN LOOP
 # ------------------------------------------------------
 def main_loop():
-    logging.info("=== Kuma History Worker avviato (PUSH ENABLED) ===")
+    logging.info("=== Kuma History Worker avviato (con Push) ===")
 
     while True:
         try:

@@ -59,5 +59,5 @@ PUSH_VAPID_CLAIMS = {
 PUSH_NOTIFY_ON = {
     "final_down": True,      # rosso: entrambe le sonde rilevano DOWN
     "probe_mismatch": True,  # giallo: mismatch tra sonde
-    "back_to_green": False   # verde: tutto OK (puoi abilitarlo se vuoi)
+    "back_to_green": True   # verde: tutto OK (puoi abilitarlo se vuoi)
 }

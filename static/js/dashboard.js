@@ -4,13 +4,12 @@
  *  - Storico da Redis (worker)
  *  - Tema manuale (localStorage)
  *  - Pulsanti mobile OK
- *  - Push desktop integrate
+ *  - Push DESKTOP integrate (SOLO DESKTOP)
  ************************************************************/
 
 /************************************************************
  * TEMA, LOGO, ICONE
  ************************************************************/
-
 function updateLogo() {
     const img = document.getElementById("navbar-logo");
     if (!img) return;
@@ -44,11 +43,8 @@ function updateThemeIcons() {
 }
 
 function applyTheme(theme) {
-    if (theme === "dark") {
-        document.body.classList.add("dark");
-    } else {
-        document.body.classList.remove("dark");
-    }
+    if (theme === "dark") document.body.classList.add("dark");
+    else document.body.classList.remove("dark");
 
     updateLogo();
     updateThemeIcons();
@@ -56,11 +52,8 @@ function applyTheme(theme) {
 
 function loadTheme() {
     const saved = localStorage.getItem("theme");
-    if (saved === "dark" || saved === "light") {
-        applyTheme(saved);
-    } else {
-        applyTheme("light"); // default
-    }
+    if (saved === "dark" || saved === "light") applyTheme(saved);
+    else applyTheme("light");
 }
 
 function toggleTheme() {
@@ -71,21 +64,16 @@ function toggleTheme() {
 }
 
 /************************************************************
- * STATO GLOBALE (SEMAFORO)
+ * STATO GLOBALE
  ************************************************************/
-
 function updateGlobalStatus(state) {
     const led = document.getElementById("global-status-led");
     if (!led) return;
 
     led.className = "status-led";
-    if (state === "RED") {
-        led.classList.add("status-led-red");
-    } else if (state === "YELLOW") {
-        led.classList.add("status-led-yellow");
-    } else {
-        led.classList.add("status-led-green");
-    }
+    if (state === "RED") led.classList.add("status-led-red");
+    else if (state === "YELLOW") led.classList.add("status-led-yellow");
+    else led.classList.add("status-led-green");
 }
 
 function updateMobileMenuStatus(state) {
@@ -108,22 +96,17 @@ function updateMobileMenuStatus(state) {
 }
 
 /************************************************************
- * FILTRO "MOSTRA SOLO DOWN"
+ * FILTRO DOWN
  ************************************************************/
-
 let onlyDownActive = false;
 
 function applyOnlyDownFilter() {
     const tbody = document.getElementById("main-tbody");
     if (!tbody) return;
 
-    const rows = tbody.querySelectorAll("tr");
-    rows.forEach(row => {
-        if (!onlyDownActive) {
-            row.style.display = "";
-        } else {
-            row.style.display = row.classList.contains("row-down") ? "" : "none";
-        }
+    tbody.querySelectorAll("tr").forEach(row => {
+        if (!onlyDownActive) row.style.display = "";
+        else row.style.display = row.classList.contains("row-down") ? "" : "none";
     });
 
     const btn = document.getElementById("filter-btn");
@@ -141,7 +124,6 @@ function toggleOnlyDown() {
 /************************************************************
  * CONTEGGIO DOWN
  ************************************************************/
-
 function updateDownCountFromItems(items) {
     const badge = document.getElementById("down-count-badge");
     if (!badge) return;
@@ -149,44 +131,36 @@ function updateDownCountFromItems(items) {
 }
 
 /************************************************************
- * RENDERING – TABELLA
+ * RENDER TABELLA
  ************************************************************/
-
-function createStatusCell(textStatus) {
+function createStatusCell(status) {
     const td = document.createElement("td");
-    const isDown = textStatus === "DOWN";
-
-    td.classList.add(isDown ? "status-down" : "status-up");
+    td.classList.add(status === "DOWN" ? "status-down" : "status-up");
 
     const icon = document.createElement("i");
     icon.classList.add("bi", "me-1");
-    if (isDown) icon.classList.add("bi-x-circle-fill", "text-danger");
-    else icon.classList.add("bi-check-circle-fill", "text-success");
+    icon.classList.add(status === "DOWN" ? "bi-x-circle-fill" : "bi-check-circle-fill");
+    icon.classList.add(status === "DOWN" ? "text-danger" : "text-success");
 
     td.appendChild(icon);
-    td.appendChild(document.createTextNode(" " + textStatus));
+    td.appendChild(document.createTextNode(" " + status));
+
     return td;
 }
 
 function buildHistorySvg(history) {
-    const svgNS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(svgNS, "svg");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "20");
 
     history.forEach((sev, idx) => {
-        const rect = document.createElementNS(svgNS, "rect");
-        rect.setAttribute("x", String(idx * 8));
-        rect.setAttribute("y", "0");
-        rect.setAttribute("width", "6");
-        rect.setAttribute("height", "20");
+        const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        r.setAttribute("x", idx * 8);
+        r.setAttribute("width", 6);
+        r.setAttribute("height", 20);
 
-        let color = "limegreen";
-        if (sev === 1) color = "yellow";
-        if (sev === 2) color = "red";
-
-        rect.setAttribute("fill", color);
-        svg.appendChild(rect);
+        r.setAttribute("fill", sev === 2 ? "red" : sev === 1 ? "yellow" : "limegreen");
+        svg.appendChild(r);
     });
 
     return svg;
@@ -209,20 +183,22 @@ function renderTable(items) {
         if (item.link) {
             const a = document.createElement("a");
             a.href = item.link;
-            a.target = "_blank";
             a.textContent = item.name;
+            a.target = "_blank";
             a.classList.add("text-decoration-none");
             tdName.appendChild(a);
-        } else tdName.textContent = item.name;
+        } else {
+            tdName.textContent = item.name;
+        }
 
         tr.appendChild(tdName);
         tr.appendChild(createStatusCell(item.k1));
         tr.appendChild(createStatusCell(item.k2));
         tr.appendChild(createStatusCell(item.final));
 
-        const tdHist = document.createElement("td");
-        tdHist.appendChild(buildHistorySvg(item.history || []));
-        tr.appendChild(tdHist);
+        const hist = document.createElement("td");
+        hist.appendChild(buildHistorySvg(item.history || []));
+        tr.appendChild(hist);
 
         tbody.appendChild(tr);
     });
@@ -235,30 +211,22 @@ function sortRowsBySeverity() {
     const tbody = document.getElementById("main-tbody");
     if (!tbody) return;
 
-    const rows = Array.from(tbody.querySelectorAll("tr"));
     const order = { "row-down": 0, "row-mismatch": 1, "row-up": 2 };
 
-    rows.sort((a, b) => {
-        const aClass =
-            a.classList.contains("row-down") ? "row-down" :
-            a.classList.contains("row-mismatch") ? "row-mismatch" :
-            "row-up";
-
-        const bClass =
-            b.classList.contains("row-down") ? "row-down" :
-            b.classList.contains("row-mismatch") ? "row-mismatch" :
-            "row-up";
-
-        return order[aClass] - order[bClass];
-    });
-
-    rows.forEach(r => tbody.appendChild(r));
+    Array.from(tbody.querySelectorAll("tr"))
+        .sort((a, b) => {
+            const ac = a.classList.contains("row-down") ? "row-down" :
+                       a.classList.contains("row-mismatch") ? "row-mismatch" : "row-up";
+            const bc = b.classList.contains("row-down") ? "row-down" :
+                       b.classList.contains("row-mismatch") ? "row-mismatch" : "row-up";
+            return order[ac] - order[bc];
+        })
+        .forEach(r => tbody.appendChild(r));
 }
 
 /************************************************************
- * RENDERING – MOBILE CARDS
+ * RENDER MOBILE
  ************************************************************/
-
 function renderMobileCards(items) {
     const container = document.getElementById("mobile-list");
     if (!container) return;
@@ -278,7 +246,7 @@ function renderMobileCards(items) {
         title.textContent = item.name;
         card.appendChild(title);
 
-        function addRow(label, status) {
+        function add(label, status) {
             const field = document.createElement("div");
             field.classList.add("mobile-field");
             field.textContent = label;
@@ -289,25 +257,25 @@ function renderMobileCards(items) {
 
             const icon = document.createElement("i");
             icon.classList.add("bi", "me-1");
-            if (status === "DOWN") icon.classList.add("bi-x-circle-fill", "text-danger");
-            else icon.classList.add("bi-check-circle-fill", "text-success");
+            icon.classList.add(status === "DOWN" ? "bi-x-circle-fill" : "bi-check-circle-fill");
+            icon.classList.add(status === "DOWN" ? "text-danger" : "text-success");
 
             val.appendChild(icon);
             val.appendChild(document.createTextNode(" " + status));
             card.appendChild(val);
         }
 
-        addRow("Aruba Bergamo:", item.k1);
-        addRow("TIM Sestu:", item.k2);
-        addRow("Finale:", item.final);
+        add("Aruba Bergamo:", item.k1);
+        add("TIM Sestu:", item.k2);
+        add("Finale:", item.final);
 
-        const label = document.createElement("div");
-        label.classList.add("mobile-field", "mt-2");
-        label.textContent = "Storico:";
-        card.appendChild(label);
+        const l = document.createElement("div");
+        l.classList.add("mobile-field", "mt-2");
+        l.textContent = "Storico:";
+        card.appendChild(l);
 
-        card.appendChild(buildHistorySvg(item.history || []));
-
+        const limitedHistory = (item.history || []).slice(-15);
+        card.appendChild(buildHistorySvg(limitedHistory));
         container.appendChild(card);
     });
 }
@@ -315,54 +283,46 @@ function renderMobileCards(items) {
 /************************************************************
  * AUTO REFRESH
  ************************************************************/
-
 async function refreshDashboard() {
     try {
-        const resp = await fetch("/api/dashboard-data", { cache: "no-store" });
-        if (!resp.ok) return;
+        const res = await fetch("/api/dashboard-data", { cache: "no-store" });
+        if (!res.ok) return;
 
-        const data = await resp.json();
-        const items = data.items || [];
-        const globalState = data.global_state || "GREEN";
+        const data = await res.json();
+        renderTable(data.items || []);
+        renderMobileCards(data.items || []);
+        updateDownCountFromItems(data.items || []);
+        updateGlobalStatus(data.global_state || "GREEN");
+        updateMobileMenuStatus(data.global_state || "GREEN");
 
-        renderTable(items);
-        renderMobileCards(items);
-        updateDownCountFromItems(items);
-        updateGlobalStatus(globalState);
-        updateMobileMenuStatus(globalState);
     } catch (e) {
         console.error("Errore auto-refresh:", e);
     }
 }
 
 /************************************************************
- * PUSH DESKTOP
+ * PUSH DESKTOP (UNICA VERSIONE)
  ************************************************************/
-
-function updatePushButton(isEnabled) {
+function updatePushButton(enabled) {
     const icon = document.getElementById("push-icon");
     if (!icon) return;
 
     icon.classList.remove("bi-bell", "bi-bell-fill", "text-success");
 
-    if (isEnabled) {
-        icon.classList.add("bi-bell-fill", "text-success");
-    } else {
-        icon.classList.add("bi-bell");
-    }
+    if (enabled) icon.classList.add("bi-bell-fill", "text-success");
+    else icon.classList.add("bi-bell");
 }
 
 async function getSubscription() {
     const reg = await navigator.serviceWorker.getRegistration("/sw.js");
     if (!reg) return null;
-
     return await reg.pushManager.getSubscription();
 }
 
 async function subscribeDesktop() {
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-        alert("Le notifiche sono disattivate dal browser.");
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") {
+        alert("Notifiche disattivate dal browser.");
         return;
     }
 
@@ -372,21 +332,17 @@ async function subscribeDesktop() {
         return;
     }
 
-    // Crea SUB
-    const key = VAPID_PUBLIC_KEY;
-    const toUint8 = (base64) => {
-        const padding = "=".repeat((4 - base64.length % 4) % 4);
-        const safe = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
-        const raw = atob(safe);
-        return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+    const toUint8 = (b64) => {
+        const pad = "=".repeat((4 - b64.length % 4) % 4);
+        const safe = (b64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+        return Uint8Array.from(atob(safe), c => c.charCodeAt(0));
     };
 
     const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: toUint8(key),
+        applicationServerKey: toUint8(VAPID_PUBLIC_KEY),
     });
 
-    // Invia al backend
     await fetch("/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -400,10 +356,8 @@ async function unsubscribeDesktop() {
     const sub = await getSubscription();
     if (!sub) return;
 
-    // Cancella lato browser
     await sub.unsubscribe();
 
-    // Cancella lato server
     await fetch("/push/unsubscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -415,11 +369,8 @@ async function unsubscribeDesktop() {
 
 async function togglePush() {
     const sub = await getSubscription();
-    if (sub) {
-        await unsubscribeDesktop();
-    } else {
-        await subscribeDesktop();
-    }
+    if (sub) await unsubscribeDesktop();
+    else await subscribeDesktop();
 }
 
 async function initPushButton() {
@@ -430,7 +381,6 @@ async function initPushButton() {
 /************************************************************
  * INIT
  ************************************************************/
-
 document.addEventListener("DOMContentLoaded", () => {
     loadTheme();
     initPushButton();
