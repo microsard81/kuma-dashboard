@@ -28,7 +28,12 @@ from config import (
     PUSH_VAPID_PUBLIC_KEY,
     PUSH_NOTIFY_ON,
 )
-from push_utils import add_subscription, send_push_to_all
+from push_utils import (
+    add_subscription,
+    send_push_to_all,
+    load_subscriptions,
+    save_subscriptions
+)
 from redis_history import get_global_state, set_global_state
 import os
 
@@ -192,7 +197,7 @@ def service_worker():
 
 
 # ============================================================================
-# PUSH SUBSCRIPTION
+# PUSH SUBSCRIPTION/UNSUBSCRIPTION
 # ============================================================================
 @app.route("/push/subscribe", methods=["POST"])
 @login_required
@@ -204,6 +209,22 @@ def push_subscribe():
     add_subscription(data)
     return {"ok": True}, 201
 
+
+@app.route("/push/unsubscribe", methods=["POST"])
+@login_required
+def push_unsubscribe():
+    data = request.get_json(silent=True) or {}
+
+    endpoint = data.get("endpoint")
+    if not endpoint:
+        return {"ok": False, "error": "missing endpoint"}, 400
+
+    subs = load_subscriptions()
+    new_subs = [s for s in subs if s.get("endpoint") != endpoint]
+
+    save_subscriptions(new_subs)
+
+    return {"ok": True, "removed": True}
 
 # ============================================================================
 # DASHBOARD

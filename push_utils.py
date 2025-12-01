@@ -35,7 +35,7 @@ def save_subscriptions(subs: List[Dict[str, Any]]) -> None:
 
 
 # ----------------------------------------------------------------------
-#  AGGIUNTA SUBSCRIPTION — evita duplicati
+#  AGGIUNTA o RIMOZIONE SUBSCRIPTION — evita duplicati
 # ----------------------------------------------------------------------
 
 def add_subscription(sub: Dict[str, Any]) -> None:
@@ -59,6 +59,12 @@ def add_subscription(sub: Dict[str, Any]) -> None:
     print(f"➕ Aggiunta subscription: {sub['endpoint'][:50]}...")
     subs.append(sub)
     save_subscriptions(subs)
+
+
+def remove_subscription(endpoint: str) -> None:
+    subs = load_subscriptions()
+    new_subs = [s for s in subs if s.get("endpoint") != endpoint]
+    save_subscriptions(new_subs)
 
 
 # ----------------------------------------------------------------------

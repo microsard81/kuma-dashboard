@@ -4,6 +4,7 @@
  *  - Storico da Redis (worker)
  *  - Tema manuale (localStorage)
  *  - Pulsanti mobile OK
+ *  - Push desktop integrate
  ************************************************************/
 
 /************************************************************
@@ -238,13 +239,15 @@ function sortRowsBySeverity() {
     const order = { "row-down": 0, "row-mismatch": 1, "row-up": 2 };
 
     rows.sort((a, b) => {
-        const aClass = a.classList.contains("row-down") ? "row-down"
-                     : a.classList.contains("row-mismatch") ? "row-mismatch"
-                     : "row-up";
+        const aClass =
+            a.classList.contains("row-down") ? "row-down" :
+            a.classList.contains("row-mismatch") ? "row-mismatch" :
+            "row-up";
 
-        const bClass = b.classList.contains("row-down") ? "row-down"
-                     : b.classList.contains("row-mismatch") ? "row-mismatch"
-                     : "row-up";
+        const bClass =
+            b.classList.contains("row-down") ? "row-down" :
+            b.classList.contains("row-mismatch") ? "row-mismatch" :
+            "row-up";
 
         return order[aClass] - order[bClass];
     });
@@ -333,11 +336,104 @@ async function refreshDashboard() {
 }
 
 /************************************************************
+ * PUSH DESKTOP
+ ************************************************************/
+
+function updatePushButton(isEnabled) {
+    const icon = document.getElementById("push-icon");
+    if (!icon) return;
+
+    icon.classList.remove("bi-bell", "bi-bell-fill", "text-success");
+
+    if (isEnabled) {
+        icon.classList.add("bi-bell-fill", "text-success");
+    } else {
+        icon.classList.add("bi-bell");
+    }
+}
+
+async function getSubscription() {
+    const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+    if (!reg) return null;
+
+    return await reg.pushManager.getSubscription();
+}
+
+async function subscribeDesktop() {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+        alert("Le notifiche sono disattivate dal browser.");
+        return;
+    }
+
+    const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+    if (!reg) {
+        alert("Service Worker non disponibile.");
+        return;
+    }
+
+    // Crea SUB
+    const key = VAPID_PUBLIC_KEY;
+    const toUint8 = (base64) => {
+        const padding = "=".repeat((4 - base64.length % 4) % 4);
+        const safe = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const raw = atob(safe);
+        return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+    };
+
+    const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: toUint8(key),
+    });
+
+    // Invia al backend
+    await fetch("/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sub),
+    });
+
+    updatePushButton(true);
+}
+
+async function unsubscribeDesktop() {
+    const sub = await getSubscription();
+    if (!sub) return;
+
+    // Cancella lato browser
+    await sub.unsubscribe();
+
+    // Cancella lato server
+    await fetch("/push/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: sub.endpoint }),
+    });
+
+    updatePushButton(false);
+}
+
+async function togglePush() {
+    const sub = await getSubscription();
+    if (sub) {
+        await unsubscribeDesktop();
+    } else {
+        await subscribeDesktop();
+    }
+}
+
+async function initPushButton() {
+    const sub = await getSubscription();
+    updatePushButton(!!sub);
+}
+
+/************************************************************
  * INIT
  ************************************************************/
 
 document.addEventListener("DOMContentLoaded", () => {
     loadTheme();
+    initPushButton();
 
     const initial = document.body.getAttribute("data-global-state") || "GREEN";
     updateGlobalStatus(initial);
