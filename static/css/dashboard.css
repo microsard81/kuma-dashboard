@@ -1,0 +1,190 @@
+/* Layout per footer in basso */
+html, body {
+    height: 100%;
+}
+
+body {
+    background: #f2f4f7;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.page-container {
+    flex: 1 0 auto;
+    width: 100%;
+}
+
+footer {
+    flex-shrink: 0;
+    background-color: #f8f9fa;
+}
+
+/* Stato testuale */
+.status-up   { color: #198754; font-weight: 600; }
+.status-down { color: #dc3545; font-weight: 600; }
+
+/* Righe */
+.row-up       { background: #e9f7ef; }
+.row-down     { background: #f8d7da; }
+.row-mismatch { background: #fff3cd; }
+
+table { font-size: 1.05rem; }
+
+table thead th {
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+
+/* Navbar */
+#topbar {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+}
+
+/* LED semaforo */
+.status-led {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(0,0,0,0.5);
+    border: 1px solid #000;
+}
+.status-led-green  { background: #28a745; box-shadow: 0 0 8px #28a745; }
+.status-led-yellow { background: #ffc107; box-shadow: 0 0 8px #ffc107; }
+.status-led-red    { background: #dc3545; box-shadow: 0 0 8px #dc3545; }
+
+/* Tema dark */
+body.dark {
+    background: #121212 !important;
+    color: #e0e0e0 !important;
+}
+
+body.dark .table {
+    background-color: #1e1e1e !important;
+    color: #eee !important;
+}
+
+body.dark .row-up       { background: #143d14 !important; }
+body.dark .row-down     { background: #5a1a1a !important; }
+body.dark .row-mismatch { background: #5a4a1a !important; }
+
+body.dark nav.navbar {
+    background-color: #000 !important;
+}
+
+body.dark .text-muted {
+    color: #ccc !important;
+}
+
+/* Pulsanti */
+.btn-auto {
+    color: #000 !important;
+    border-color: #000 !important;
+    background-color: #ffffff !important;
+}
+body.dark .btn-auto {
+    color: #fff !important;
+    border-color: #fff !important;
+    background-color: #222 !important;
+}
+
+/* Footer tema dark */
+body.dark footer {
+    background-color: #000 !important;
+    color: #fff !important;
+    border-top: 1px solid #444 !important;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+
+    #topbar {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        padding: 12px !important;
+    }
+
+    #topbar .navbar-brand {
+        font-size: 1.2rem !important;
+        margin-bottom: 8px;
+    }
+
+    #topbar {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+
+    #topbar .navbar-brand {
+        flex: 0 1 auto !important;
+    }
+
+    #topbar button.d-md-none {
+        flex: 0 0 auto !important;
+    }
+
+    .btn-auto {
+        font-size: 0.9rem !important;
+        padding: 10px 14px !important;
+        border-radius: 6px !important;
+    }
+
+    #global-status-led {
+        width: 20px !important;
+        height: 20px !important;
+    }
+
+    /* Tabella nascosta, card visibili */
+    .table-responsive-mobile {
+        display: none;
+    }
+
+    .mobile-card {
+        display: block !important;
+        background: var(--bs-light);
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        border-left: 6px solid transparent;
+    }
+
+    .mobile-card.up       { border-color: #198754; background: #e9f7ef; }
+    .mobile-card.down     { border-color: #dc3545; background: #f8d7da; }
+    .mobile-card.mismatch { border-color: #ffc107; background: #fff3cd; }
+
+    .mobile-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .mobile-field {
+        font-weight: 600;
+        color: #444;
+        font-size: 0.85rem;
+        margin-top: 4px;
+    }
+
+    .mobile-value {
+        font-size: 1rem;
+        margin-bottom: 6px;
+    }
+
+    body.dark .mobile-card {
+        background: #1e1e1e !important;
+        color: #fff !important;
+    }
+
+    body.dark .mobile-field {
+        color: #ccc;
+    }
+
+    /* Nascondi il filtro su mobile */
+    #filter-btn {
+        display: none !important;
+    }
+}

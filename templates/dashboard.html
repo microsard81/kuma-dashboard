@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+
+    <title>Uptime Kuma – Dashboard Unificata</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- iOS / PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <meta http-equiv="Cache-Control" content="no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/img/icon-180.png">
+    <link rel="apple-touch-icon" href="/static/img/icon-512.png">
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Dashboard CSS -->
+    <link href="/static/css/dashboard.css" rel="stylesheet">
+
+    <!-- Favicon dinamica -->
+    <link id="favicon" rel="icon"
+          href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22 fill=%22green%22/></svg>">
+</head>
+
+<body data-global-state="{{ global_state }}">
+    <!-- NAVBAR -->
+    <nav id="topbar"
+         class="navbar bg-white mb-4 px-3 border-bottom shadow-sm d-flex flex-row justify-content-between align-items-center">
+    
+        <!-- Logo -->
+        <div class="navbar-brand m-0 p-0 d-flex align-items-center flex-nowrap">
+            <img id="navbar-logo" src="" alt="Logo" style="height:32px;">
+        </div>
+    
+        <!-- Desktop buttons -->
+        <div class="d-none d-md-flex align-items-center">
+            <span class="badge bg-danger me-3" id="down-count-badge"></span>
+            <span class="me-3"><span id="global-status-led" class="status-led status-led-green"></span></span>
+    
+            <button class="btn btn-auto me-3 d-flex align-items-center" onclick="toggleTheme()">
+                <i id="theme-icon" class="bi bi-moon-stars me-2"></i>
+            </button>
+    
+            <a class="btn btn-auto me-3 d-flex align-items-center" href="/logout">
+                <i class="bi bi-box-arrow-right me-2"></i>
+            </a>
+        </div>
+    
+        <!-- Mobile: menu button -->
+        <button class="btn btn-auto d-md-none ms-auto"
+                type="button"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#mobileMenu">
+            ⋯
+        </button>
+    
+    </nav>
+
+    <!-- OFFCANVAS MOBILE -->
+    <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="mobileMenu">
+        <div class="offcanvas-header">
+            <h5>Menu</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+
+        <div class="offcanvas-body">
+
+            <div class="mb-3">
+                <strong>Stato sistema:</strong><br>
+                <span id="mobile-status-led" class="status-led status-led-green"></span>
+                <span id="mobile-status-text" class="ms-2">OK</span>
+            </div>
+
+            <hr>
+
+            <!-- Tema mobile -->
+            <button class="btn btn-auto w-100 mb-1 d-flex align-items-center" onclick="toggleTheme()">
+                <i id="theme-icon-mobile" class="bi bi-moon-stars me-2"></i>
+                <span>Cambia tema</span>
+            </button>
+
+            <div class="text-center mb-3">
+                <small id="theme-label" class="text-muted"></small>
+            </div>
+
+            <button class="btn btn-auto w-100 mb-2 d-flex align-items-center" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise me-2"></i>
+                <span>Refresh</span>
+            </button>
+
+            <button class="btn btn-auto w-100 mb-2 d-flex align-items-center" onclick="enablePush()">
+                <i class="bi bi-bell me-2"></i>
+                <span>Abilita notifiche push</span>
+            </button>
+
+            <a href="/api/status-json" class="btn btn-auto w-100 mb-2 d-flex align-items-center">
+                <i class="bi bi-filetype-json me-2"></i>
+                <span>Esporta JSON</span>
+            </a>
+
+            <a href="https://monitor-bg.sundata.cloud" class="btn btn-auto w-100 mb-2 d-flex align-items-center" target="_blank">
+                <i class="bi bi-box-arrow-up-right me-2"></i>
+                <span>monitor-bg.sundata.cloud</span>
+            </a>
+
+            <a href="https://kuma.sundata.cloud" class="btn btn-auto w-100 mb-2 d-flex align-items-center" target="_blank">
+                <i class="bi bi-box-arrow-up-right me-2"></i>
+                <span>kuma.sundata.cloud</span>
+            </a>
+
+            <hr>
+
+            <a href="/logout" class="btn btn-danger w-100 mt-3 d-flex align-items-center justify-content-center">
+                <i class="bi bi-box-arrow-right me-2"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- CONTENUTO -->
+    <div class="page-container">
+        <div class="container-fluid">
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2>Dashboard Unificata</h2>
+                <button id="filter-btn" class="btn btn-auto" onclick="toggleOnlyDown()" data-active="0">
+                    Mostra solo DOWN
+                </button>
+            </div>
+
+            <p class="text-muted">
+                Una risorsa è <strong>DOWN</strong> solo se <u>entrambe</u> le sonde la vedono DOWN.
+            </p>
+
+            <!-- TABELLA DESKTOP -->
+            <div class="table-responsive-mobile">
+                <table class="table table-bordered table-hover align-middle" id="main-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Monitor</th>
+                            <th>Aruba Bergamo</th>
+                            <th>TIM Sestu</th>
+                            <th>Stato Finale</th>
+                            <th>Storico</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="main-tbody">
+                        <!-- POPOLATO DA JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- CARD MOBILE -->
+            <div id="mobile-list" class="d-md-none">
+                <!-- POPOLATO DA JS -->
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="text-center text-muted py-3 border-top">
+        <small>© {{ current_year }} ITCARMAT S.r.l. — Tutti i diritti riservati</small>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Dashboard JS -->
+    <script src="/static/js/dashboard.js"></script>
+
+    <!-- PUSH / SERVICE WORKER -->
+    <script>
+        const VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = "=".repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/-/g, "+")
+                .replace(/_/g, "/");
+            const rawData = atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        async function subscribeUserToPush(registration) {
+            if (!VAPID_PUBLIC_KEY) return;
+
+            let sub = await registration.pushManager.getSubscription();
+            if (!sub) {
+                const key = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+                sub = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: key
+                });
+            }
+
+            await fetch("/push/subscribe", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(sub)
+            });
+        }
+
+        async function enablePush() {
+            if (!("Notification" in window)) return;
+
+            const permission = await Notification.requestPermission();
+            if (permission !== "granted") return;
+
+            // FIX: percorso corretto del SW
+            let reg = await navigator.serviceWorker.getRegistration("/sw.js");
+            if (!reg) reg = await navigator.serviceWorker.register("/sw.js");
+
+            await subscribeUserToPush(reg);
+            alert("Notifiche push abilitate.");
+        }
+
+        // Registrazione SW all'avvio (FIXATO)
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+                navigator.serviceWorker.register("/sw.js")
+                    .then(reg => console.log("SW registrato:", reg))
+                    .catch(err => console.error("SW error:", err));
+            });
+        }
+    </script>
+</body>
+</html>
