@@ -1,0 +1,67 @@
+# ----------------------------------------
+# Python
+# ----------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Egg / Build
+*.egg-info/
+dist/
+build/
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Cache varie
+.cache/
+*.log
+
+# ----------------------------------------
+# Flask / Gunicorn
+# ----------------------------------------
+instance/
+*.pid
+*.db
+
+# Log applicazione
+/var/log/*.log
+
+# ----------------------------------------
+# File nascosti (tranne .gitignore)
+# ATTENZIONE:
+#   Questo esclude TUTTI i file che iniziano per .
+#   ma non esclude .gitignore o .gitattributes.
+# ----------------------------------------
+.*
+!.gitignore
+!.gitattributes
+
+# Evita di ignorare le directory .git/
+!.git/
+
+# ----------------------------------------
+# MacOS junk
+# ----------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ----------------------------------------
+# Editor
+# ----------------------------------------
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# ----------------------------------------
+# Node (se mai aggiungi frontend)
+# ----------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
