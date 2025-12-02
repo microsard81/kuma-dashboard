@@ -378,6 +378,9 @@ async function initPushButton() {
     updatePushButton(!!sub);
 }
 
+
+window.togglePush = togglePush;
+
 /************************************************************
  * INIT
  ************************************************************/
