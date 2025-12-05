@@ -24,6 +24,7 @@ from auth import verify_user, verify_totp
 from config import (
     KUMA1,
     KUMA2,
+    KUMA3,
     PUSH_ENABLED,
     PUSH_VAPID_PUBLIC_KEY,
     PUSH_NOTIFY_ON,
@@ -149,7 +150,8 @@ def extract_monitor_url(name, statuses):
 def build_dashboard_data():
     m1 = load_monitors(KUMA1["host"], KUMA1["slug"])
     m2 = load_monitors(KUMA2["host"], KUMA2["slug"])
-    common = sorted(set(m1.keys()) & set(m2.keys()))
+    m3 = load_monitors(KUMA3["host"], KUMA3["slug"])
+    common = sorted(set(m1.keys()) & set(m2.keys()) & set(m3.keys()))
 
     statuses = load_status()
 
@@ -163,6 +165,7 @@ def build_dashboard_data():
                 "name": display,
                 "k1": map_status(p["bg"]),
                 "k2": map_status(p["tim"]),
+                "k3": map_status(p["iliad"]),
                 "final": map_status(p["final"]),
                 "severity": p["severity"],
                 "history": p["history"],
@@ -174,7 +177,7 @@ def build_dashboard_data():
 
     any_final_down = any(r["final"] == "DOWN" for r in rows)
     any_mismatch = any(
-        (r["k1"] != r["k2"]) and (r["final"] != "DOWN") for r in rows
+        (r["k1"] != r["k2"] or r["k1"] != r["k3"] or r["k2"] != r["k3"]) and (r["final"] != "DOWN") for r in rows
     )
 
     if any_final_down:

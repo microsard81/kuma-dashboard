@@ -12,6 +12,11 @@ HTTP_TIMEOUT = 10
 # ------------------------------------------------------------
 # MONITOR UPTIME KUMA
 # ------------------------------------------------------------
+
+PROBE_BG    = "Bergamo Aruba"
+PROBE_TIM   = "Sestu TIM"
+PROBE_ILIAD = "Sinnai ILIAD"
+
 KUMA1 = {
     "name": "Kuma Aruba Bergamo",
     "host": "monitor-bg.sundata.cloud",
@@ -24,6 +29,11 @@ KUMA2 = {
     "slug": "inva",
 }
 
+KUMA3 = {
+    "name": "Kuma ILIAD Sinnai",
+    "host": "monitor-iliad.sundata.cloud",
+    "slug": "inva",
+}
 
 # ------------------------------------------------------------
 # REDIS – STORICO CENTRALIZZATO

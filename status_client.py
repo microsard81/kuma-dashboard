@@ -1,11 +1,8 @@
 # status_client.py
 
 import requests
-from config import STATUS_URL, STATUS_TOKEN
+from config import STATUS_URL, STATUS_TOKEN, PROBE_BG, PROBE_TIM, PROBE_ILIAD
 from redis_history import load_history
-
-PROBE_BG  = "Bergamo Aruba"
-PROBE_TIM = "Sestu TIM"
 
 
 def load_status():
@@ -28,6 +25,7 @@ def process_monitor(monitor_name, status_dict, name_norm):
         return {
             "bg": 1,
             "tim": 1,
+            "iliad": 1,
             "final": 1,
             "severity": 0,
             "history": history,
@@ -43,6 +41,7 @@ def process_monitor(monitor_name, status_dict, name_norm):
         return {
             "bg": 1,
             "tim": 1,
+            "iliad": 1,
             "final": 1,
             "severity": 0,
             "history": history,
@@ -52,12 +51,13 @@ def process_monitor(monitor_name, status_dict, name_norm):
 
     bg_state  = 0 if PROBE_BG  in probes else 1
     tim_state = 0 if PROBE_TIM in probes else 1
+    iliad_state = 0 if PROBE_ILIAD in probes else 1
 
-    final_state = 0 if (bg_state == 0 and tim_state == 0) else 1
+    final_state = 0 if (bg_state == 0 and tim_state == 0 and iliad_state == 0) else 1
 
-    if bg_state == 1 and tim_state == 1:
+    if bg_state == 1 and tim_state == 1 and iliad_state == 1:
         severity = 0
-    elif bg_state != tim_state:
+    elif bg_state != tim_state or bg_state != iliad_state or tim_state != iliad_state:
         severity = 1
     else:
         severity = 2
@@ -65,6 +65,7 @@ def process_monitor(monitor_name, status_dict, name_norm):
     return {
         "bg": bg_state,
         "tim": tim_state,
+        "iliad": iliad_state,
         "final": final_state,
         "severity": severity,
         "history": history,

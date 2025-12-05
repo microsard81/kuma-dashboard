@@ -8,8 +8,12 @@ from config import (
     STATUS_TOKEN,
     KUMA1,
     KUMA2,
+    KUMA3,
     PUSH_ENABLED,
     PUSH_NOTIFY_ON,
+    PROBE_BG,
+    PROBE_TIM,
+    PROBE_ILIAD,
 )
 from kuma_client import load_monitors
 from status_client import load_status
@@ -21,17 +25,14 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s - %(message)s"
 )
 
-PROBE_BG  = "Bergamo Aruba"
-PROBE_TIM = "Sestu TIM"
-
 
 # ------------------------------------------------------
 # Calcolo severità (0 verde, 1 giallo, 2 rosso)
 # ------------------------------------------------------
-def compute_severity(bg, tim):
-    if bg == 1 and tim == 1:
+def compute_severity(bg, tim, iliad):
+    if bg == 1 and tim == 1 and iliad == 1:
         return 0
-    if bg != tim:
+    if bg != tim or bg != iliad or tim != iliad:
         return 1
     return 2
 
@@ -107,8 +108,9 @@ def loop_once():
 
     m1 = load_monitors(KUMA1["host"], KUMA1["slug"])
     m2 = load_monitors(KUMA2["host"], KUMA2["slug"])
+    m3 = load_monitors(KUMA3["host"], KUMA3["slug"])
 
-    common = sorted(set(m1.keys()) & set(m2.keys()))
+    common = sorted(set(m1.keys()) & set(m2.keys()) & set(m3.keys()))
     severities = []
 
     # Nessun dato → tutto green
@@ -137,12 +139,14 @@ def loop_once():
         if not info:
             bg = 1
             tim = 1
+            iliad = 1
         else:
             probes = info.get("probes", [])
             bg = 0 if PROBE_BG  in probes else 1
             tim = 0 if PROBE_TIM in probes else 1
+            iliad = 0 if PROBE_ILIAD in probes else 1
 
-        severity = compute_severity(bg, tim)
+        severity = compute_severity(bg, tim, iliad)
         severities.append(severity)
 
         save_point(name_norm, severity)

@@ -176,7 +176,7 @@ function renderTable(items) {
         const tr = document.createElement("tr");
 
         if (item.final === "DOWN") tr.classList.add("row-down");
-        else if (item.k1 !== item.k2) tr.classList.add("row-mismatch");
+        else if (item.k1 !== item.k2 || item.k1 !== item.k3 || item.k2 !== item.k3) tr.classList.add("row-mismatch");
         else tr.classList.add("row-up");
 
         const tdName = document.createElement("td");
@@ -194,6 +194,7 @@ function renderTable(items) {
         tr.appendChild(tdName);
         tr.appendChild(createStatusCell(item.k1));
         tr.appendChild(createStatusCell(item.k2));
+        tr.appendChild(createStatusCell(item.k3));
         tr.appendChild(createStatusCell(item.final));
 
         const hist = document.createElement("td");
@@ -238,7 +239,7 @@ function renderMobileCards(items) {
         card.classList.add("mobile-card");
 
         if (item.final === "DOWN") card.classList.add("down");
-        else if (item.k1 !== item.k2) card.classList.add("mismatch");
+        else if (item.k1 !== item.k2 || item.k1 !== item.k3 || item.k2 !== item.k3) card.classList.add("mismatch");
         else card.classList.add("up");
 
         const title = document.createElement("div");
@@ -267,6 +268,7 @@ function renderMobileCards(items) {
 
         add("Aruba Bergamo:", item.k1);
         add("TIM Sestu:", item.k2);
+        add("ILIAD Sinnai:", item.k3);
         add("Finale:", item.final);
 
         const l = document.createElement("div");
