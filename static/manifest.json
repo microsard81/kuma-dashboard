@@ -1,7 +1,7 @@
 {
-  "name": "IN.VA Uptime Dashboard",
-  "short_name": "IN.VA",
-  "description": "Cruscotto stato sensoristica IN.VA dai due Uptime Kuma.",
+  "name": "INVA Uptime Dashboard",
+  "short_name": "INVA",
+  "description": "Cruscotto stato sensoristica INVA delle sonde.",
   "display": "standalone",
   "start_url": "/",
   "scope": "/",

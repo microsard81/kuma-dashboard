@@ -9,11 +9,14 @@ from config import (
     KUMA1,
     KUMA2,
     KUMA3,
+    NODEPING,
     PUSH_ENABLED,
     PUSH_NOTIFY_ON,
     PROBE_BG,
     PROBE_TIM,
     PROBE_ILIAD,
+    PROBE_NODEPING,
+    SLEEP,
 )
 from kuma_client import load_monitors
 from status_client import load_status
@@ -29,10 +32,11 @@ logging.basicConfig(
 # ------------------------------------------------------
 # Calcolo severità (0 verde, 1 giallo, 2 rosso)
 # ------------------------------------------------------
-def compute_severity(bg, tim, iliad):
-    if bg == 1 and tim == 1 and iliad == 1:
+def compute_severity(bg, tim, iliad, nodeping):
+    if bg == 1 and tim == 1 and iliad == 1 and nodeping == 1:
         return 0
-    if bg != tim or bg != iliad or tim != iliad:
+    all_states = {bg, tim, iliad, nodeping}
+    if len(all_states) > 1:
         return 1
     return 2
 
@@ -140,13 +144,15 @@ def loop_once():
             bg = 1
             tim = 1
             iliad = 1
+            nodeping = 1
         else:
             probes = info.get("probes", [])
             bg = 0 if PROBE_BG  in probes else 1
             tim = 0 if PROBE_TIM in probes else 1
             iliad = 0 if PROBE_ILIAD in probes else 1
+            nodeping = 0 if PROBE_NODEPING in probes else 1
 
-        severity = compute_severity(bg, tim, iliad)
+        severity = compute_severity(bg, tim, iliad, nodeping)
         severities.append(severity)
 
         save_point(name_norm, severity)
@@ -169,7 +175,7 @@ def main_loop():
         except Exception as e:
             logging.exception(f"Errore worker: {e}")
 
-        time.sleep(10)
+        time.sleep(SLEEP)
 
 
 if __name__ == "__main__":

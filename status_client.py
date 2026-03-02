@@ -1,7 +1,7 @@
 # status_client.py
 
 import requests
-from config import STATUS_URL, STATUS_TOKEN, PROBE_BG, PROBE_TIM, PROBE_ILIAD
+from config import STATUS_URL, STATUS_TOKEN, PROBE_BG, PROBE_TIM, PROBE_ILIAD, PROBE_NODEPING
 from redis_history import load_history
 
 
@@ -26,6 +26,7 @@ def process_monitor(monitor_name, status_dict, name_norm):
             "bg": 1,
             "tim": 1,
             "iliad": 1,
+            "nodeping": 1,
             "final": 1,
             "severity": 0,
             "history": history,
@@ -42,6 +43,7 @@ def process_monitor(monitor_name, status_dict, name_norm):
             "bg": 1,
             "tim": 1,
             "iliad": 1,
+            "nodeping": 1,
             "final": 1,
             "severity": 0,
             "history": history,
@@ -52,12 +54,15 @@ def process_monitor(monitor_name, status_dict, name_norm):
     bg_state  = 0 if PROBE_BG  in probes else 1
     tim_state = 0 if PROBE_TIM in probes else 1
     iliad_state = 0 if PROBE_ILIAD in probes else 1
+    nodeping_state = 0 if PROBE_NODEPING in probes else 1
 
-    final_state = 0 if (bg_state == 0 and tim_state == 0 and iliad_state == 0) else 1
+    final_state = 0 if (bg_state == 0 and tim_state == 0 and iliad_state == 0 and nodeping_state == 0) else 1
 
-    if bg_state == 1 and tim_state == 1 and iliad_state == 1:
+    all_states = { bg_state, tim_state, iliad_state, nodeping_state }
+
+    if bg_state == 1 and tim_state == 1 and iliad_state == 1 and nodeping_state == 1:
         severity = 0
-    elif bg_state != tim_state or bg_state != iliad_state or tim_state != iliad_state:
+    elif len(all_states) > 1:
         severity = 1
     else:
         severity = 2
@@ -66,6 +71,7 @@ def process_monitor(monitor_name, status_dict, name_norm):
         "bg": bg_state,
         "tim": tim_state,
         "iliad": iliad_state,
+        "nodeping": nodeping_state,
         "final": final_state,
         "severity": severity,
         "history": history,

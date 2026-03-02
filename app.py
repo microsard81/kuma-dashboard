@@ -25,6 +25,7 @@ from config import (
     KUMA1,
     KUMA2,
     KUMA3,
+    NODEPING,
     PUSH_ENABLED,
     PUSH_VAPID_PUBLIC_KEY,
     PUSH_NOTIFY_ON,
@@ -36,7 +37,7 @@ from push_utils import (
     save_subscriptions
 )
 from redis_history import get_global_state, set_global_state
-import os
+import os, random
 
 app = Flask(__name__)
 app.secret_key = (
@@ -166,6 +167,7 @@ def build_dashboard_data():
                 "k1": map_status(p["bg"]),
                 "k2": map_status(p["tim"]),
                 "k3": map_status(p["iliad"]),
+                "n1": map_status(p["nodeping"]),
                 "final": map_status(p["final"]),
                 "severity": p["severity"],
                 "history": p["history"],
@@ -177,7 +179,7 @@ def build_dashboard_data():
 
     any_final_down = any(r["final"] == "DOWN" for r in rows)
     any_mismatch = any(
-        (r["k1"] != r["k2"] or r["k1"] != r["k3"] or r["k2"] != r["k3"]) and (r["final"] != "DOWN") for r in rows
+        len({r["k1"], r["k2"], r["k3"], r["n1"]}) > 1 and (r["final"] != "DOWN") for r in rows
     )
 
     if any_final_down:
@@ -284,6 +286,7 @@ def dashboard():
         global_state=global_state,
         current_year=datetime.now().year,
         vapid_public_key=PUSH_VAPID_PUBLIC_KEY if PUSH_ENABLED else "",
+        randomize_version=random.randint(159827789,654987987),
     )
 
 

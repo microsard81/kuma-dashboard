@@ -150,7 +150,7 @@ function createStatusCell(status) {
 
 function buildHistorySvg(history) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "100%");
+    svg.setAttribute("width", "99%");
     svg.setAttribute("height", "20");
 
     history.forEach((sev, idx) => {
@@ -174,9 +174,11 @@ function renderTable(items) {
 
     items.forEach(item => {
         const tr = document.createElement("tr");
+        const CHECK_KEYS = ["k1", "k2", "k3", "n1"];
+        const states = new Set(CHECK_KEYS.map(k => item[k]));
 
         if (item.final === "DOWN") tr.classList.add("row-down");
-        else if (item.k1 !== item.k2 || item.k1 !== item.k3 || item.k2 !== item.k3) tr.classList.add("row-mismatch");
+        else if (states.size > 1) tr.classList.add("row-mismatch");
         else tr.classList.add("row-up");
 
         const tdName = document.createElement("td");
@@ -195,10 +197,11 @@ function renderTable(items) {
         tr.appendChild(createStatusCell(item.k1));
         tr.appendChild(createStatusCell(item.k2));
         tr.appendChild(createStatusCell(item.k3));
+        tr.appendChild(createStatusCell(item.n1));
         tr.appendChild(createStatusCell(item.final));
 
         const hist = document.createElement("td");
-        hist.appendChild(buildHistorySvg(item.history || []));
+        hist.appendChild(buildHistorySvg((item.history || []).slice(-50)));
         tr.appendChild(hist);
 
         tbody.appendChild(tr);
@@ -238,8 +241,11 @@ function renderMobileCards(items) {
         const card = document.createElement("div");
         card.classList.add("mobile-card");
 
+        const CHECK_KEYS = ["k1", "k2", "k3", "n1"];
+        const states = new Set(CHECK_KEYS.map(k => item[k]));
+
         if (item.final === "DOWN") card.classList.add("down");
-        else if (item.k1 !== item.k2 || item.k1 !== item.k3 || item.k2 !== item.k3) card.classList.add("mismatch");
+        else if (states.size > 1) card.classList.add("mismatch");
         else card.classList.add("up");
 
         const title = document.createElement("div");
@@ -269,6 +275,7 @@ function renderMobileCards(items) {
         add("Aruba Bergamo:", item.k1);
         add("TIM Sestu:", item.k2);
         add("ILIAD Sinnai:", item.k3);
+        add("NodePing Europe:", item.n1);
         add("Finale:", item.final);
 
         const l = document.createElement("div");
@@ -276,7 +283,7 @@ function renderMobileCards(items) {
         l.textContent = "Storico:";
         card.appendChild(l);
 
-        const limitedHistory = (item.history || []).slice(-15);
+        const limitedHistory = (item.history || []).slice(-40);
         card.appendChild(buildHistorySvg(limitedHistory));
         container.appendChild(card);
     });

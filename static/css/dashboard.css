@@ -21,8 +21,8 @@ footer {
 }
 
 /* Stato testuale */
-.status-up   { color: #198754; font-weight: 600; }
-.status-down { color: #dc3545; font-weight: 600; }
+.status-up   { color: #198754; font-weight: 600; text-align: center; }
+.status-down { color: #dc3545; font-weight: 600; text-align: center; }
 
 /* Righe */
 .row-up       { background: #e9f7ef; }

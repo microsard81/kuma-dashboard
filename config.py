@@ -13,9 +13,10 @@ HTTP_TIMEOUT = 10
 # MONITOR UPTIME KUMA
 # ------------------------------------------------------------
 
-PROBE_BG    = "Bergamo Aruba"
-PROBE_TIM   = "Sestu TIM"
-PROBE_ILIAD = "Sinnai ILIAD"
+PROBE_BG       = "Bergamo Aruba"
+PROBE_TIM      = "Sestu TIM"
+PROBE_ILIAD    = "Sinnai ILIAD"
+PROBE_NODEPING = "Europe NodePing"
 
 KUMA1 = {
     "name": "Kuma Aruba Bergamo",
@@ -35,6 +36,12 @@ KUMA3 = {
     "slug": "inva",
 }
 
+NODEPING = {
+    "name": "NodePing",
+    "host": "nodeping.com",
+    "slug": "in.va.",
+}
+
 # ------------------------------------------------------------
 # REDIS – STORICO CENTRALIZZATO
 # ------------------------------------------------------------
@@ -50,6 +57,8 @@ MAX_HISTORY_POINTS = 60
 # Frequenza di aggiornamento del worker in secondi
 HISTORY_UPDATE_INTERVAL = 10
 
+# Hiostory sleep time for workers
+SLEEP = 30
 
 # ------------------------------------------------------------
 # PUSH NOTIFICATIONS
