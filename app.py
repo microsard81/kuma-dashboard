@@ -40,8 +40,13 @@ import os, random
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET_KEY
 
-# Remember me durata 1 anno
-app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=365)
+# Sicurezza cookie di sessione
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+# Remember me durata 30 giorni
+app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=30)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -195,7 +200,14 @@ def push_subscribe():
     if "endpoint" not in data:
         return {"ok": False, "error": "no endpoint"}, 400
 
-    add_subscription(data)
+    sub = {
+        "endpoint": data["endpoint"],
+        "keys": {
+            "p256dh": data.get("keys", {}).get("p256dh", ""),
+            "auth": data.get("keys", {}).get("auth", ""),
+        },
+    }
+    add_subscription(sub)
     return {"ok": True}, 201
 
 

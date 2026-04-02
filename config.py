@@ -66,13 +66,13 @@ REDIS_PORT = 6379
 REDIS_DB   = 0
 
 # Massimo 60 punti (1 ora con worker/cron ogni 60 secondi, o 10 minuti con intervalli 10s)
-MAX_HISTORY_POINTS = 120
+MAX_HISTORY_POINTS = 60
 
 # Frequenza di aggiornamento del worker in secondi
 HISTORY_UPDATE_INTERVAL = 10
 
 # Hiostory sleep time for workers
-SLEEP = 30
+SLEEP = 60
 
 # ------------------------------------------------------------
 # PUSH NOTIFICATIONS

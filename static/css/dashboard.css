@@ -208,6 +208,115 @@ footer small {
     text-decoration: underline !important;
 }
 
+/* ============================================================
+   DESKTOP CARD GRID
+   ============================================================ */
+.desktop-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.dcard {
+    background: #fff;
+    border-radius: 12px;
+    padding: 28px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-left: 5px solid transparent;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.dcard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+.dcard-up       { border-left-color: #22c55e; }
+.dcard-mismatch { border-left-color: #eab308; }
+.dcard-down     { border-left-color: #ef4444; background: #fef2f2; }
+
+.dcard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.dcard-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #1e293b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    margin-right: 8px;
+}
+
+.dcard-name a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.dcard-name a:hover {
+    text-decoration: underline;
+}
+
+.dcard-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    flex-shrink: 0;
+}
+
+.dcard-badge-up       { background: #dcfce7; color: #166534; }
+.dcard-badge-mismatch { background: #fef9c3; color: #854d0e; }
+.dcard-badge-down     { background: #fee2e2; color: #991b1b; }
+
+.dcard-probes {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.dcard-probe {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: default;
+}
+
+.dcard-probe-up   { background: #dcfce7; color: #166534; }
+.dcard-probe-down { background: #fee2e2; color: #991b1b; }
+
+.dcard-history {
+    margin-top: 8px;
+}
+
+/* Dark theme card overrides */
+body.dark .dcard {
+    background: #1e293b;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+body.dark .dcard:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+body.dark .dcard-down { background: #3b1a1a; }
+
+body.dark .dcard-name { color: #e2e8f0; }
+body.dark .dcard-name a { color: #60a5fa; }
+
+body.dark .dcard-badge-up       { background: #14532d; color: #86efac; }
+body.dark .dcard-badge-mismatch { background: #422006; color: #fde047; }
+body.dark .dcard-badge-down     { background: #450a0a; color: #fca5a5; }
+
+body.dark .dcard-probe-up   { background: #14532d; color: #86efac; }
+body.dark .dcard-probe-down { background: #450a0a; color: #fca5a5; }
+
 /* Storico */
 .history-container {
     background: #f8fafc;

@@ -151,8 +151,8 @@
                 Una risorsa è <strong>DOWN</strong> solo se <u>tutte</u> le sonde la vedono DOWN.
             </p>
 
-            <!-- TABELLA DESKTOP -->
-            <div class="table-responsive-mobile">
+            <!-- TABELLA DESKTOP (nascosta, usata come fallback) -->
+            <div class="table-responsive-mobile d-none">
                 <table class="table table-bordered table-hover align-middle" id="main-table">
                     <thead class="table-dark">
                         <tr>
@@ -170,6 +170,11 @@
                         <!-- POPOLATO DA JS -->
                     </tbody>
                 </table>
+            </div>
+
+            <!-- CARD GRID DESKTOP -->
+            <div id="desktop-cards" class="d-none d-md-block">
+                <!-- POPOLATO DA JS -->
             </div>
 
             <!-- CARD MOBILE -->

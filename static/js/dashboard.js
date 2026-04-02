@@ -173,7 +173,7 @@ function buildHistorySvg(history) {
 
     const colors = { 0: "#34d399", 1: "#FFEE00", 2: "#f87171" };
     const labels = { 0: "UP", 1: "Mismatch", 2: "DOWN" };
-    const interval = 30;
+    const interval = 60;
     const n = history.length || 1;
 
     // Calcola dimensioni proporzionali: 75% barra, 25% gap
@@ -250,7 +250,7 @@ function renderTable(items) {
         tr.appendChild(createStatusCell(item.final));
 
         const hist = document.createElement("td");
-        hist.appendChild(buildHistorySvg((item.history || []).slice(-120)));
+        hist.appendChild(buildHistorySvg((item.history || []).slice(-60)));
         tr.appendChild(hist);
 
         tbody.appendChild(tr);
@@ -275,6 +275,85 @@ function sortRowsBySeverity() {
             return order[ac] - order[bc];
         })
         .forEach(r => tbody.appendChild(r));
+}
+
+/************************************************************
+ * RENDER DESKTOP CARDS
+ ************************************************************/
+function renderDesktopCards(items) {
+    const container = document.getElementById("desktop-cards");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    const grid = document.createElement("div");
+    grid.classList.add("desktop-card-grid");
+
+    // Ordina: DOWN prima, poi mismatch, poi UP
+    const sorted = [...items].sort((a, b) => {
+        const sev = s => s.final === "DOWN" ? 0 : new Set(["k1","k2","k3","n1"].map(k => s[k])).size > 1 ? 1 : 2;
+        return sev(a) - sev(b);
+    });
+
+    sorted.forEach(item => {
+        const CHECK_KEYS = ["k1", "k2", "k3", "n1"];
+        const states = new Set(CHECK_KEYS.map(k => item[k]));
+        let severity = "up";
+        if (item.final === "DOWN") severity = "down";
+        else if (states.size > 1) severity = "mismatch";
+
+        const card = document.createElement("div");
+        card.classList.add("dcard", "dcard-" + severity);
+
+        // Header: nome + stato finale
+        const header = document.createElement("div");
+        header.classList.add("dcard-header");
+
+        const name = document.createElement("div");
+        name.classList.add("dcard-name");
+        if (item.link) {
+            const a = document.createElement("a");
+            a.href = item.link;
+            a.target = "_blank";
+            a.textContent = item.name;
+            name.appendChild(a);
+        } else {
+            name.textContent = item.name;
+        }
+
+        const badge = document.createElement("span");
+        badge.classList.add("dcard-badge", "dcard-badge-" + severity);
+        badge.textContent = item.final;
+
+        header.appendChild(name);
+        header.appendChild(badge);
+        card.appendChild(header);
+
+        // Sonde
+        const probes = document.createElement("div");
+        probes.classList.add("dcard-probes");
+
+        const probeLabels = { k1: "Aruba Bergamo", k2: "TIM Sestu", k3: "ILIAD Sinnai", n1: "NodePing Europe" };
+        CHECK_KEYS.forEach(k => {
+            const p = document.createElement("span");
+            p.classList.add("dcard-probe", item[k] === "DOWN" ? "dcard-probe-down" : "dcard-probe-up");
+            p.textContent = probeLabels[k];
+            p.title = (k === "k1" ? "Aruba Bergamo" : k === "k2" ? "TIM Sestu" : k === "k3" ? "ILIAD Sinnai" : "NodePing Europe") + ": " + item[k];
+            probes.appendChild(p);
+        });
+
+        card.appendChild(probes);
+
+        // Storico
+        const hist = document.createElement("div");
+        hist.classList.add("dcard-history");
+        hist.appendChild(buildHistorySvg((item.history || []).slice(-60)));
+        card.appendChild(hist);
+
+        grid.appendChild(card);
+    });
+
+    container.appendChild(grid);
 }
 
 /************************************************************
@@ -332,7 +411,7 @@ function renderMobileCards(items) {
         l.textContent = "Storico:";
         card.appendChild(l);
 
-        const limitedHistory = (item.history || []).slice(-120);
+        const limitedHistory = (item.history || []).slice(-60);
         card.appendChild(buildHistorySvg(limitedHistory));
         container.appendChild(card);
     });
@@ -348,6 +427,7 @@ async function refreshDashboard() {
 
         const data = await res.json();
         renderTable(data.items || []);
+        renderDesktopCards(data.items || []);
         renderMobileCards(data.items || []);
         updateDownCountFromItems(data.items || []);
         updateGlobalStatus(data.global_state || "GREEN");
