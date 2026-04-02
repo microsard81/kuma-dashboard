@@ -1,13 +1,22 @@
 # auth.py
 
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
 import pyotp
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
+
+AUTH_PASSWORD_HASH = os.environ["AUTH_PASSWORD_HASH"]
+AUTH_TOTP_SECRET = os.environ["AUTH_TOTP_SECRET"]
 
 # DIZIONARIO UTENTI
 USERS = {
     "itcarmat": {
-        "password_hash": generate_password_hash("FWFoivbB77aXuDe2qo__@h-"),
-        "totp_secret": "KBCOP2YC642U5HPL7PARG7SZYSHXE4RB"
+        "password_hash": AUTH_PASSWORD_HASH,
+        "totp_secret": AUTH_TOTP_SECRET,
     }
 }
 

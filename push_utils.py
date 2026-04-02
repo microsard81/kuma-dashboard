@@ -1,70 +1,59 @@
 import json
-import os
+import logging
 from typing import List, Dict, Any
 
+import redis
 from pywebpush import webpush, WebPushException
 
 from config import (
     PUSH_ENABLED,
     PUSH_VAPID_PRIVATE_KEY,
     PUSH_VAPID_CLAIMS,
+    REDIS_HOST,
+    REDIS_PORT,
+    REDIS_DB,
 )
 
-SUBS_FILE = "push_subscriptions.json"
+logger = logging.getLogger(__name__)
+
+_redis = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    db=REDIS_DB,
+    decode_responses=True,
+)
+
+SUBS_HASH_KEY = "push:subs_by_endpoint"
 
 
 # ----------------------------------------------------------------------
-#  CARICA / SALVA SUBSCRIPTIONS (file JSON)
+#  CARICA / AGGIUNGI / RIMUOVI SUBSCRIPTIONS (Redis Hash)
 # ----------------------------------------------------------------------
 
 def load_subscriptions() -> List[Dict[str, Any]]:
-    """Carica le subscription dal file JSON."""
-    if not os.path.exists(SUBS_FILE):
-        return []
-    try:
-        with open(SUBS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return []
+    """Carica tutte le subscription da Redis."""
+    vals = _redis.hvals(SUBS_HASH_KEY)
+    return [json.loads(v) for v in vals]
 
-
-def save_subscriptions(subs: List[Dict[str, Any]]) -> None:
-    """Salva le subscription nel file JSON."""
-    with open(SUBS_FILE, "w", encoding="utf-8") as f:
-        json.dump(subs, f)
-
-
-# ----------------------------------------------------------------------
-#  AGGIUNTA o RIMOZIONE SUBSCRIPTION — evita duplicati
-# ----------------------------------------------------------------------
 
 def add_subscription(sub: Dict[str, Any]) -> None:
-    """
-    Aggiunge una subscription se non presente.
-    Use case:
-    - Safari iOS → endpoint unico per ogni device
-    - Chrome/Firefox → endpoint diverso per ogni sessione
-    """
+    """Aggiunge una subscription se l'endpoint non è già presente."""
     if not sub or "endpoint" not in sub:
-        print("❌ Subscription ignorata (endpoint mancante)")
+        logger.warning("Subscription ignorata (endpoint mancante)")
         return
 
-    subs = load_subscriptions()
-    endpoints = {s.get("endpoint") for s in subs}
-
-    if sub["endpoint"] in endpoints:
-        print(f"ℹ Subscription già presente: {sub['endpoint'][:50]}")
+    endpoint = sub["endpoint"]
+    if _redis.hexists(SUBS_HASH_KEY, endpoint):
+        logger.info("Subscription già presente: %s", endpoint[:50])
         return
 
-    print(f"➕ Aggiunta subscription: {sub['endpoint'][:50]}...")
-    subs.append(sub)
-    save_subscriptions(subs)
+    logger.info("Aggiunta subscription: %s...", endpoint[:50])
+    _redis.hset(SUBS_HASH_KEY, endpoint, json.dumps(sub))
 
 
 def remove_subscription(endpoint: str) -> None:
-    subs = load_subscriptions()
-    new_subs = [s for s in subs if s.get("endpoint") != endpoint]
-    save_subscriptions(new_subs)
+    """Rimuove la subscription con l'endpoint specificato."""
+    _redis.hdel(SUBS_HASH_KEY, endpoint)
 
 
 # ----------------------------------------------------------------------
@@ -72,19 +61,14 @@ def remove_subscription(endpoint: str) -> None:
 # ----------------------------------------------------------------------
 
 def _build_vapid_claims(endpoint: str) -> Dict[str, Any]:
-    """
-    Crea i vapid_claims corretti per Apple, Chrome, Firefox, Android (FCM).
-    """
+    """Crea i vapid_claims corretti per Apple, Chrome, Firefox, Android (FCM)."""
     claims = dict(PUSH_VAPID_CLAIMS or {})
 
-    # Android / Chrome mobile → FCM
     if "fcm.googleapis.com" in endpoint:
         claims["aud"] = "https://fcm.googleapis.com"
 
-    # Apple WebPush → NON vuole "aud"
     if "web.push.apple.com" in endpoint:
-        if "aud" in claims:
-            claims.pop("aud", None)
+        claims.pop("aud", None)
 
     return claims
 
@@ -94,24 +78,16 @@ def _build_vapid_claims(endpoint: str) -> Dict[str, Any]:
 # ----------------------------------------------------------------------
 
 def _build_payload(title: str, body: str, data: Dict[str, Any]) -> str:
-    """
-    Genera un payload compatibile sia Apple WebPush sia altri browser.
-    Safari richiede obbligatoriamente la chiave 'aps'.
-    """
+    """Genera un payload compatibile sia Apple WebPush sia altri browser."""
     payload = {
         "title": title,
         "body": body,
         "data": data or {},
-        # Per Safari:
         "aps": {
-            "alert": {
-                "title": title,
-                "body": body
-            },
-            "sound": "default"
-        }
+            "alert": {"title": title, "body": body},
+            "sound": "default",
+        },
     }
-
     return json.dumps(payload)
 
 
@@ -120,44 +96,31 @@ def _build_payload(title: str, body: str, data: Dict[str, Any]) -> str:
 # ----------------------------------------------------------------------
 
 def send_push_to_all(title: str, body: str, data: Dict[str, Any] | None = None) -> None:
-    """
-    Invia una push a TUTTE le subscription valide.
-    Filtro:
-    - Safari iOS
-    - Chrome Desktop
-    - Firefox
-    - Android FCM
-    Gestisce:
-    - rimozione subscription morte (404/410)
-    - endpoint finti Edge Android
-    """
+    """Invia una push a TUTTE le subscription valide."""
     if not PUSH_ENABLED:
-        print("🔕 PUSH disabilitate in config.py")
+        logger.info("PUSH disabilitate in config")
         return
 
     subs = load_subscriptions()
     if not subs:
-        print("ℹ Nessuna subscription salvata.")
+        logger.info("Nessuna subscription salvata.")
         return
 
     payload = _build_payload(title, body, data or {})
-
-    dead: List[Dict[str, Any]] = []
+    dead_endpoints: List[str] = []
 
     for sub in subs:
         endpoint = sub.get("endpoint", "")
         if not endpoint:
             continue
 
-        # Edge Android ha endpoint finti → ignorare
         if "permanently-removed.invalid" in endpoint:
-            print("⚠ Rimossa subscription Edge Android finta.")
-            dead.append(sub)
+            logger.warning("Rimossa subscription Edge Android finta.")
+            dead_endpoints.append(endpoint)
             continue
 
         vapid_claims = _build_vapid_claims(endpoint)
-
-        print(f"📤 Invio push → {endpoint[:70]}...")
+        logger.info("Invio push → %s...", endpoint[:70])
 
         try:
             webpush(
@@ -166,21 +129,19 @@ def send_push_to_all(title: str, body: str, data: Dict[str, Any] | None = None) 
                 vapid_private_key=PUSH_VAPID_PRIVATE_KEY,
                 vapid_claims=vapid_claims,
             )
-            print("   ✓ OK")
+            logger.info("   OK")
 
         except WebPushException as e:
             status = getattr(e.response, "status_code", None)
-            print(f"   ✗ Errore WebPush: {e} (status={status})")
-
-            # subscription non valida → rimuovere
+            logger.error("   Errore WebPush: %s (status=%s)", e, status)
             if status in (404, 410):
-                dead.append(sub)
+                dead_endpoints.append(endpoint)
 
         except Exception as e:
-            print(f"   ✗ Errore generico: {e}")
+            logger.error("   Errore generico: %s", e)
 
     # Pulizia subscription morte
-    if dead:
-        alive = [s for s in subs if s not in dead]
-        save_subscriptions(alive)
-        print(f"🧹 Rimosse {len(dead)} subscription invalide.")
+    for ep in dead_endpoints:
+        remove_subscription(ep)
+    if dead_endpoints:
+        logger.info("Rimosse %d subscription invalide.", len(dead_endpoints))

@@ -1,8 +1,15 @@
 # status_client.py
 
+import logging
+
 import requests
+from requests.exceptions import Timeout, ConnectionError, HTTPError
+
 from config import STATUS_URL, STATUS_TOKEN, PROBE_BG, PROBE_TIM, PROBE_ILIAD, PROBE_NODEPING
 from redis_history import load_history
+from severity import compute_severity
+
+logger = logging.getLogger(__name__)
 
 
 def load_status():
@@ -14,7 +21,14 @@ def load_status():
         )
         r.raise_for_status()
         return r.json() or {}
-    except:
+    except Timeout:
+        logger.error("Timeout contattando %s", STATUS_URL)
+        return {}
+    except ConnectionError:
+        logger.error("Errore di connessione verso %s", STATUS_URL)
+        return {}
+    except HTTPError as e:
+        logger.error("Errore HTTP %s da %s", e.response.status_code, STATUS_URL)
         return {}
 
 
@@ -58,14 +72,7 @@ def process_monitor(monitor_name, status_dict, name_norm):
 
     final_state = 0 if (bg_state == 0 and tim_state == 0 and iliad_state == 0 and nodeping_state == 0) else 1
 
-    all_states = { bg_state, tim_state, iliad_state, nodeping_state }
-
-    if bg_state == 1 and tim_state == 1 and iliad_state == 1 and nodeping_state == 1:
-        severity = 0
-    elif len(all_states) > 1:
-        severity = 1
-    else:
-        severity = 2
+    severity = compute_severity(bg_state, tim_state, iliad_state, nodeping_state)
 
     return {
         "bg": bg_state,

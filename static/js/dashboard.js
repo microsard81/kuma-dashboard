@@ -8,60 +8,70 @@
  ************************************************************/
 
 /************************************************************
- * TEMA, LOGO, ICONE
+ * TEMA, LOGO, ICONE — auto / light / dark
  ************************************************************/
+const _darkMQ = window.matchMedia("(prefers-color-scheme: dark)");
+
+function _systemPrefersDark() {
+    return _darkMQ.matches;
+}
+
+function _resolveTheme(mode) {
+    if (mode === "dark") return "dark";
+    if (mode === "light") return "light";
+    return _systemPrefersDark() ? "dark" : "light";
+}
+
 function updateLogo() {
     const img = document.getElementById("navbar-logo");
     if (!img) return;
-
     const isDark = document.body.classList.contains("dark");
     img.src = isDark ? "/static/img/logoDark.png" : "/static/img/logoLight.png";
 }
 
 function updateThemeIcons() {
-    const isDark = document.body.classList.contains("dark");
-    const CLS_LIGHT = "bi-moon-stars";
-    const CLS_DARK  = "bi-sun-fill";
+    const mode = localStorage.getItem("theme") || "auto";
+    const icons = { auto: "bi-circle-half", light: "bi-sun-fill", dark: "bi-moon-stars-fill" };
+    const labels = { auto: "Auto", light: "Chiaro", dark: "Scuro" };
+    const cls = icons[mode] || "bi-circle-half";
 
-    const iconDesktop = document.getElementById("theme-icon");
-    const iconMobile  = document.getElementById("theme-icon-mobile");
-    const label       = document.getElementById("theme-label");
+    ["theme-icon", "theme-icon-mobile"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove("bi-circle-half", "bi-sun-fill", "bi-moon-stars-fill", "bi-moon-stars");
+        el.classList.add(cls);
+    });
 
-    if (iconDesktop) {
-        iconDesktop.classList.remove(CLS_LIGHT, CLS_DARK);
-        iconDesktop.classList.add(isDark ? CLS_DARK : CLS_LIGHT);
-    }
-
-    if (iconMobile) {
-        iconMobile.classList.remove(CLS_LIGHT, CLS_DARK);
-        iconMobile.classList.add(isDark ? CLS_DARK : CLS_LIGHT);
-    }
-
-    if (label) {
-        label.textContent = isDark ? "Scuro" : "Chiaro";
-    }
+    const label = document.getElementById("theme-label");
+    if (label) label.textContent = labels[mode] || "Auto";
 }
 
-function applyTheme(theme) {
-    if (theme === "dark") document.body.classList.add("dark");
+function applyTheme(mode) {
+    const resolved = _resolveTheme(mode);
+    if (resolved === "dark") document.body.classList.add("dark");
     else document.body.classList.remove("dark");
-
     updateLogo();
     updateThemeIcons();
 }
 
 function loadTheme() {
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark" || saved === "light") applyTheme(saved);
-    else applyTheme("light");
+    const saved = localStorage.getItem("theme") || "auto";
+    applyTheme(saved);
 }
 
 function toggleTheme() {
-    const isDark = document.body.classList.contains("dark");
-    const newTheme = isDark ? "light" : "dark";
-    localStorage.setItem("theme", newTheme);
-    applyTheme(newTheme);
+    const cycle = { auto: "light", light: "dark", dark: "auto" };
+    const current = localStorage.getItem("theme") || "auto";
+    const next = cycle[current] || "auto";
+    localStorage.setItem("theme", next);
+    applyTheme(next);
 }
+
+// Aggiorna in tempo reale quando il SO cambia tema (solo in modalità auto)
+_darkMQ.addEventListener("change", () => {
+    const mode = localStorage.getItem("theme") || "auto";
+    if (mode === "auto") applyTheme("auto");
+});
 
 /************************************************************
  * STATO GLOBALE
@@ -149,21 +159,60 @@ function createStatusCell(status) {
 }
 
 function buildHistorySvg(history) {
+    const BAR_H = 18;
+    const RADIUS = 1.5;
+
+    const wrapper = document.createElement("div");
+    wrapper.classList.add("history-container");
+
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "99%");
-    svg.setAttribute("height", "20");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", BAR_H);
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.style.display = "block";
+
+    const colors = { 0: "#34d399", 1: "#FFEE00", 2: "#f87171" };
+    const labels = { 0: "UP", 1: "Mismatch", 2: "DOWN" };
+    const interval = 30;
+    const n = history.length || 1;
+
+    // Calcola dimensioni proporzionali: 75% barra, 25% gap
+    const cellFraction = 100 / n;
+    const barPct = cellFraction * 0.75;
+    const gapPct = cellFraction * 0.25;
 
     history.forEach((sev, idx) => {
-        const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        r.setAttribute("x", idx * 8);
-        r.setAttribute("width", 6);
-        r.setAttribute("height", 20);
+        const xPct = idx * cellFraction + gapPct / 2;
 
-        r.setAttribute("fill", sev === 2 ? "red" : sev === 1 ? "yellow" : "limegreen");
+        const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        r.setAttribute("x", xPct + "%");
+        r.setAttribute("y", 0);
+        r.setAttribute("width", barPct + "%");
+        r.setAttribute("height", BAR_H);
+        r.setAttribute("rx", RADIUS);
+        r.setAttribute("ry", RADIUS);
+        r.setAttribute("fill", colors[sev] || "#94a3b8");
+        r.style.transition = "opacity 0.15s";
+        r.style.cursor = "default";
+
+        // Tooltip con data e ora
+        const secsAgo = (history.length - 1 - idx) * interval;
+        const pointDate = new Date(Date.now() - secsAgo * 1000);
+        const dateStr = pointDate.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const timeStr = pointDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+        const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        title.textContent = labels[sev] + " — " + dateStr + " " + timeStr;
+        r.appendChild(title);
+
+        r.addEventListener("mouseenter", () => { r.style.opacity = "0.7"; });
+        r.addEventListener("mouseleave", () => { r.style.opacity = "1"; });
+
         svg.appendChild(r);
     });
 
-    return svg;
+    wrapper.appendChild(svg);
+    return wrapper;
 }
 
 function renderTable(items) {
@@ -201,7 +250,7 @@ function renderTable(items) {
         tr.appendChild(createStatusCell(item.final));
 
         const hist = document.createElement("td");
-        hist.appendChild(buildHistorySvg((item.history || []).slice(-50)));
+        hist.appendChild(buildHistorySvg((item.history || []).slice(-120)));
         tr.appendChild(hist);
 
         tbody.appendChild(tr);
@@ -283,7 +332,7 @@ function renderMobileCards(items) {
         l.textContent = "Storico:";
         card.appendChild(l);
 
-        const limitedHistory = (item.history || []).slice(-40);
+        const limitedHistory = (item.history || []).slice(-120);
         card.appendChild(buildHistorySvg(limitedHistory));
         container.appendChild(card);
     });
@@ -387,14 +436,26 @@ async function initPushButton() {
     updatePushButton(!!sub);
 }
 
+async function enablePush() {
+    await subscribeDesktop();
+}
 
 window.togglePush = togglePush;
+window.enablePush = enablePush;
 
 /************************************************************
  * INIT
  ************************************************************/
 document.addEventListener("DOMContentLoaded", () => {
     loadTheme();
+
+    // Registrazione Service Worker
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js")
+            .then(reg => console.log("SW registrato:", reg))
+            .catch(err => console.error("SW error:", err));
+    }
+
     initPushButton();
 
     const initial = document.body.getAttribute("data-global-state") || "GREEN";

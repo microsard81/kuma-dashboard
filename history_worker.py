@@ -22,34 +22,12 @@ from kuma_client import load_monitors
 from status_client import load_status
 from redis_history import save_point, get_global_state, set_global_state
 from push_utils import send_push_to_all
+from severity import compute_severity, compute_global_state
 
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] %(levelname)s - %(message)s"
 )
-
-
-# ------------------------------------------------------
-# Calcolo severità (0 verde, 1 giallo, 2 rosso)
-# ------------------------------------------------------
-def compute_severity(bg, tim, iliad, nodeping):
-    if bg == 1 and tim == 1 and iliad == 1 and nodeping == 1:
-        return 0
-    all_states = {bg, tim, iliad, nodeping}
-    if len(all_states) > 1:
-        return 1
-    return 2
-
-
-# ------------------------------------------------------
-# Determina stato globale: GREEN / YELLOW / RED
-# ------------------------------------------------------
-def compute_global_state(all_rows):
-    if any(sev == 2 for sev in all_rows):
-        return "RED"
-    if any(sev == 1 for sev in all_rows):
-        return "YELLOW"
-    return "GREEN"
 
 
 # ------------------------------------------------------

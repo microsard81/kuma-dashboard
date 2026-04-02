@@ -21,28 +21,24 @@ from datetime import datetime, timedelta
 from kuma_client import load_monitors
 from status_client import load_status, process_monitor
 from auth import verify_user, verify_totp
+from severity import compute_global_state
 from config import (
+    FLASK_SECRET_KEY,
     KUMA1,
     KUMA2,
     KUMA3,
     NODEPING,
     PUSH_ENABLED,
     PUSH_VAPID_PUBLIC_KEY,
-    PUSH_NOTIFY_ON,
 )
 from push_utils import (
     add_subscription,
-    send_push_to_all,
-    load_subscriptions,
-    save_subscriptions
+    remove_subscription,
 )
-from redis_history import get_global_state, set_global_state
 import os, random
 
 app = Flask(__name__)
-app.secret_key = (
-    "f88b5914fd3a8f5338ef758d0d3ba41fb7a203c5d70d50a8bdf26054a705f195"
-)
+app.secret_key = FLASK_SECRET_KEY
 
 # Remember me durata 1 anno
 app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=365)
@@ -50,9 +46,6 @@ app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=365)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
-
-# Stato globale precedente
-LAST_GLOBAL_STATE = None
 
 
 # ============================================================================
@@ -177,17 +170,8 @@ def build_dashboard_data():
 
     rows.sort(key=lambda x: 0 if x["final"] == "DOWN" else 1)
 
-    any_final_down = any(r["final"] == "DOWN" for r in rows)
-    any_mismatch = any(
-        len({r["k1"], r["k2"], r["k3"], r["n1"]}) > 1 and (r["final"] != "DOWN") for r in rows
-    )
-
-    if any_final_down:
-        global_state = "RED"
-    elif any_mismatch:
-        global_state = "YELLOW"
-    else:
-        global_state = "GREEN"
+    severities = [r["severity"] for r in rows]
+    global_state = compute_global_state(severities)
 
     return rows, global_state
 
@@ -224,10 +208,7 @@ def push_unsubscribe():
     if not endpoint:
         return {"ok": False, "error": "missing endpoint"}, 400
 
-    subs = load_subscriptions()
-    new_subs = [s for s in subs if s.get("endpoint") != endpoint]
-
-    save_subscriptions(new_subs)
+    remove_subscription(endpoint)
 
     return {"ok": True, "removed": True}
 
@@ -238,47 +219,6 @@ def push_unsubscribe():
 @login_required
 def dashboard():
     rows, global_state = build_dashboard_data()
-
-    # ---- Notifiche push basate su transizione di stato globale ----
-    previous = get_global_state()
-    set_global_state(global_state)  # aggiorniamo sempre lo stato in Redis
-
-    if PUSH_ENABLED and previous is not None:
-        # 1) DOWN definitivo (RED)
-        if (
-            PUSH_NOTIFY_ON.get("final_down", False)
-            and previous != "RED"
-            and global_state == "RED"
-        ):
-            send_push_to_all(
-                "🔔 Servizio IN.VA DOWN",
-                "Una o più risorse risultano DOWN su entrambe le sonde.",
-                {"state": "RED"},
-            )
-
-        # 2) Mismatch tra sonde (YELLOW)
-        if (
-            PUSH_NOTIFY_ON.get("probe_mismatch", False)
-            and previous != "YELLOW"
-            and global_state == "YELLOW"
-        ):
-            send_push_to_all(
-                "🔔 Incongruenza tra sonde",
-                "Una o più risorse hanno stato diverso tra le sonde.",
-                {"state": "YELLOW"},
-            )
-
-        # 3) Ritorno a tutto OK (GREEN)
-        if (
-            PUSH_NOTIFY_ON.get("back_to_green", False)
-            and previous in ("RED", "YELLOW")
-            and global_state == "GREEN"
-        ):
-            send_push_to_all(
-                "✅ IN.VA – tutto OK",
-                "Tutte le risorse risultano UP su entrambe le sonde.",
-                {"state": "GREEN"},
-            )
 
     return render_template(
         "dashboard.html",
