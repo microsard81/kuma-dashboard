@@ -7,6 +7,7 @@ import LocalAuthentication
 struct LoginView: View {
 
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject private var settingsVM: SettingsViewModel
 
     @State private var username: String = ""
     @State private var password: String = ""
@@ -16,8 +17,9 @@ struct LoginView: View {
         !username.isEmpty && !password.isEmpty
     }
 
-    /// Controlla se c'è una sessione salvata e la biometria è disponibile
+    /// Controlla se c'è una sessione salvata, la biometria è disponibile e la preferenza è attiva
     private var canUseBiometrics: Bool {
+        guard settingsVM.biometricEnabled else { return false }
         let context = LAContext()
         var error: NSError? = nil
         let hasBiometrics = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
@@ -44,12 +46,14 @@ struct LoginView: View {
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                         .padding()
+                        .foregroundColor(.primary)
                         .background(Color(.secondarySystemBackground))
                         .cornerRadius(10)
 
                     SecureField("Password", text: $password)
                         .textContentType(.password)
                         .padding()
+                        .foregroundColor(.primary)
                         .background(Color(.secondarySystemBackground))
                         .cornerRadius(10)
 
@@ -112,6 +116,7 @@ struct LoginView: View {
 
                 Spacer()
             }
+            .foregroundStyle(.white)
             .navigationBarHidden(true)
             } // ZStack
         }
@@ -143,6 +148,7 @@ struct LoginView: View {
             network: PreviewNetworkClient(),
             keychain: PreviewKeychainStore()
         ))
+        .environmentObject(SettingsViewModel())
 }
 
 private final class PreviewNetworkClient: NetworkClientProtocol {

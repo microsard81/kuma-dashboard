@@ -111,13 +111,32 @@ function updateMobileMenuStatus(state) {
 let onlyDownActive = false;
 
 function applyOnlyDownFilter() {
+    // Tabella nascosta (fallback)
     const tbody = document.getElementById("main-tbody");
-    if (!tbody) return;
+    if (tbody) {
+        tbody.querySelectorAll("tr").forEach(row => {
+            if (!onlyDownActive) row.style.display = "";
+            else row.style.display = row.classList.contains("row-down") ? "" : "none";
+        });
+    }
 
-    tbody.querySelectorAll("tr").forEach(row => {
-        if (!onlyDownActive) row.style.display = "";
-        else row.style.display = row.classList.contains("row-down") ? "" : "none";
-    });
+    // Desktop cards
+    const desktopCards = document.getElementById("desktop-cards");
+    if (desktopCards) {
+        desktopCards.querySelectorAll(".dcard").forEach(card => {
+            if (!onlyDownActive) card.style.display = "";
+            else card.style.display = card.classList.contains("dcard-down") ? "" : "none";
+        });
+    }
+
+    // Mobile cards
+    const mobileList = document.getElementById("mobile-list");
+    if (mobileList) {
+        mobileList.querySelectorAll(".mobile-card").forEach(card => {
+            if (!onlyDownActive) card.style.display = "";
+            else card.style.display = card.classList.contains("down") ? "" : "none";
+        });
+    }
 
     const btn = document.getElementById("filter-btn");
     if (btn) {
@@ -257,7 +276,6 @@ function renderTable(items) {
     });
 
     sortRowsBySeverity();
-    applyOnlyDownFilter();
 }
 
 function sortRowsBySeverity() {
@@ -429,6 +447,7 @@ async function refreshDashboard() {
         renderTable(data.items || []);
         renderDesktopCards(data.items || []);
         renderMobileCards(data.items || []);
+        applyOnlyDownFilter();
         updateDownCountFromItems(data.items || []);
         updateGlobalStatus(data.global_state || "GREEN");
         updateMobileMenuStatus(data.global_state || "GREEN");

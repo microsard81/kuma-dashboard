@@ -225,14 +225,15 @@ UptimeDashboard/
 ├── ViewModels/
 │   ├── AuthViewModel.swift         # Login, 2FA, logout, session expiry
 │   ├── DashboardViewModel.swift    # Fetch, auto-refresh, filtro, ordinamento
-│   └── SettingsViewModel.swift     # Tema chiaro/scuro/auto, persistenza
+│   └── SettingsViewModel.swift     # Tema, ordinamento, refresh, notifiche, biometria — persistenza UserDefaults
 ├── Views/
 │   ├── SplashView.swift            # Splash screen animata all'avvio
 │   ├── LoginView.swift             # Form login con "Ricordami"
 │   ├── TwoFAView.swift             # Input TOTP con autocompletamento SMS
 │   ├── BiometricGateView.swift     # Gate Face ID / Touch ID per sessioni salvate
 │   ├── DashboardView.swift         # Lista monitor, LED, badge, filtro DOWN
-│   └── SparklineView.swift         # Barre colorate con tooltip al tap
+│   ├── SettingsView.swift          # Menu impostazioni (tema, ordinamento, refresh, notifiche, biometria, info)
+│   └── SparklineView.swift         # Barre colorate con gesture di scorrimento
 ├── Services/
 │   ├── NetworkClient.swift         # URLSession, cookie Flask, tutti gli endpoint
 │   ├── KeychainStore.swift         # Archiviazione sicura session token
@@ -261,8 +262,9 @@ UptimeDashboardTests/
 - **Auto-refresh** — aggiornamento automatico ogni 10 secondi in foreground
 - **Filtro DOWN** — toggle per mostrare solo i monitor in stato DOWN
 - **LED globale** — indicatore colorato nella navbar che riflette lo stato globale
-- **Sparkline** — barre colorate (verde/giallo/rosso) con tooltip al tap
+- **Sparkline** — barre colorate (verde/giallo/rosso) con gesture di scorrimento per esplorare lo storico; orario e stato del campione mostrati nella riga delle sonde
 - **Notifiche push** — notifiche native APNs al cambio di stato globale
+- **Impostazioni** — menu dedicato con: tema (chiaro/scuro/auto), ordinamento monitor (gravità/alfabetico/stato globale), intervallo auto-refresh (10s/30s/60s/disabilitato), toggle notifiche push, toggle biometria (Face ID/Touch ID), info app con stato connessione backend
 - **Tema** — chiaro / scuro / automatico (segue iOS), persistito tra i riavvii
 - **Logout** — con conferma, elimina il token dal Keychain
 
