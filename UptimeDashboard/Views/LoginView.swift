@@ -1,0 +1,167 @@
+// Feature: ios-native-app
+// Requisiti: 1.1, 1.5, 1.7, 11.2
+
+import SwiftUI
+import LocalAuthentication
+
+struct LoginView: View {
+
+    @EnvironmentObject private var authViewModel: AuthViewModel
+
+    @State private var username: String = ""
+    @State private var password: String = ""
+    @State private var rememberMe: Bool = false
+
+    private var isFormValid: Bool {
+        !username.isEmpty && !password.isEmpty
+    }
+
+    /// Controlla se c'è una sessione salvata e la biometria è disponibile
+    private var canUseBiometrics: Bool {
+        let context = LAContext()
+        var error: NSError? = nil
+        let hasBiometrics = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
+        let hasSession = (try? KeychainStore.shared.load(forKey: "session_token")) != nil
+        return hasBiometrics && hasSession
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color(hex: "#141c2b")
+                    .ignoresSafeArea()
+
+            VStack(spacing: 24) {
+                Spacer()
+
+                Text("INVA Dashboard")
+                    .font(.largeTitle.bold())
+                    .accessibilityAddTraits(.isHeader)
+
+                VStack(spacing: 16) {
+                    TextField("Username", text: $username)
+                        .textContentType(.username)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(10)
+
+                    SecureField("Password", text: $password)
+                        .textContentType(.password)
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(10)
+
+                    Toggle("Ricordami", isOn: $rememberMe)
+                        .padding(.horizontal, 4)
+                }
+                .padding(.horizontal)
+
+                if let errorMessage = authViewModel.errorMessage {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+
+                Button {
+                    Task {
+                        await authViewModel.login(
+                            username: username,
+                            password: password,
+                            rememberMe: rememberMe
+                        )
+                    }
+                } label: {
+                    Group {
+                        if authViewModel.isLoading {
+                            ProgressView().progressViewStyle(.circular).tint(.white)
+                        } else {
+                            Text("Accedi").fontWeight(.semibold)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isFormValid ? Color.accentColor : Color.gray)
+                    .foregroundStyle(.white)
+                    .cornerRadius(10)
+                }
+                .disabled(!isFormValid || authViewModel.isLoading)
+                .padding(.horizontal)
+
+                // Pulsante Face ID / Touch ID — visibile solo se c'è una sessione salvata
+                if canUseBiometrics {
+                    Button {
+                        Task { await authViewModel.authenticateWithBiometrics() }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: biometricIcon)
+                                .font(.title2)
+                            Text("Accedi con \(biometricLabel)")
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(10)
+                    }
+                    .padding(.horizontal)
+                }
+
+                Spacer()
+            }
+            .navigationBarHidden(true)
+            } // ZStack
+        }
+    }
+
+    private var biometricIcon: String {
+        let context = LAContext()
+        var error: NSError? = nil
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            return "faceid"
+        }
+        return context.biometryType == .faceID ? "faceid" : "touchid"
+    }
+
+    private var biometricLabel: String {
+        let context = LAContext()
+        var error: NSError? = nil
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            return "Face ID"
+        }
+        return context.biometryType == .faceID ? "Face ID" : "Touch ID"
+    }
+}
+
+#if DEBUG
+#Preview {
+    LoginView()
+        .environmentObject(AuthViewModel(
+            network: PreviewNetworkClient(),
+            keychain: PreviewKeychainStore()
+        ))
+}
+
+private final class PreviewNetworkClient: NetworkClientProtocol {
+    func login(username: String, password: String) async throws -> LoginResult { .success }
+    func verify2FA(code: String) async throws -> Bool { true }
+    func logout() async throws {}
+    func fetchDashboardData() async throws -> DashboardResponse {
+        let json = #"{"items":[],"global_state":"GREEN","timestamp":""}"#
+        return try JSONDecoder().decode(DashboardResponse.self, from: Data(json.utf8))
+    }
+    func subscribeAPNs(deviceToken: String, deviceId: String) async throws {}
+    func unsubscribeAPNs(deviceToken: String) async throws {}
+    func getBiometricToken() async throws -> String { return "mock_token" }
+    func biometricLogin(username: String, biometricToken: String) async throws {}
+}
+
+private final class PreviewKeychainStore: KeychainStoreProtocol {
+    func save(token: String, forKey key: String) throws {}
+    func load(forKey key: String) throws -> String { "" }
+    func delete(forKey key: String) throws {}
+}
+#endif
