@@ -41,7 +41,6 @@ final class WatchDashboardViewModel: NSObject, ObservableObject {
     func fetchFromAPI() async {
         guard let config = loadWatchConfig() else {
             await MainActor.run { lastError = "Config mancante (BACKEND_BASE_URL o WATCH_API_TOKEN)" }
-            print("[Watch] Config mancante")
             return
         }
 
@@ -65,7 +64,6 @@ final class WatchDashboardViewModel: NSObject, ObservableObject {
                 await MainActor.run { isLoading = false; lastError = "Risposta non HTTP" }
                 return
             }
-            print("[Watch] API status: \(http.statusCode)")
             guard http.statusCode == 200 else {
                 await MainActor.run { isLoading = false; lastError = "HTTP \(http.statusCode)" }
                 return
@@ -77,7 +75,6 @@ final class WatchDashboardViewModel: NSObject, ObservableObject {
             processPayload(json)
             await MainActor.run { isLoading = false }
         } catch {
-            print("[Watch] Fetch error: \(error.localizedDescription)")
             await MainActor.run { isLoading = false; lastError = error.localizedDescription }
         }
     }
@@ -104,10 +101,9 @@ final class WatchDashboardViewModel: NSObject, ObservableObject {
     }
 
     private func loadWatchConfig() -> WatchConfig? {
-        let url = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String
-        let token = Bundle.main.object(forInfoDictionaryKey: "WATCH_API_TOKEN") as? String
-        print("[Watch] Config — URL: \(url ?? "nil"), Token: \(token != nil ? "present (\(token!.prefix(8))...)" : "nil")")
-        guard let url = url, let token = token, !url.isEmpty, !token.isEmpty else { return nil }
+        guard let url = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String,
+              let token = Bundle.main.object(forInfoDictionaryKey: "WATCH_API_TOKEN") as? String,
+              !url.isEmpty, !token.isEmpty else { return nil }
         return WatchConfig(baseURL: url, token: token)
     }
 }
