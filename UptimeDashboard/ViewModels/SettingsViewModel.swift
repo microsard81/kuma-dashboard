@@ -141,7 +141,7 @@ final class SettingsViewModel: ObservableObject {
            let saved = RefreshInterval(rawValue: raw) {
             self.refreshInterval = saved
         } else {
-            self.refreshInterval = .ten
+            self.refreshInterval = .sixty
         }
 
         // Read biometricEnabled with safe fallback (default: true)

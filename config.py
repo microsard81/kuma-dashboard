@@ -15,6 +15,16 @@ PUSH_VAPID_PUBLIC_KEY  = os.environ["PUSH_VAPID_PUBLIC_KEY"]
 PUSH_VAPID_PRIVATE_KEY = os.environ["PUSH_VAPID_PRIVATE_KEY"]
 PUSH_VAPID_EMAIL       = os.environ["PUSH_VAPID_EMAIL"]
 
+# --- Biometric token secret (usato per firmare i token monouso Face ID) ---
+# Se non impostato, viene derivato da FLASK_SECRET_KEY
+BIOMETRIC_SECRET = os.environ.get("BIOMETRIC_SECRET", FLASK_SECRET_KEY)
+
+# --- APNs (Apple Push Notification service) ---
+APNS_KEY_ID    = os.environ.get("APNS_KEY_ID")
+APNS_TEAM_ID   = os.environ.get("APNS_TEAM_ID")
+APNS_BUNDLE_ID = os.environ.get("APNS_BUNDLE_ID")
+APNS_KEY_PATH  = os.environ.get("APNS_KEY_PATH")
+
 PUSH_VAPID_CLAIMS = {"sub": f"mailto:{PUSH_VAPID_EMAIL}"}
 
 # --- STATUS SERVER / WEBHOOK ---

@@ -20,6 +20,9 @@
 		B0020013 /* TwoFAView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020014 /* TwoFAView.swift */; };
 		B0020015 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020016 /* DashboardView.swift */; };
 		B0020017 /* SparklineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020018 /* SparklineView.swift */; };
+		B0020019 /* BiometricGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B002001A /* BiometricGateView.swift */; };
+		B002001B /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B002001C /* SplashView.swift */; };
+		B002001D /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B002001E /* SettingsView.swift */; };
 		B0040001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0040002 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -27,7 +30,7 @@
 		81B2E7F62F86A62200856F5A /* UptimeDashboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = UptimeDashboard.entitlements; sourceTree = "<group>"; };
 		B001000B /* UptimeDashboardApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UptimeDashboardApp.swift; sourceTree = "<group>"; };
 		B001000C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		B001000D /* UptimeDashboard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UptimeDashboard.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B001000D /* Dashboard INVA.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Dashboard INVA.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B0020002 /* DashboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardModels.swift; sourceTree = "<group>"; };
 		B0020004 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		B0020006 /* NetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClient.swift; sourceTree = "<group>"; };
@@ -40,6 +43,9 @@
 		B0020014 /* TwoFAView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoFAView.swift; sourceTree = "<group>"; };
 		B0020016 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		B0020018 /* SparklineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparklineView.swift; sourceTree = "<group>"; };
+		B002001A /* BiometricGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricGateView.swift; sourceTree = "<group>"; };
+		B002001C /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
+		B002001E /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B0040002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -80,17 +86,9 @@
 		B0010013 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				B001000D /* UptimeDashboard.app */,
+				B001000D /* Dashboard INVA.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		B0030006 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				B0040002 /* Assets.xcassets */,
-			);
-			path = Resources;
 			sourceTree = "<group>";
 		};
 		B0030001 /* Models */ = {
@@ -101,7 +99,8 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
-		B0030002 /* Services */ = {			isa = PBXGroup;
+		B0030002 /* Services */ = {
+			isa = PBXGroup;
 			children = (
 				B0020004 /* KeychainStore.swift */,
 				B0020006 /* NetworkClient.swift */,
@@ -135,16 +134,27 @@
 				B0020014 /* TwoFAView.swift */,
 				B0020016 /* DashboardView.swift */,
 				B0020018 /* SparklineView.swift */,
+				B002001A /* BiometricGateView.swift */,
+				B002001C /* SplashView.swift */,
+				B002001E /* SettingsView.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		B0030006 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B0040002 /* Assets.xcassets */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		B0010014 /* UptimeDashboard */ = {
+		B0010014 /* Dashboard INVA */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B0010015 /* Build configuration list for PBXNativeTarget "UptimeDashboard" */;
+			buildConfigurationList = B0010015 /* Build configuration list for PBXNativeTarget "Dashboard INVA" */;
 			buildPhases = (
 				B0010016 /* Sources */,
 				B0010010 /* Frameworks */,
@@ -154,9 +164,9 @@
 			);
 			dependencies = (
 			);
-			name = UptimeDashboard;
+			name = "Dashboard INVA";
 			productName = UptimeDashboard;
-			productReference = B001000D /* UptimeDashboard.app */;
+			productReference = B001000D /* Dashboard INVA.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -174,7 +184,7 @@
 					};
 				};
 			};
-			buildConfigurationList = B0010019 /* Build configuration list for PBXProject "UptimeDashboard" */;
+			buildConfigurationList = B0010019 /* Build configuration list for PBXProject "ABISSI  INVA" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -187,7 +197,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				B0010014 /* UptimeDashboard */,
+				B0010014 /* Dashboard INVA */,
 			);
 		};
 /* End PBXProject section */
@@ -221,6 +231,9 @@
 				B0020013 /* TwoFAView.swift in Sources */,
 				B0020015 /* DashboardView.swift in Sources */,
 				B0020017 /* SparklineView.swift in Sources */,
+				B0020019 /* BiometricGateView.swift in Sources */,
+				B002001B /* SplashView.swift in Sources */,
+				B002001D /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -350,12 +363,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = UptimeDashboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "INVA Dashboard";
+				INFOPLIST_KEY_CFBundleDisplayName = "ABISSI INVA";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -378,12 +391,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = UptimeDashboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "INVA Dashboard";
+				INFOPLIST_KEY_CFBundleDisplayName = "ABISSI INVA";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -402,7 +415,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B0010015 /* Build configuration list for PBXNativeTarget "UptimeDashboard" */ = {
+		B0010015 /* Build configuration list for PBXNativeTarget "Dashboard INVA" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B001001C /* Debug */,
@@ -411,7 +424,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		B0010019 /* Build configuration list for PBXProject "UptimeDashboard" */ = {
+		B0010019 /* Build configuration list for PBXProject "ABISSI  INVA" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B001001A /* Debug */,

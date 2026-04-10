@@ -30,12 +30,17 @@ from config import (
     NODEPING,
     PUSH_ENABLED,
     PUSH_VAPID_PUBLIC_KEY,
+    BIOMETRIC_SECRET,
 )
 from push_utils import (
     add_subscription,
     remove_subscription,
 )
-import os, random
+from apns_utils import (
+    add_apns_subscription,
+    remove_apns_subscription,
+)
+import os, random, secrets, hmac, hashlib, time
 
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET_KEY
@@ -223,6 +228,161 @@ def push_unsubscribe():
     remove_subscription(endpoint)
 
     return {"ok": True, "removed": True}
+
+
+@app.route("/push/apns/subscribe", methods=["POST"])
+@login_required
+def apns_subscribe():
+    data = request.get_json(silent=True) or {}
+
+    device_token = data.get("device_token")
+    if not device_token:
+        return {"ok": False, "error": "missing device_token"}, 400
+
+    device_id = data.get("device_id", "")
+    environment = data.get("environment", "production")
+    add_apns_subscription(device_token, device_id, environment)
+    return {"ok": True}, 201
+
+
+@app.route("/push/apns/unsubscribe", methods=["POST"])
+@login_required
+def apns_unsubscribe():
+    data = request.get_json(silent=True) or {}
+
+    device_token = data.get("device_token")
+    if not device_token:
+        return {"ok": False, "error": "missing device_token"}, 400
+
+    remove_apns_subscription(device_token)
+    return {"ok": True}, 200
+
+
+# ============================================================================
+# API MOBILE — login e 2FA JSON per l'app iOS
+# ============================================================================
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    """Login JSON per l'app iOS. Restituisce requires_2fa o success."""
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+
+    if not username or not password:
+        return {"ok": False, "error": "missing credentials"}, 400
+
+    if not verify_user(username, password):
+        return {"ok": False, "error": "invalid credentials"}, 401
+
+    session["pending_user"] = username
+    session["2fa_pending"] = True
+    return {"ok": True, "next": "2fa"}, 200
+
+
+@app.route("/api/2fa", methods=["POST"])
+def api_2fa():
+    """Verifica 2FA JSON per l'app iOS. Restituisce il token biometrico."""
+    import redis as redis_lib
+    from config import REDIS_HOST, REDIS_PORT, REDIS_DB
+    r = redis_lib.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
+
+    if "pending_user" not in session:
+        return {"ok": False, "error": "no pending session"}, 401
+
+    data = request.get_json(silent=True) or {}
+    code = data.get("code", "")
+    username = session["pending_user"]
+
+    if not verify_totp(username, code):
+        return {"ok": False, "error": "invalid code"}, 401
+
+    session.pop("pending_user", None)
+    session.pop("2fa_pending", None)
+    login_user(User(username), remember=True)
+
+    # Genera token biometrico valido 90 giorni
+    raw_token = secrets.token_urlsafe(32)
+    signature = _sign_biometric_token(raw_token)
+    signed_token = f"{raw_token}.{signature}"
+    key = f"biometric:{username}:{raw_token}"
+    r.setex(key, 90 * 24 * 3600, "1")
+
+    return {"ok": True, "biometric_token": signed_token, "username": username}, 200
+
+
+# ============================================================================
+# BIOMETRIC AUTH — token monouso per Face ID / Touch ID
+# ============================================================================
+
+def _sign_biometric_token(token: str) -> str:
+    """Firma un token biometrico con HMAC-SHA256."""
+    return hmac.new(
+        BIOMETRIC_SECRET.encode(),
+        token.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+
+@app.route("/auth/biometric/token", methods=["POST"])
+@login_required
+def biometric_get_token():
+    """Genera un token biometrico monouso valido 90 giorni.
+    Chiamato dall'app iOS dopo il primo login con password+2FA.
+    Il token viene salvato in Redis con scadenza 90 giorni.
+    """
+    import redis as redis_lib
+    from config import REDIS_HOST, REDIS_PORT, REDIS_DB
+    r = redis_lib.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
+
+    username = current_user.id
+    raw_token = secrets.token_urlsafe(32)
+    signature = _sign_biometric_token(raw_token)
+    signed_token = f"{raw_token}.{signature}"
+
+    # Salva in Redis con scadenza 90 giorni
+    key = f"biometric:{username}:{raw_token}"
+    r.setex(key, 90 * 24 * 3600, "1")
+
+    return {"ok": True, "token": signed_token}, 200
+
+
+@app.route("/auth/biometric/login", methods=["POST"])
+def biometric_login():
+    """Login con token biometrico — bypassa password e 2FA.
+    Chiamato dall'app iOS dopo Face ID riuscito.
+    """
+    import redis as redis_lib
+    from config import REDIS_HOST, REDIS_PORT, REDIS_DB
+    r = redis_lib.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
+
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "").strip()
+    signed_token = data.get("biometric_token", "")
+
+    if not username or not signed_token or "." not in signed_token:
+        return {"ok": False, "error": "invalid"}, 400
+
+    parts = signed_token.rsplit(".", 1)
+    if len(parts) != 2:
+        return {"ok": False, "error": "invalid"}, 400
+
+    raw_token, provided_sig = parts[0], parts[1]
+    expected_sig = _sign_biometric_token(raw_token)
+
+    # Verifica firma con confronto sicuro (timing-safe)
+    if not hmac.compare_digest(expected_sig, provided_sig):
+        return {"ok": False, "error": "invalid"}, 401
+
+    # Verifica che il token esista in Redis
+    key = f"biometric:{username}:{raw_token}"
+    if not r.exists(key):
+        return {"ok": False, "error": "expired"}, 401
+
+    # Login riuscito
+    login_user(User(username), remember=True)
+    return {"ok": True}, 200
+
 
 # ============================================================================
 # DASHBOARD

@@ -17,14 +17,14 @@ struct LoginView: View {
         !username.isEmpty && !password.isEmpty
     }
 
-    /// Controlla se c'è una sessione salvata, la biometria è disponibile e la preferenza è attiva
+    /// Controlla se c'è un token biometrico salvato, la biometria è disponibile e la preferenza è attiva
     private var canUseBiometrics: Bool {
         guard settingsVM.biometricEnabled else { return false }
         let context = LAContext()
         var error: NSError? = nil
         let hasBiometrics = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
-        let hasSession = (try? KeychainStore.shared.load(forKey: "session_token")) != nil
-        return hasBiometrics && hasSession
+        let hasBiometricToken = (try? KeychainStore.shared.load(forKey: "biometric_token")) != nil
+        return hasBiometrics && hasBiometricToken
     }
 
     var body: some View {

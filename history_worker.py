@@ -22,6 +22,7 @@ from kuma_client import load_monitors
 from status_client import load_status
 from redis_history import save_point, get_global_state, set_global_state
 from push_utils import send_push_to_all
+from apns_utils import send_apns_to_all
 from severity import compute_severity, compute_global_state
 
 logging.basicConfig(
@@ -53,9 +54,17 @@ def maybe_send_global_push(new_state):
     ):
         send_push_to_all(
             "🔴 Servizi DOWN",
-            "Una o più risorse risultano DOWN su entrambe le sonde.",
+            "Una o più risorse risultano DOWN su una o più sonde.",
             {"state": "RED"},
         )
+        try:
+            send_apns_to_all(
+                "🔴 Servizi DOWN",
+                "Una o più risorse risultano DOWN su una o più sonde.",
+                {"state": "RED"},
+            )
+        except Exception:
+            logging.exception("Errore nell'invio notifica APNs per stato RED")
 
     # 🟡 YELLOW – mismatch
     if (
@@ -68,6 +77,14 @@ def maybe_send_global_push(new_state):
             "Una o più risorse hanno stato diverso tra le sonde.",
             {"state": "YELLOW"},
         )
+        try:
+            send_apns_to_all(
+                "🟡 Incongruenza tra sonde",
+                "Una o più risorse hanno stato diverso tra le sonde.",
+                {"state": "YELLOW"},
+            )
+        except Exception:
+            logging.exception("Errore nell'invio notifica APNs per stato YELLOW")
 
     # 🟢 GREEN – ritorno alla normalità
     if (
@@ -77,9 +94,17 @@ def maybe_send_global_push(new_state):
     ):
         send_push_to_all(
             "🟢 Tutto OK",
-            "Tutte le risorse risultano UP su entrambe le sonde.",
+            "Tutte le risorse risultano UP su tutte le sonde.",
             {"state": "GREEN"},
         )
+        try:
+            send_apns_to_all(
+                "🟢 Tutto OK",
+                "Tutte le risorse risultano UP su tutte le sonde.",
+                {"state": "GREEN"},
+            )
+        except Exception:
+            logging.exception("Errore nell'invio notifica APNs per stato GREEN")
 
 
 # ------------------------------------------------------

@@ -30,7 +30,7 @@ struct TwoFAView: View {
 
                 Text("Inserisci il codice a 6 cifre dalla tua app di autenticazione.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.7))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
 
@@ -42,6 +42,7 @@ struct TwoFAView: View {
                     .multilineTextAlignment(.center)
                     .font(.title.monospacedDigit())
                     .padding()
+                    .foregroundColor(.primary)
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(10)
                     .padding(.horizontal)
@@ -92,6 +93,7 @@ struct TwoFAView: View {
 
                 Spacer()
             }
+            .foregroundStyle(.white)
             .navigationTitle("Autenticazione")
             .navigationBarTitleDisplayMode(.inline)
             } // ZStack
