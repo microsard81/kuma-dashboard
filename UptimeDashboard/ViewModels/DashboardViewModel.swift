@@ -4,6 +4,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import WatchConnectivity
 
 // MARK: - DashboardViewModel
 
@@ -82,6 +83,7 @@ final class DashboardViewModel: ObservableObject {
             globalState = response.globalState
             lastUpdated = Date()
             isStale = false
+            sendToWatch(items: sorted, globalState: response.globalState)
         } catch {
             // Preserve previous data, mark as stale
             isStale = true
@@ -140,5 +142,32 @@ final class DashboardViewModel: ObservableObject {
         case .yellow: return 1
         case .green: return 0
         }
+    }
+
+    // MARK: - WatchConnectivity
+
+    /// Invia i dati della dashboard all'Apple Watch via applicationContext.
+    private func sendToWatch(items: [MonitorItem], globalState: GlobalState) {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isPaired else { return }
+
+        let itemDicts: [[String: Any]] = items.map { item in
+            [
+                "name": item.name,
+                "k1": item.k1.rawValue,
+                "k2": item.k2.rawValue,
+                "k3": item.k3.rawValue,
+                "n1": item.n1.rawValue,
+                "final": item.final.rawValue,
+            ]
+        }
+
+        let context: [String: Any] = [
+            "items": itemDicts,
+            "global_state": globalState.rawValue,
+        ]
+
+        try? session.updateApplicationContext(context)
     }
 }

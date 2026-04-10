@@ -3,6 +3,7 @@
 
 import SwiftUI
 import UserNotifications
+import WatchConnectivity
 
 // MARK: - AppDelegate
 
@@ -59,6 +60,12 @@ struct UptimeDashboardApp: App {
             notificationManager: NotificationManager.shared,
             network: client
         ))
+
+        // Attiva WatchConnectivity per inviare dati all'Apple Watch
+        if WCSession.isSupported() {
+            WCSession.default.delegate = WCSessionDelegateHandler.shared
+            WCSession.default.activate()
+        }
     }
 
     var body: some Scene {
