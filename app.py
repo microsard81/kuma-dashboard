@@ -31,6 +31,7 @@ from config import (
     PUSH_ENABLED,
     PUSH_VAPID_PUBLIC_KEY,
     BIOMETRIC_SECRET,
+    WATCH_API_TOKEN,
 )
 from push_utils import (
     add_subscription,
@@ -568,6 +569,19 @@ def dashboard():
 @app.route("/api/dashboard-data")
 @login_required
 def api_dashboard_data():
+    rows, global_state = build_dashboard_data()
+    return jsonify(
+        {"items": rows, "global_state": global_state, "timestamp": datetime.now().isoformat()}
+    )
+
+
+@app.route("/api/watch-data")
+def api_watch_data():
+    """Endpoint leggero per l'Apple Watch. Autenticato con token statico via header."""
+    token = request.headers.get("X-Watch-Token", "")
+    if not WATCH_API_TOKEN or not hmac.compare_digest(token, WATCH_API_TOKEN):
+        return {"ok": False, "error": "unauthorized"}, 401
+
     rows, global_state = build_dashboard_data()
     return jsonify(
         {"items": rows, "global_state": global_state, "timestamp": datetime.now().isoformat()}

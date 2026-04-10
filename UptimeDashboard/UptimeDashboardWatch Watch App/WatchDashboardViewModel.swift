@@ -2,15 +2,18 @@ import Foundation
 import Combine
 import WatchConnectivity
 
-/// ViewModel che riceve i dati della dashboard dall'iPhone via WatchConnectivity.
+/// ViewModel che riceve i dati della dashboard dall'iPhone via WatchConnectivity
+/// e può anche fare fetch diretto all'API del backend.
 final class WatchDashboardViewModel: NSObject, ObservableObject {
 
     @Published var monitors: [WatchMonitor] = []
     @Published var globalState: String = "GREEN"
     @Published var lastUpdated: Date? = nil
     @Published var isConnected: Bool = false
+    @Published var isLoading: Bool = false
 
     private var wcSession: WCSession?
+    private var refreshTimer: Timer?
 
     override init() {
         super.init()
@@ -31,10 +34,56 @@ final class WatchDashboardViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// Richiede un aggiornamento all'iPhone.
-    func requestRefresh() {
-        guard let session = wcSession, session.isReachable else { return }
-        session.sendMessage(["action": "refresh"], replyHandler: nil)
+    // MARK: - Direct API fetch
+
+    /// Fetch diretto all'API del backend, senza dipendere dall'iPhone.
+    func fetchFromAPI() async {
+        guard let config = loadWatchConfig() else { return }
+
+        await MainActor.run { isLoading = true }
+        defer { Task { @MainActor in isLoading = false } }
+
+        guard let url = URL(string: "\(config.baseURL)/api/watch-data") else { return }
+        var request = URLRequest(url: url)
+        request.setValue(config.token, forHTTPHeaderField: "X-Watch-Token")
+        request.timeoutInterval = 10
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+            processPayload(json)
+        } catch {
+            // Silently fail — i dati cached restano visibili
+        }
+    }
+
+    /// Avvia il refresh automatico ogni 60 secondi.
+    func startAutoRefresh() {
+        stopAutoRefresh()
+        Task { await fetchFromAPI() }
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            Task { await self?.fetchFromAPI() }
+        }
+    }
+
+    func stopAutoRefresh() {
+        refreshTimer?.invalidate()
+        refreshTimer = nil
+    }
+
+    // MARK: - Config
+
+    private struct WatchConfig {
+        let baseURL: String
+        let token: String
+    }
+
+    private func loadWatchConfig() -> WatchConfig? {
+        guard let url = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String,
+              let token = Bundle.main.object(forInfoDictionaryKey: "WATCH_API_TOKEN") as? String,
+              !url.isEmpty, !token.isEmpty else { return nil }
+        return WatchConfig(baseURL: url, token: token)
     }
 }
 
@@ -51,7 +100,6 @@ extension WatchDashboardViewModel: WCSessionDelegate {
         }
     }
 
-    /// Riceve i dati inviati dall'iPhone con transferUserInfo o sendMessage.
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
         processPayload(userInfo)
     }

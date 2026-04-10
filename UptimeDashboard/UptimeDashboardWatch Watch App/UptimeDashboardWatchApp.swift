@@ -8,6 +8,8 @@ struct UptimeDashboardWatchApp: App {
         WindowGroup {
             WatchDashboardView()
                 .environmentObject(viewModel)
+                .onAppear { viewModel.startAutoRefresh() }
+                .onDisappear { viewModel.stopAutoRefresh() }
         }
     }
 }

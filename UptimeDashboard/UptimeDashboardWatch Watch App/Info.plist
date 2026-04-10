@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BACKEND_BASE_URL</key>
+	<string>https://kuma-dashboard.sundata.cloud</string>
+	<key>WATCH_API_TOKEN</key>
+	<string>CAMBIAMI_CON_IL_TOKEN_REALE</string>
+</dict>
+</plist>

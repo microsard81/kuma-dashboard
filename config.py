@@ -19,6 +19,9 @@ PUSH_VAPID_EMAIL       = os.environ["PUSH_VAPID_EMAIL"]
 # Se non impostato, viene derivato da FLASK_SECRET_KEY
 BIOMETRIC_SECRET = os.environ.get("BIOMETRIC_SECRET", FLASK_SECRET_KEY)
 
+# --- Watch API token (per l'app Apple Watch) ---
+WATCH_API_TOKEN = os.environ.get("WATCH_API_TOKEN", "")
+
 # --- APNs (Apple Push Notification service) ---
 APNS_KEY_ID    = os.environ.get("APNS_KEY_ID")
 APNS_TEAM_ID   = os.environ.get("APNS_TEAM_ID")
