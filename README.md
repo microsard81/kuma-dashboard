@@ -170,6 +170,33 @@ templates/              # Template Jinja2 (login.html, 2fa.html, dashboard.html)
 | `global_state` | String | Stato globale corrente (`GREEN`/`YELLOW`/`RED`) |
 | `push:subs_by_endpoint` | Hash | Subscription Web Push VAPID |
 | `apns:subs_by_token` | Hash | Device token APNs iOS |
+| `user:<username>` | Hash | Credenziali utente (`password_hash`, `totp_secret`) |
+| `biometric:<username>:<token>` | String | Token biometrico con TTL 90 giorni |
+
+### Gestione utenti
+
+Gli utenti sono salvati in Redis. Usa lo script CLI per gestirli:
+
+```bash
+source /home/venvs/kuma-dashboard/bin/activate
+
+# Aggiungi un utente (chiede password interattivamente, genera TOTP)
+python manage_users.py add <username>
+
+# Lista utenti
+python manage_users.py list
+
+# Reset password
+python manage_users.py reset-password <username>
+
+# Reset TOTP (genera nuovo secret)
+python manage_users.py reset-totp <username>
+
+# Rimuovi utente
+python manage_users.py remove <username>
+```
+
+> Al primo avvio, se le variabili `AUTH_PASSWORD_HASH` e `AUTH_TOTP_SECRET` sono presenti in `.env`, l'utente legacy viene migrato automaticamente in Redis.
 
 ### Test backend
 
