@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import WatchConnectivity
 
 /// ViewModel che riceve i dati della dashboard dall'iPhone via WatchConnectivity.
@@ -21,6 +22,15 @@ final class WatchDashboardViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// Carica l'ultimo applicationContext ricevuto (sopravvive ai riavvii dell'app).
+    func loadCachedData() {
+        guard let session = wcSession else { return }
+        let context = session.receivedApplicationContext
+        if !context.isEmpty {
+            processPayload(context)
+        }
+    }
+
     /// Richiede un aggiornamento all'iPhone.
     func requestRefresh() {
         guard let session = wcSession, session.isReachable else { return }
@@ -35,6 +45,9 @@ extension WatchDashboardViewModel: WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         DispatchQueue.main.async {
             self.isConnected = activationState == .activated
+            if activationState == .activated {
+                self.loadCachedData()
+            }
         }
     }
 

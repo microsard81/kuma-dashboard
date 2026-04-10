@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		816E9C6A2F893487004F93EF /* UptimeDashboardWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 816E9C602F893486004F93EF /* UptimeDashboardWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		816E9C782F89397A004F93EF /* WCSessionDelegateHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 816E9C772F89397A004F93EF /* WCSessionDelegateHandler.swift */; };
 		B001000A /* UptimeDashboardApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001000B /* UptimeDashboardApp.swift */; };
 		B0020001 /* DashboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020002 /* DashboardModels.swift */; };
 		B0020003 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020004 /* KeychainStore.swift */; };
@@ -56,6 +57,7 @@
 
 /* Begin PBXFileReference section */
 		816E9C602F893486004F93EF /* UptimeDashboardWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "UptimeDashboardWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		816E9C772F89397A004F93EF /* WCSessionDelegateHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WCSessionDelegateHandler.swift; sourceTree = "<group>"; };
 		81B2E7F62F86A62200856F5A /* UptimeDashboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = UptimeDashboard.entitlements; sourceTree = "<group>"; };
 		B001000B /* UptimeDashboardApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UptimeDashboardApp.swift; sourceTree = "<group>"; };
 		B001000C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -147,6 +149,7 @@
 		B0030002 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				816E9C772F89397A004F93EF /* WCSessionDelegateHandler.swift */,
 				B0020004 /* KeychainStore.swift */,
 				B0020006 /* NetworkClient.swift */,
 				B0020008 /* NotificationManager.swift */,
@@ -312,6 +315,7 @@
 				B0020001 /* DashboardModels.swift in Sources */,
 				B0020003 /* KeychainStore.swift in Sources */,
 				B0020005 /* NetworkClient.swift in Sources */,
+				816E9C782F89397A004F93EF /* WCSessionDelegateHandler.swift in Sources */,
 				B0020007 /* NotificationManager.swift in Sources */,
 				B0020009 /* Config.swift in Sources */,
 				B0020034 /* DeviceAdaptive.swift in Sources */,
