@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 
 from kuma_client import load_monitors
 from status_client import load_status, process_monitor
-from auth import verify_user, verify_totp
+from auth import verify_user, verify_totp, is_totp_enrolled, get_totp_secret, enroll_totp
 from severity import compute_global_state
 from config import (
     FLASK_SECRET_KEY,
@@ -86,8 +86,14 @@ def login():
 
         if verify_user(username, password):
             session["pending_user"] = username
-            session["2fa_pending"] = True
             session["remember_choice"] = remember
+
+            if not is_totp_enrolled(username):
+                # Primo accesso — enrollment TOTP
+                session["totp_setup_pending"] = True
+                return redirect(url_for("totp_setup"))
+
+            session["2fa_pending"] = True
             return redirect(url_for("twofa"))
 
         return render_template("login.html", error="Credenziali non valide.")
@@ -118,6 +124,43 @@ def twofa():
         return render_template("2fa.html", error="Codice 2FA non valido.")
 
     return render_template("2fa.html")
+
+
+@app.route("/totp-setup", methods=["GET", "POST"])
+def totp_setup():
+    """Pagina di enrollment TOTP — mostrata al primo login."""
+    if "pending_user" not in session or not session.get("totp_setup_pending"):
+        return redirect(url_for("login"))
+
+    username = session["pending_user"]
+    totp_secret = get_totp_secret(username)
+
+    if not totp_secret:
+        return redirect(url_for("login"))
+
+    import pyotp
+    totp_uri = pyotp.TOTP(totp_secret).provisioning_uri(
+        name=username,
+        issuer_name="INVA Dashboard"
+    )
+
+    if request.method == "POST":
+        code = request.form.get("code", "")
+        if enroll_totp(username, code):
+            remember = session.get("remember_choice", False)
+            session.pop("pending_user", None)
+            session.pop("totp_setup_pending", None)
+            session.pop("remember_choice", None)
+            login_user(User(username), remember=remember)
+            return redirect(url_for("dashboard"))
+        return render_template("totp_setup.html",
+                               totp_secret=totp_secret,
+                               totp_uri=totp_uri,
+                               error="Codice non valido. Riprova.")
+
+    return render_template("totp_setup.html",
+                           totp_secret=totp_secret,
+                           totp_uri=totp_uri)
 
 
 @app.route("/logout")
@@ -276,6 +319,18 @@ def api_login():
         return {"ok": False, "error": "invalid credentials"}, 401
 
     session["pending_user"] = username
+
+    if not is_totp_enrolled(username):
+        # Enrollment TOTP pendente
+        totp_secret = get_totp_secret(username)
+        import pyotp
+        totp_uri = pyotp.TOTP(totp_secret).provisioning_uri(
+            name=username,
+            issuer_name="INVA Dashboard"
+        )
+        session["totp_setup_pending"] = True
+        return {"ok": True, "next": "totp_setup", "totp_secret": totp_secret, "totp_uri": totp_uri}, 200
+
     session["2fa_pending"] = True
     return {"ok": True, "next": "2fa"}, 200
 
@@ -302,6 +357,37 @@ def api_2fa():
     login_user(User(username), remember=True)
 
     # Genera token biometrico valido 90 giorni
+    raw_token = secrets.token_urlsafe(32)
+    signature = _sign_biometric_token(raw_token)
+    signed_token = f"{raw_token}.{signature}"
+    key = f"biometric:{username}:{raw_token}"
+    r.setex(key, 90 * 24 * 3600, "1")
+
+    return {"ok": True, "biometric_token": signed_token, "username": username}, 200
+
+
+@app.route("/api/totp/enroll", methods=["POST"])
+def api_totp_enroll():
+    """Completa l'enrollment TOTP per l'app iOS. Verifica il codice e segna come enrolled."""
+    import redis as redis_lib
+    from config import REDIS_HOST, REDIS_PORT, REDIS_DB
+    r = redis_lib.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
+
+    if "pending_user" not in session or not session.get("totp_setup_pending"):
+        return {"ok": False, "error": "no pending enrollment"}, 401
+
+    data = request.get_json(silent=True) or {}
+    code = data.get("code", "")
+    username = session["pending_user"]
+
+    if not enroll_totp(username, code):
+        return {"ok": False, "error": "invalid code"}, 401
+
+    session.pop("totp_setup_pending", None)
+    session.pop("pending_user", None)
+    login_user(User(username), remember=True)
+
+    # Genera token biometrico
     raw_token = secrets.token_urlsafe(32)
     signature = _sign_biometric_token(raw_token)
     signed_token = f"{raw_token}.{signature}"

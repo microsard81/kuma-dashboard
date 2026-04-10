@@ -14,6 +14,7 @@ final class MockNetworkClient: NetworkClientProtocol {
 
     func login(username: String, password: String) async throws -> LoginResult { .success }
     func verify2FA(code: String) async throws -> Bool { true }
+    func enrollTOTP(code: String) async throws -> Bool { true }
     func logout() async throws {}
     func subscribeAPNs(deviceToken: String, deviceId: String) async throws {}
     func unsubscribeAPNs(deviceToken: String) async throws {}

@@ -108,6 +108,8 @@ struct UptimeDashboardApp: App {
             DashboardView(network: network)
         case .requires2FA:
             TwoFAView()
+        case .requiresTOTPSetup(let secret, let uri):
+            TOTPSetupView(secret: secret, uri: uri)
         default:
             LoginView()
         }

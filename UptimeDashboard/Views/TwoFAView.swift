@@ -113,6 +113,7 @@ struct TwoFAView: View {
 private final class Preview2FANetworkClient: NetworkClientProtocol {
     func login(username: String, password: String) async throws -> LoginResult { .success }
     func verify2FA(code: String) async throws -> Bool { true }
+    func enrollTOTP(code: String) async throws -> Bool { true }
     func logout() async throws {}
     func fetchDashboardData() async throws -> DashboardResponse {
         let json = #"{"items":[],"global_state":"GREEN","timestamp":""}"#

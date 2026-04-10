@@ -45,6 +45,7 @@ def _migrate_legacy_user():
     _r.hset(key, mapping={
         "password_hash": legacy_hash,
         "totp_secret": legacy_totp,
+        "totp_enrolled": "1",
     })
     logger.info("Utente legacy '%s' migrato in Redis", legacy_username)
 
@@ -77,6 +78,34 @@ def get_user(username: str) -> dict | None:
     key = _user_key(username)
     data = _r.hgetall(key)
     return data if data else None
+
+
+def is_totp_enrolled(username: str) -> bool:
+    """Verifica se l'utente ha completato l'enrollment TOTP."""
+    key = _user_key(username)
+    return _r.hget(key, "totp_enrolled") == "1"
+
+
+def get_totp_secret(username: str) -> str | None:
+    """Restituisce il TOTP secret dell'utente."""
+    key = _user_key(username)
+    return _r.hget(key, "totp_secret")
+
+
+def enroll_totp(username: str, code: str) -> bool:
+    """
+    Verifica il codice TOTP e, se corretto, segna l'utente come enrolled.
+    Restituisce True se l'enrollment è riuscito.
+    """
+    key = _user_key(username)
+    totp_secret = _r.hget(key, "totp_secret")
+    if not totp_secret:
+        return False
+    totp = pyotp.TOTP(totp_secret)
+    if totp.verify(code):
+        _r.hset(key, "totp_enrolled", "1")
+        return True
+    return False
 
 
 def list_users() -> list[str]:

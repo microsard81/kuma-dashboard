@@ -28,6 +28,8 @@ final class MockNetworkClient: NetworkClientProtocol {
         return try verify2FAResult.get()
     }
 
+    func enrollTOTP(code: String) async throws -> Bool { true }
+
     func logout() async throws {
         logoutCallCount += 1
         if let error = logoutError { throw error }

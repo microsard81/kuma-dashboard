@@ -10,6 +10,7 @@ import LocalAuthentication
 enum AuthState: Equatable {
     case idle
     case requires2FA
+    case requiresTOTPSetup(secret: String, uri: String)
     case authenticated
     case unauthenticated
 }
@@ -104,12 +105,17 @@ final class AuthViewModel: ObservableObject {
             let result = try await network.login(username: username, password: password)
             switch result {
             case .requires2FA:
-                // Salva le credenziali nel Keychain per il re-login automatico con Face ID
                 if rememberMe {
                     try? keychain.save(token: trimmedUser, forKey: "saved_username")
                     try? keychain.save(token: trimmedPass, forKey: "saved_password")
                 }
                 state = .requires2FA
+            case .requiresTOTPSetup(let secret, let uri):
+                if rememberMe {
+                    try? keychain.save(token: trimmedUser, forKey: "saved_username")
+                    try? keychain.save(token: trimmedPass, forKey: "saved_password")
+                }
+                state = .requiresTOTPSetup(secret: secret, uri: uri)
             case .success:
                 if rememberMe {
                     try? keychain.save(token: trimmedUser, forKey: "saved_username")
@@ -121,6 +127,35 @@ final class AuthViewModel: ObservableObject {
             errorMessage = "Credenziali non valide"
         } catch {
             errorMessage = "Errore di connessione"
+        }
+    }
+
+    // MARK: - enrollTOTP
+
+    /// Completes TOTP enrollment by verifying the first code.
+    func enrollTOTP(code: String) async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            let success = try await network.enrollTOTP(code: code)
+            if success {
+                try? keychain.save(token: "active", forKey: "session_token")
+                if let networkClient = network as? NetworkClient,
+                   let token = networkClient._pendingBiometricToken,
+                   let username = networkClient._pendingUsername {
+                    try? keychain.save(token: token, forKey: "biometric_token")
+                    try? keychain.save(token: username, forKey: "saved_username")
+                    networkClient._pendingBiometricToken = nil
+                    networkClient._pendingUsername = nil
+                }
+                state = .authenticated
+            } else {
+                errorMessage = "Codice non valido. Riprova."
+            }
+        } catch {
+            errorMessage = "Codice non valido"
         }
     }
 

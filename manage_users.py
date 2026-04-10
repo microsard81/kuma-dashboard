@@ -28,7 +28,7 @@ def user_key(username: str) -> str:
     return f"{USER_PREFIX}{username}"
 
 
-def cmd_add(username: str):
+def cmd_add(username: str, skip_totp: bool = False):
     key = user_key(username)
     if r.exists(key):
         print(f"Errore: l'utente '{username}' esiste già.")
@@ -46,10 +46,19 @@ def cmd_add(username: str):
     totp_secret = pyotp.random_base32()
     password_hash = generate_password_hash(password)
 
-    r.hset(key, mapping={
+    user_data = {
         "password_hash": password_hash,
         "totp_secret": totp_secret,
-    })
+    }
+
+    if skip_totp:
+        # L'utente configurerà il TOTP al primo login
+        user_data["totp_enrolled"] = "0"
+    else:
+        # L'admin comunica il secret all'utente
+        user_data["totp_enrolled"] = "1"
+
+    r.hset(key, mapping=user_data)
 
     totp_uri = pyotp.TOTP(totp_secret).provisioning_uri(
         name=username,
@@ -57,9 +66,12 @@ def cmd_add(username: str):
     )
 
     print(f"\nUtente '{username}' creato.")
-    print(f"\nTOTP Secret: {totp_secret}")
-    print(f"URI per app authenticator:\n{totp_uri}")
-    print("\nAggiungi questo URI alla tua app authenticator (Google Authenticator, Authy, ecc.)")
+    if skip_totp:
+        print("TOTP enrollment pendente — l'utente configurerà il 2FA al primo login.")
+    else:
+        print(f"\nTOTP Secret: {totp_secret}")
+        print(f"URI per app authenticator:\n{totp_uri}")
+        print("\nAggiungi questo URI alla tua app authenticator (Google Authenticator, Authy, ecc.)")
 
 
 def cmd_remove(username: str):
@@ -143,9 +155,10 @@ def main():
         cmd_list()
     elif command == "add":
         if len(sys.argv) < 3:
-            print("Uso: python manage_users.py add <username>")
+            print("Uso: python manage_users.py add <username> [--no-totp]")
             sys.exit(1)
-        cmd_add(sys.argv[2])
+        skip_totp = "--no-totp" in sys.argv
+        cmd_add(sys.argv[2], skip_totp=skip_totp)
     elif command == "remove":
         if len(sys.argv) < 3:
             print("Uso: python manage_users.py remove <username>")

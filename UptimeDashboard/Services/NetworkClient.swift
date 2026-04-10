@@ -28,6 +28,7 @@ enum NetworkError: Error, Equatable {
 // MARK: - LoginResult
 enum LoginResult: Equatable {
     case requires2FA
+    case requiresTOTPSetup(secret: String, uri: String)
     case success
 }
 
@@ -35,6 +36,7 @@ enum LoginResult: Equatable {
 protocol NetworkClientProtocol {
     func login(username: String, password: String) async throws -> LoginResult
     func verify2FA(code: String) async throws -> Bool
+    func enrollTOTP(code: String) async throws -> Bool
     func logout() async throws
     func fetchDashboardData() async throws -> DashboardResponse
     func subscribeAPNs(deviceToken: String, deviceId: String) async throws
@@ -116,8 +118,15 @@ final class NetworkClient: NetworkClientProtocol {
 
         // Decodifica flessibile — "next" può essere presente o meno
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let next = json["next"] as? String, next == "2fa" {
-            return .requires2FA
+           let next = json["next"] as? String {
+            if next == "totp_setup",
+               let secret = json["totp_secret"] as? String,
+               let uri = json["totp_uri"] as? String {
+                return .requiresTOTPSetup(secret: secret, uri: uri)
+            }
+            if next == "2fa" {
+                return .requires2FA
+            }
         }
         return .success
     }
@@ -154,6 +163,35 @@ final class NetworkClient: NetworkClientProtocol {
     // Token biometrico ricevuto dopo il 2FA — letto da AuthViewModel
     var _pendingBiometricToken: String? = nil
     var _pendingUsername: String? = nil
+
+    // MARK: - enrollTOTP
+    func enrollTOTP(code: String) async throws -> Bool {
+        let url = baseURL.appendingPathComponent("api/totp/enroll")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["code": code])
+
+        let (data, response) = try await performRequest(request, session: session)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse(statusCode: 0)
+        }
+
+        if http.statusCode == 401 { return false }
+        guard http.statusCode == 200 else {
+            throw NetworkError.invalidResponse(statusCode: http.statusCode)
+        }
+
+        // Salva il token biometrico se presente
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let biometricToken = json["biometric_token"] as? String,
+           let username = json["username"] as? String {
+            _pendingBiometricToken = biometricToken
+            _pendingUsername = username
+        }
+
+        return true
+    }
 
     // MARK: - logout
     func logout() async throws {
