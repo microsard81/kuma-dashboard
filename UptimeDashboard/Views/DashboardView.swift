@@ -80,7 +80,7 @@ struct DashboardView: View {
                 .listStyle(.plain)
                 .refreshable { await viewModel.refresh() }
             }
-            .background(Color(hex: "#141c2b").ignoresSafeArea())
+            .background(dashboardBackground.ignoresSafeArea())
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -141,6 +141,12 @@ struct DashboardView: View {
     }
 
     // MARK: - Subviews
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var dashboardBackground: Color {
+        colorScheme == .dark ? Color(hex: "#141c2b") : Color(.systemBackground)
+    }
 
     private var staleBanner: some View {
         HStack(spacing: 8) {

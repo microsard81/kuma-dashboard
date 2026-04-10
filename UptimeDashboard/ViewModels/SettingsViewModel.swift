@@ -26,8 +26,8 @@ enum ThemeMode: String, CaseIterable {
     var displayName: String {
         switch self {
         case .auto: return "Auto"
-        case .light: return "Light"
-        case .dark: return "Dark"
+        case .light: return "Chiaro"
+        case .dark: return "Scuro"
         }
     }
 }
