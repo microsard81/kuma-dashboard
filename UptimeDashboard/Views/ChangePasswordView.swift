@@ -22,8 +22,9 @@ struct ChangePasswordView: View {
                 Color(hex: "#141c2b")
                     .ignoresSafeArea()
 
+                ScrollView {
                 VStack(spacing: 24) {
-                    Spacer()
+                    Spacer(minLength: 20)
 
                     Image(systemName: "lock.rotation")
                         .font(.system(size: 48))
@@ -87,9 +88,10 @@ struct ChangePasswordView: View {
                     .disabled(!isFormValid || authViewModel.isLoading)
                     .padding(.horizontal)
 
-                    Spacer()
+                    Spacer(minLength: 20)
                 }
                 .foregroundStyle(.white)
+                } // ScrollView
             }
             .navigationBarHidden(true)
         }

@@ -33,8 +33,9 @@ struct LoginView: View {
                 Color(hex: "#141c2b")
                     .ignoresSafeArea()
 
+            ScrollView {
             VStack(spacing: 24) {
-                Spacer()
+                Spacer(minLength: 20)
 
                 Text("INVA Dashboard")
                     .font(.largeTitle.bold())
@@ -114,9 +115,10 @@ struct LoginView: View {
                     .padding(.horizontal)
                 }
 
-                Spacer()
+                Spacer(minLength: 20)
             }
             .foregroundStyle(.white)
+            } // ScrollView
             .navigationBarHidden(true)
             } // ZStack
         }

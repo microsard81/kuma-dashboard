@@ -11,8 +11,9 @@ struct BiometricGateView: View {
     @State private var showManualButton = false
 
     var body: some View {
+        ScrollView {
         VStack(spacing: 32) {
-            Spacer()
+            Spacer(minLength: 40)
 
             Image(systemName: biometricIcon)
                 .font(.system(size: 64))
@@ -50,8 +51,9 @@ struct BiometricGateView: View {
                 }
             }
 
-            Spacer()
+            Spacer(minLength: 40)
         }
+        } // ScrollView
         .task {
             // Tenta Face ID automaticamente all'avvio
             await authViewModel.authenticateWithBiometrics()

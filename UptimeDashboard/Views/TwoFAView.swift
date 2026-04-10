@@ -20,8 +20,9 @@ struct TwoFAView: View {
                 Color(hex: "#141c2b")
                     .ignoresSafeArea()
 
+            ScrollView {
             VStack(spacing: 24) {
-                Spacer()
+                Spacer(minLength: 20)
 
                 // MARK: - Title
                 Text("Verifica in due passaggi")
@@ -91,9 +92,10 @@ struct TwoFAView: View {
                 .accessibilityLabel("Verifica")
                 .accessibilityHint(isCodeValid ? "" : "Inserisci un codice a 6 cifre per abilitare il pulsante")
 
-                Spacer()
+                Spacer(minLength: 20)
             }
             .foregroundStyle(.white)
+            } // ScrollView
             .navigationTitle("Autenticazione")
             .navigationBarTitleDisplayMode(.inline)
             } // ZStack
