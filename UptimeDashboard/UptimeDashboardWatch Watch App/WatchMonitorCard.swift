@@ -8,7 +8,7 @@ struct WatchMonitorCard: View {
             // Nome + stato finale
             HStack {
                 Text(monitor.name)
-                    .font(.system(.caption, design: .default, weight: .semibold))
+                    .font(.system(.footnote, weight: .semibold))
                     .lineLimit(2)
                 Spacer()
                 Text(monitor.finalStatus)
@@ -20,14 +20,12 @@ struct WatchMonitorCard: View {
                     .clipShape(Capsule())
             }
 
-            // Sonde
-            HStack(spacing: 6) {
-                ProbeChip(label: "Aruba", status: monitor.k1)
-                ProbeChip(label: "TIM", status: monitor.k2)
-            }
-            HStack(spacing: 6) {
-                ProbeChip(label: "ILIAD", status: monitor.k3)
-                ProbeChip(label: "NP", status: monitor.n1)
+            // Sonde — una per riga, con colore chiaro
+            VStack(alignment: .leading, spacing: 3) {
+                ProbeRow(label: "Aruba", status: monitor.k1)
+                ProbeRow(label: "TIM", status: monitor.k2)
+                ProbeRow(label: "ILIAD", status: monitor.k3)
+                ProbeRow(label: "NodePing", status: monitor.n1)
             }
         }
         .padding(.vertical, 4)
@@ -45,22 +43,22 @@ struct WatchMonitorCard: View {
     }
 }
 
-// MARK: - ProbeChip
+// MARK: - ProbeRow
 
-private struct ProbeChip: View {
+private struct ProbeRow: View {
     let label: String
     let status: String
 
     private var isUp: Bool { status == "UP" }
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 4) {
             Circle()
                 .fill(isUp ? Color.green : Color.red)
-                .frame(width: 6, height: 6)
+                .frame(width: 7, height: 7)
             Text(label)
-                .font(.system(size: 10))
-                .foregroundColor(.secondary)
+                .font(.system(.caption2, weight: .medium))
+                .foregroundColor(isUp ? .green : .red)
         }
     }
 }

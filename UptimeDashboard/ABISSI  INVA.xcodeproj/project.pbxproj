@@ -355,7 +355,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = UptimeDashboardWatch;
+				INFOPLIST_KEY_CFBundleDisplayName = "Dashboard INVA";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = cloud.sundata.uptimeDashboard;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -389,7 +389,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = UptimeDashboardWatch;
+				INFOPLIST_KEY_CFBundleDisplayName = "Dashboard INVA";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = cloud.sundata.uptimeDashboard;
 				LD_RUNPATH_SEARCH_PATHS = (
