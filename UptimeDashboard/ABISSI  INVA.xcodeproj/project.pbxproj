@@ -13,6 +13,7 @@
 		B0020005 /* NetworkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020006 /* NetworkClient.swift */; };
 		B0020007 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020008 /* NotificationManager.swift */; };
 		B0020009 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = B002000A /* Config.swift */; };
+		B0020034 /* DeviceAdaptive.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020035 /* DeviceAdaptive.swift */; };
 		B002000B /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B002000C /* AuthViewModel.swift */; };
 		B002000D /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B002000E /* DashboardViewModel.swift */; };
 		B002000F /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020010 /* SettingsViewModel.swift */; };
@@ -38,6 +39,7 @@
 		B0020006 /* NetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClient.swift; sourceTree = "<group>"; };
 		B0020008 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		B002000A /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		B0020035 /* DeviceAdaptive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAdaptive.swift; sourceTree = "<group>"; };
 		B002000C /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
 		B002000E /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
 		B0020010 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
@@ -117,6 +119,7 @@
 			isa = PBXGroup;
 			children = (
 				B002000A /* Config.swift */,
+				B0020035 /* DeviceAdaptive.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -230,6 +233,7 @@
 				B0020005 /* NetworkClient.swift in Sources */,
 				B0020007 /* NotificationManager.swift in Sources */,
 				B0020009 /* Config.swift in Sources */,
+				B0020034 /* DeviceAdaptive.swift in Sources */,
 				B002000B /* AuthViewModel.swift in Sources */,
 				B002000D /* DashboardViewModel.swift in Sources */,
 				B002000F /* SettingsViewModel.swift in Sources */,

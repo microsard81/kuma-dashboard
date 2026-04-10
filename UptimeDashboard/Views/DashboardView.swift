@@ -39,7 +39,7 @@ struct DashboardView: View {
                         } header: {
                             Label("DOWN", systemImage: "xmark.circle.fill")
                                 .foregroundColor(.red)
-                                .font(.caption.bold())
+                                .font(DeviceAdaptive.sectionHeaderFont)
                         }
                     }
 
@@ -52,7 +52,7 @@ struct DashboardView: View {
                         } header: {
                             Label("Mismatch", systemImage: "exclamationmark.triangle.fill")
                                 .foregroundColor(.yellow)
-                                .font(.caption.bold())
+                                .font(DeviceAdaptive.sectionHeaderFont)
                         }
                     }
 
@@ -72,7 +72,7 @@ struct DashboardView: View {
                             } header: {
                                 Label("UP", systemImage: "checkmark.circle.fill")
                                     .foregroundColor(.green)
-                                    .font(.caption.bold())
+                                    .font(DeviceAdaptive.sectionHeaderFont)
                             }
                         }
                     }
@@ -225,16 +225,17 @@ private struct MonitorRowView: View {
             HStack {
                 if let urlString = item.link, let url = URL(string: urlString) {
                     Button { openURL(url) } label: {
-                        Text(item.name).font(.headline).foregroundColor(.accentColor)
+                        Text(item.name).font(DeviceAdaptive.monitorNameFont).foregroundColor(.accentColor)
                     }
                     .buttonStyle(.plain)
                 } else {
-                    Text(item.name).font(.headline)
+                    Text(item.name).font(DeviceAdaptive.monitorNameFont)
                 }
                 Spacer()
                 Text(item.final.rawValue)
-                    .font(.caption.bold()).foregroundColor(.white)
-                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .font(DeviceAdaptive.statusBadgeFont).foregroundColor(.white)
+                    .padding(.horizontal, DeviceAdaptive.badgeHPadding)
+                    .padding(.vertical, DeviceAdaptive.badgeVPadding)
                     .background(item.final == .down ? Color.red : Color.green)
                     .clipShape(Capsule())
             }
@@ -247,7 +248,7 @@ private struct MonitorRowView: View {
                 Spacer()
                 if let label = selectionLabel {
                     Text(label)
-                        .font(.caption2.bold())
+                        .font(DeviceAdaptive.selectionLabelFont)
                         .foregroundColor(.secondary)
                         .transition(.opacity)
                 }
@@ -255,9 +256,9 @@ private struct MonitorRowView: View {
             .animation(.easeInOut(duration: 0.12), value: selectedSegment?.id)
 
             SparklineView(history: item.history, selectedSegment: $selectedSegment, hapticEnabled: settingsVM.hapticEnabled)
-                .frame(height: 28)
+                .frame(height: DeviceAdaptive.sparklineHeight)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, DeviceAdaptive.rowVerticalPadding)
     }
 }
 
@@ -271,9 +272,9 @@ private struct ProbeIndicator: View {
         HStack(spacing: 3) {
             Circle()
                 .fill(status == .up ? Color.green : Color.red)
-                .frame(width: 8, height: 8)
+                .frame(width: DeviceAdaptive.probeDotSize, height: DeviceAdaptive.probeDotSize)
                 .animation(.easeInOut(duration: 0.3), value: status)
-            Text(label).font(.caption).foregroundColor(.secondary)
+            Text(label).font(DeviceAdaptive.probeLabelFont).foregroundColor(.secondary)
         }
     }
 }
