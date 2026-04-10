@@ -83,8 +83,18 @@
 		B0040002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		81925FF62F89477E00FDC6C5 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"UptimeDashboardWatch-Watch-App-Info.plist",
+			);
+			target = 816E9C5F2F893486004F93EF /* UptimeDashboardWatch Watch App */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		816E9C612F893486004F93EF /* UptimeDashboardWatch Watch App */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "UptimeDashboardWatch Watch App"; sourceTree = "<group>"; };
+		816E9C612F893486004F93EF /* UptimeDashboardWatch Watch App */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (81925FF62F89477E00FDC6C5 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = "UptimeDashboardWatch Watch App"; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -355,6 +365,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "UptimeDashboardWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Dashboard INVA";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = cloud.sundata.uptimeDashboard;
@@ -389,6 +400,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "UptimeDashboardWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Dashboard INVA";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = cloud.sundata.uptimeDashboard;
