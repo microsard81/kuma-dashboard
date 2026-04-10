@@ -111,6 +111,7 @@ Copia `.env.example` in `.env` e compila tutti i campi:
 | `APNS_TEAM_ID` | ⚠️ | Team ID Apple Developer |
 | `APNS_BUNDLE_ID` | ⚠️ | Bundle ID dell'app iOS |
 | `APNS_KEY_PATH` | ⚠️ | Percorso assoluto al file `.p8` APNs |
+| `WATCH_API_TOKEN` | — | Token statico per l'endpoint `/api/watch-data` (Apple Watch) |
 | `BIOMETRIC_SECRET` | — | Segreto per firmare i token biometrici (default: `FLASK_SECRET_KEY`) |
 | `REDIS_HOST` | — | Host Redis (default: `127.0.0.1`) |
 | `REDIS_PORT` | — | Porta Redis (default: `6379`) |
@@ -174,6 +175,7 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 | `POST` | `/push/apns/subscribe` | ✅ | Registra device token APNs (iOS) |
 | `POST` | `/push/apns/unsubscribe` | ✅ | Rimuove device token APNs (iOS) |
 | `POST` | `/auth/biometric/login` | — | Login con token biometrico (Face ID / Touch ID) |
+| `GET` | `/api/watch-data` | Token | Dati dashboard per Apple Watch (header `X-Watch-Token`) |
 
 **Formato risposta `/api/dashboard-data`:**
 ```json
@@ -380,6 +382,33 @@ I test coprono 18 proprietà di correttezza (100 iterazioni ciascuna):
 | P11: Round-trip persistenza tema | `SettingsViewModelTests` | 8.3 |
 | P12: Payload subscribe APNs | `NetworkClientTests` | 9.2 |
 | P18: Validazione schema HTTPS | `NetworkClientTests` | 12.3, 12.4 |
+
+---
+
+## App Apple Watch
+
+App companion watchOS che mostra lo stato dei servizi con card compatte. Funziona indipendentemente dall'iPhone tramite fetch diretto all'API.
+
+### Funzionalità
+
+- Lista servizi con stato finale e sonde (Aruba, TIM, ILIAD, NodePing)
+- Raggruppamento per stato (DOWN / Mismatch / UP)
+- Colore sonde verde/rosso per identificare subito i problemi
+- LED globale nella toolbar
+- Refresh automatico ogni 60 secondi + refresh manuale
+- Aggiornamento immediato quando l'app torna in primo piano
+- Dati cached tra i riavvii via WatchConnectivity
+- Notifiche push APNs (arrivano sul watch quando l'iPhone è bloccato)
+
+### Setup
+
+1. In Xcode: File → New → Target → watchOS → App → "UptimeDashboardWatch"
+2. Aggiungi i file Swift dalla cartella `UptimeDashboardWatch Watch App/` al target watch
+3. Nel tab Info del target watch, aggiungi:
+   - `BACKEND_BASE_URL`: URL del backend (es. `https://kuma-dashboard.sundata.cloud`)
+   - `WATCH_API_TOKEN`: lo stesso token presente nel `.env` del server
+4. Genera il token: `python3 -c "import secrets; print(secrets.token_urlsafe(32))"`
+5. Aggiungi `WATCH_API_TOKEN=<token>` al `.env` del server e riavvia
 
 ---
 
