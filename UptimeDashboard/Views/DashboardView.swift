@@ -119,6 +119,7 @@ struct DashboardView: View {
                 Text("Sei sicuro di voler uscire?")
             }
         }
+        .navigationViewStyle(.stack)
         .sheet(isPresented: $showSettings) {
             SettingsView()
                 .environmentObject(settingsVM)
