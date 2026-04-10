@@ -11,6 +11,7 @@ final class WatchDashboardViewModel: NSObject, ObservableObject {
     @Published var lastUpdated: Date? = nil
     @Published var isConnected: Bool = false
     @Published var isLoading: Bool = false
+    @Published var lastError: String? = nil
 
     private var wcSession: WCSession?
     private var refreshTimer: Timer?
@@ -38,23 +39,46 @@ final class WatchDashboardViewModel: NSObject, ObservableObject {
 
     /// Fetch diretto all'API del backend, senza dipendere dall'iPhone.
     func fetchFromAPI() async {
-        guard let config = loadWatchConfig() else { return }
+        guard let config = loadWatchConfig() else {
+            await MainActor.run { lastError = "Config mancante (BACKEND_BASE_URL o WATCH_API_TOKEN)" }
+            print("[Watch] Config mancante")
+            return
+        }
 
-        await MainActor.run { isLoading = true }
-        defer { Task { @MainActor in isLoading = false } }
+        await MainActor.run {
+            isLoading = true
+            lastError = nil
+        }
 
-        guard let url = URL(string: "\(config.baseURL)/api/watch-data") else { return }
+        guard let url = URL(string: "\(config.baseURL)/api/watch-data") else {
+            await MainActor.run { isLoading = false; lastError = "URL non valido" }
+            return
+        }
+
         var request = URLRequest(url: url)
         request.setValue(config.token, forHTTPHeaderField: "X-Watch-Token")
-        request.timeoutInterval = 10
+        request.timeoutInterval = 15
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
-            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+            guard let http = response as? HTTPURLResponse else {
+                await MainActor.run { isLoading = false; lastError = "Risposta non HTTP" }
+                return
+            }
+            print("[Watch] API status: \(http.statusCode)")
+            guard http.statusCode == 200 else {
+                await MainActor.run { isLoading = false; lastError = "HTTP \(http.statusCode)" }
+                return
+            }
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                await MainActor.run { isLoading = false; lastError = "JSON non valido" }
+                return
+            }
             processPayload(json)
+            await MainActor.run { isLoading = false }
         } catch {
-            // Silently fail — i dati cached restano visibili
+            print("[Watch] Fetch error: \(error.localizedDescription)")
+            await MainActor.run { isLoading = false; lastError = error.localizedDescription }
         }
     }
 

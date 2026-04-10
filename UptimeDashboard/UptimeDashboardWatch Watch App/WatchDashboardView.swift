@@ -8,10 +8,29 @@ struct WatchDashboardView: View {
             Group {
                 if viewModel.monitors.isEmpty {
                     VStack(spacing: 12) {
-                        ProgressView()
-                        Text("In attesa dei dati...")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
+                        if viewModel.isLoading {
+                            ProgressView()
+                            Text("Caricamento...")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        } else if let error = viewModel.lastError {
+                            Image(systemName: "wifi.exclamationmark")
+                                .font(.title3)
+                                .foregroundColor(.orange)
+                            Text(error)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                            Button("Riprova") {
+                                Task { await viewModel.fetchFromAPI() }
+                            }
+                            .font(.caption)
+                        } else {
+                            ProgressView()
+                            Text("In attesa dei dati...")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 } else {
                     monitorList
