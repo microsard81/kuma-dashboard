@@ -83,7 +83,7 @@ private func makeDashboardResponse(items: [MonitorItem], globalState: GlobalStat
             "n1": "\(item.n1.rawValue)",
             "final": "\(item.final.rawValue)",
             "severity": \(item.severity),
-            "history": [\(item.history.map { String($0) }.joined(separator: ","))],
+            "history": [\(item.history.map { String($0.severity) }.joined(separator: ","))],
             "link": null
         }
         """

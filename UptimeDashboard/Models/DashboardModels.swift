@@ -27,6 +27,50 @@ enum RowColor: Equatable {
     case green, yellow, red
 }
 
+// MARK: - HistoryPoint
+/// Un punto dello storico. Decodifica sia il formato vecchio (intero)
+/// che il nuovo formato oggetto {"s":int,"k1":int,"k2":int,"k3":int,"n1":int}.
+struct HistoryPoint: Decodable, Equatable {
+    let severity: Int
+    /// Stato per-sonda: 0 = UP, 1 = DOWN. nil per punti vecchi senza dettaglio.
+    let k1: Int?
+    let k2: Int?
+    let k3: Int?
+    let n1: Int?
+
+    init(severity: Int, k1: Int? = nil, k2: Int? = nil, k3: Int? = nil, n1: Int? = nil) {
+        self.severity = severity
+        self.k1 = k1
+        self.k2 = k2
+        self.k3 = k3
+        self.n1 = n1
+    }
+
+    init(from decoder: Decoder) throws {
+        // Prova prima come intero (formato vecchio)
+        if let container = try? decoder.singleValueContainer(),
+           let intValue = try? container.decode(Int.self) {
+            self.severity = intValue
+            self.k1 = nil
+            self.k2 = nil
+            self.k3 = nil
+            self.n1 = nil
+            return
+        }
+        // Altrimenti come oggetto (formato nuovo)
+        let container = try decoder.container(keyedBy: HistoryPointKeys.self)
+        self.severity = try container.decode(Int.self, forKey: .s)
+        self.k1 = try container.decodeIfPresent(Int.self, forKey: .k1)
+        self.k2 = try container.decodeIfPresent(Int.self, forKey: .k2)
+        self.k3 = try container.decodeIfPresent(Int.self, forKey: .k3)
+        self.n1 = try container.decodeIfPresent(Int.self, forKey: .n1)
+    }
+
+    private enum HistoryPointKeys: String, CodingKey {
+        case s, k1, k2, k3, n1
+    }
+}
+
 // MARK: - MonitorItem
 struct MonitorItem: Decodable, Identifiable, Equatable {
     let id: UUID
@@ -37,7 +81,7 @@ struct MonitorItem: Decodable, Identifiable, Equatable {
     let n1: ProbeStatus
     let final: ProbeStatus
     let severity: Int
-    let history: [Int]
+    let history: [HistoryPoint]
     let link: String?
 
     init(from decoder: Decoder) throws {
@@ -50,7 +94,7 @@ struct MonitorItem: Decodable, Identifiable, Equatable {
         self.n1 = try container.decode(ProbeStatus.self, forKey: .n1)
         self.final = try container.decode(ProbeStatus.self, forKey: .final)
         self.severity = try container.decode(Int.self, forKey: .severity)
-        self.history = try container.decode([Int].self, forKey: .history)
+        self.history = try container.decode([HistoryPoint].self, forKey: .history)
         self.link = try container.decodeIfPresent(String.self, forKey: .link)
     }
 
@@ -90,10 +134,25 @@ struct DashboardResponse: Decodable {
 }
 
 // MARK: - SparklineSegment
-struct SparklineSegment: Identifiable {
+struct SparklineSegment: Identifiable, Equatable {
     let id: Int
     let severity: Int
     let timestamp: Date?
+    /// Stato per-sonda: 0 = UP, 1 = DOWN. nil per punti vecchi.
+    let k1: Int?
+    let k2: Int?
+    let k3: Int?
+    let n1: Int?
+
+    init(id: Int, severity: Int, timestamp: Date?, k1: Int? = nil, k2: Int? = nil, k3: Int? = nil, n1: Int? = nil) {
+        self.id = id
+        self.severity = severity
+        self.timestamp = timestamp
+        self.k1 = k1
+        self.k2 = k2
+        self.k3 = k3
+        self.n1 = n1
+    }
 
     var color: Color {
         switch severity {

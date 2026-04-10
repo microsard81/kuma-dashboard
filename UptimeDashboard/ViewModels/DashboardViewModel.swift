@@ -19,13 +19,14 @@ final class DashboardViewModel: ObservableObject {
     // MARK: - Computed properties
 
     /// Returns filtered items based on the current filter state.
+    /// Includes both fully DOWN and mismatch (partially DOWN) items.
     var filteredItems: [MonitorItem] {
-        isOnlyDownFilter ? items.filter { $0.final == .down } : items
+        isOnlyDownFilter ? items.filter { $0.rowColor == .red || $0.rowColor == .yellow } : items
     }
 
-    /// Count of monitors currently in DOWN state.
+    /// Count of monitors currently in DOWN or mismatch state.
     var downCount: Int {
-        items.filter { $0.final == .down }.count
+        items.filter { $0.rowColor == .red || $0.rowColor == .yellow }.count
     }
 
     /// LED color reflecting the current global state.

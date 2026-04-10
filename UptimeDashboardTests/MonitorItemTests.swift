@@ -157,7 +157,7 @@ final class MonitorItemTests: XCTestCase {
             XCTAssertEqual(item.n1, n1, "n1 field not preserved at iteration \(i)")
             XCTAssertEqual(item.final, finalStatus, "final field not preserved at iteration \(i)")
             XCTAssertEqual(item.severity, severity, "severity field not preserved at iteration \(i)")
-            XCTAssertEqual(item.history, history, "history field not preserved at iteration \(i)")
+            XCTAssertEqual(item.history.map(\.severity), history, "history field not preserved at iteration \(i)")
             XCTAssertEqual(item.link, link, "link field not preserved at iteration \(i)")
         }
     }
@@ -175,7 +175,7 @@ final class MonitorItemTests: XCTestCase {
         for _ in 0..<100 {
             let history = (0..<Int.random(in: 1...30)).map { _ in Int.random(in: 0...2) }
             let item = MonitorItem.makeForTest(history: history)
-            XCTAssertEqual(item.history, history, "history array order must be preserved")
+            XCTAssertEqual(item.history.map(\.severity), history, "history array order must be preserved")
         }
     }
 

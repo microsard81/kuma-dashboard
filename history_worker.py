@@ -125,7 +125,7 @@ def loop_once():
         logging.info("Status vuoto → tutti UP.")
 
         for name_norm in common:
-            save_point(name_norm, 0)
+            save_point(name_norm, 0, k1=0, k2=0, k3=0, n1=0)
             severities.append(0)
             logging.info(f"[ALL-UP] {m1[name_norm]} → sev=0")
 
@@ -158,7 +158,7 @@ def loop_once():
         severity = compute_severity(bg, tim, iliad, nodeping)
         severities.append(severity)
 
-        save_point(name_norm, severity)
+        save_point(name_norm, severity, k1=bg, k2=tim, k3=iliad, n1=nodeping)
         logging.info(f"[OK] {display_name} → sev={severity}")
 
     # Calcola stato globale

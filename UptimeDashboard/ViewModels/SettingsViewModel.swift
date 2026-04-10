@@ -88,6 +88,8 @@ final class SettingsViewModel: ObservableObject {
     @Published var sortOrder: SortOrder
     @Published var refreshInterval: RefreshInterval
     @Published var biometricEnabled: Bool
+    @Published var hapticEnabled: Bool
+    @Published var badgeEnabled: Bool
     @Published var notificationsEnabled: Bool = false
     @Published var notificationPermissionDenied: Bool = false
     @Published var connectionStatus: ConnectionStatus = .checking
@@ -111,6 +113,8 @@ final class SettingsViewModel: ObservableObject {
     private let sortOrderKey = "sortOrder"
     private let refreshIntervalKey = "refreshInterval"
     private let biometricEnabledKey = "biometricEnabled"
+    private let hapticEnabledKey = "hapticEnabled"
+    private let badgeEnabledKey = "badgeEnabled"
 
     // MARK: - Init
     init(defaults: UserDefaults = .standard,
@@ -125,7 +129,7 @@ final class SettingsViewModel: ObservableObject {
            let saved = ThemeMode(rawValue: raw) {
             self.themeMode = saved
         } else {
-            self.themeMode = .auto
+            self.themeMode = .dark
         }
 
         // Read sortOrder with safe fallback
@@ -146,6 +150,12 @@ final class SettingsViewModel: ObservableObject {
 
         // Read biometricEnabled with safe fallback (default: true)
         self.biometricEnabled = defaults.object(forKey: "biometricEnabled") as? Bool ?? true
+
+        // Read hapticEnabled with safe fallback (default: true)
+        self.hapticEnabled = defaults.object(forKey: "hapticEnabled") as? Bool ?? true
+
+        // Read badgeEnabled with safe fallback (default: true)
+        self.badgeEnabled = defaults.object(forKey: "badgeEnabled") as? Bool ?? true
     }
 
     // MARK: - Theme actions
@@ -179,6 +189,19 @@ final class SettingsViewModel: ObservableObject {
     func setBiometricEnabled(_ enabled: Bool) {
         biometricEnabled = enabled
         defaults.set(enabled, forKey: biometricEnabledKey)
+    }
+
+    func setHapticEnabled(_ enabled: Bool) {
+        hapticEnabled = enabled
+        defaults.set(enabled, forKey: hapticEnabledKey)
+    }
+
+    func setBadgeEnabled(_ enabled: Bool) {
+        badgeEnabled = enabled
+        defaults.set(enabled, forKey: badgeEnabledKey)
+        if !enabled {
+            UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+        }
     }
 
     // MARK: - Notification actions

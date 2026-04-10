@@ -116,7 +116,7 @@ function applyOnlyDownFilter() {
     if (tbody) {
         tbody.querySelectorAll("tr").forEach(row => {
             if (!onlyDownActive) row.style.display = "";
-            else row.style.display = row.classList.contains("row-down") ? "" : "none";
+            else row.style.display = (row.classList.contains("row-down") || row.classList.contains("row-mismatch")) ? "" : "none";
         });
     }
 
@@ -125,7 +125,7 @@ function applyOnlyDownFilter() {
     if (desktopCards) {
         desktopCards.querySelectorAll(".dcard").forEach(card => {
             if (!onlyDownActive) card.style.display = "";
-            else card.style.display = card.classList.contains("dcard-down") ? "" : "none";
+            else card.style.display = (card.classList.contains("dcard-down") || card.classList.contains("dcard-mismatch")) ? "" : "none";
         });
     }
 
@@ -134,7 +134,7 @@ function applyOnlyDownFilter() {
     if (mobileList) {
         mobileList.querySelectorAll(".mobile-card").forEach(card => {
             if (!onlyDownActive) card.style.display = "";
-            else card.style.display = card.classList.contains("down") ? "" : "none";
+            else card.style.display = (card.classList.contains("down") || card.classList.contains("mismatch")) ? "" : "none";
         });
     }
 
@@ -200,7 +200,9 @@ function buildHistorySvg(history) {
     const barPct = cellFraction * 0.75;
     const gapPct = cellFraction * 0.25;
 
-    history.forEach((sev, idx) => {
+    history.forEach((point, idx) => {
+        // Retrocompatibile: supporta sia intero (vecchio) che oggetto (nuovo)
+        const sev = typeof point === "object" ? point.s : point;
         const xPct = idx * cellFraction + gapPct / 2;
 
         const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -221,7 +223,14 @@ function buildHistorySvg(history) {
         const timeStr = pointDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
         const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-        title.textContent = labels[sev] + " — " + dateStr + " " + timeStr;
+        let tooltipText = labels[sev] + " — " + dateStr + " " + timeStr;
+        // Se mismatch e abbiamo dati per-sonda, mostra quali sono DOWN
+        if (sev === 1 && typeof point === "object" && point.k1 != null) {
+            const probeNames = { k1: "Aruba", k2: "TIM", k3: "ILIAD", n1: "NodePing" };
+            const down = ["k1","k2","k3","n1"].filter(k => point[k] === 0).map(k => probeNames[k]);
+            if (down.length > 0) tooltipText += " (DOWN: " + down.join(", ") + ")";
+        }
+        title.textContent = tooltipText;
         r.appendChild(title);
 
         r.addEventListener("mouseenter", () => { r.style.opacity = "0.7"; });

@@ -75,6 +75,25 @@ struct SettingsView: View {
                     }
                 }
 
+                // MARK: - Sezione Esperienza
+                Section("Esperienza") {
+                    Toggle("Feedback aptico", isOn: $settingsVM.hapticEnabled)
+                        .onChange(of: settingsVM.hapticEnabled) { newValue in
+                            settingsVM.setHapticEnabled(newValue)
+                        }
+                    Text("Vibrazione leggera durante lo scorrimento dei campioni.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Toggle("Badge icona app", isOn: $settingsVM.badgeEnabled)
+                        .onChange(of: settingsVM.badgeEnabled) { newValue in
+                            settingsVM.setBadgeEnabled(newValue)
+                        }
+                    Text("Mostra il numero di risorse con problemi sull'icona dell'app.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
                 // MARK: - Sezione Sicurezza (Task 4.7)
                 Section("Sicurezza") {
                     if deviceSupportsBiometrics {

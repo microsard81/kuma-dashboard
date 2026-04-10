@@ -7,11 +7,14 @@ import UIKit
 // MARK: - SparklineView
 
 struct SparklineView: View {
-    /// Raw history array of severity integers (0 = up, 1 = mismatch, 2 = down).
-    let history: [Int]
+    /// Raw history array of HistoryPoint.
+    let history: [HistoryPoint]
 
     /// Binding to communicate the selected segment to the parent view.
     @Binding var selectedSegment: SparklineSegment?
+
+    /// Whether haptic feedback is enabled during scrubbing.
+    var hapticEnabled: Bool = true
 
     /// History sampling interval in seconds (matches backend worker cycle).
     private let samplingInterval: TimeInterval = 60
@@ -28,10 +31,18 @@ struct SparklineView: View {
     private var segments: [SparklineSegment] {
         let slice = Array(history.suffix(60))
         let now = Date()
-        return slice.enumerated().map { offset, severity in
+        return slice.enumerated().map { offset, point in
             let secsAgo = TimeInterval(slice.count - 1 - offset) * samplingInterval
             let timestamp = now.addingTimeInterval(-secsAgo)
-            return SparklineSegment(id: offset, severity: severity, timestamp: timestamp)
+            return SparklineSegment(
+                id: offset,
+                severity: point.severity,
+                timestamp: timestamp,
+                k1: point.k1,
+                k2: point.k2,
+                k3: point.k3,
+                n1: point.n1
+            )
         }
     }
 
@@ -60,6 +71,10 @@ struct SparklineView: View {
                 // Gesture overlay — UIKit long press that doesn't block scroll
                 ScrubGestureOverlay(
                     onActivated: { location in
+                        if hapticEnabled {
+                            let impact = UIImpactFeedbackGenerator(style: .medium)
+                            impact.impactOccurred()
+                        }
                         withAnimation(.interactiveSpring(response: 0.15, dampingFraction: 0.7)) {
                             isScrubbing = true
                             dragX = location.x
@@ -90,7 +105,12 @@ struct SparklineView: View {
     private func updateSelection(x: CGFloat, cellWidth: CGFloat, count: Int) {
         let idx = indexForLocation(x, cellWidth: cellWidth)
         if idx >= 0, idx < count {
-            selectedSegment = segments[idx]
+            let newSegment = segments[idx]
+            if hapticEnabled, newSegment.id != selectedSegment?.id {
+                let generator = UISelectionFeedbackGenerator()
+                generator.selectionChanged()
+            }
+            selectedSegment = newSegment
         }
     }
 
@@ -206,8 +226,13 @@ private struct ScrubGestureOverlay: UIViewRepresentable {
 struct SparklineView_Previews: PreviewProvider {
     static var previews: some View {
         SparklineView(
-            history: [0, 0, 1, 2, 2, 0, 0, 1, 0, 2, 0, 0, 2, 1, 0],
-            selectedSegment: .constant(nil)
+            history: [
+                HistoryPoint(severity: 0), HistoryPoint(severity: 0),
+                HistoryPoint(severity: 1, k1: 0, k2: 1, k3: 0, n1: 0),
+                HistoryPoint(severity: 2), HistoryPoint(severity: 0),
+            ],
+            selectedSegment: .constant(nil),
+            hapticEnabled: true
         )
         .frame(height: 28)
         .padding()

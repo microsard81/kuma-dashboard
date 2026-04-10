@@ -2,6 +2,7 @@
 // Requisiti: 3.2, 3.3, 3.5, 4.1, 4.2, 4.3, 5.1, 6.1, 6.2, 7.1, 11.1, 11.2
 
 import SwiftUI
+import UserNotifications
 
 // MARK: - DashboardView
 
@@ -23,13 +24,56 @@ struct DashboardView: View {
             VStack(spacing: 0) {
                 if viewModel.isStale { staleBanner }
 
-                List(viewModel.filteredItems) { item in
-                    MonitorRowView(item: item, openURL: openURL)
-                        .listRowBackground(rowBackground(for: item.rowColor))
+                List {
+                    // Sezione DOWN
+                    let downItems = viewModel.filteredItems.filter { $0.rowColor == .red }
+                    if !downItems.isEmpty {
+                        Section {
+                            ForEach(downItems) { item in
+                                MonitorRowView(item: item, openURL: openURL)
+                                    .listRowBackground(rowBackground(for: item.rowColor))
+                            }
+                        } header: {
+                            Label("DOWN", systemImage: "xmark.circle.fill")
+                                .foregroundColor(.red)
+                                .font(.caption.bold())
+                        }
+                    }
+
+                    // Sezione Mismatch
+                    let mismatchItems = viewModel.filteredItems.filter { $0.rowColor == .yellow }
+                    if !mismatchItems.isEmpty {
+                        Section {
+                            ForEach(mismatchItems) { item in
+                                MonitorRowView(item: item, openURL: openURL)
+                                    .listRowBackground(rowBackground(for: item.rowColor))
+                            }
+                        } header: {
+                            Label("Mismatch", systemImage: "exclamationmark.triangle.fill")
+                                .foregroundColor(.yellow)
+                                .font(.caption.bold())
+                        }
+                    }
+
+                    // Sezione UP
+                    let upItems = viewModel.filteredItems.filter { $0.rowColor == .green }
+                    if !upItems.isEmpty {
+                        Section {
+                            ForEach(upItems) { item in
+                                MonitorRowView(item: item, openURL: openURL)
+                                    .listRowBackground(rowBackground(for: item.rowColor))
+                            }
+                        } header: {
+                            Label("UP", systemImage: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.caption.bold())
+                        }
+                    }
                 }
                 .listStyle(.plain)
                 .refreshable { await viewModel.refresh() }
             }
+            .background(Color(hex: "#141c2b").ignoresSafeArea())
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -77,6 +121,16 @@ struct DashboardView: View {
             viewModel.startAutoRefresh()
         }
         .onDisappear { viewModel.stopAutoRefresh() }
+        .onChange(of: viewModel.downCount) { count in
+            if settingsVM.badgeEnabled {
+                UNUserNotificationCenter.current().setBadgeCount(count) { _ in }
+            }
+        }
+        .onChange(of: settingsVM.badgeEnabled) { enabled in
+            if !enabled {
+                UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+            }
+        }
     }
 
     // MARK: - Subviews
@@ -124,6 +178,7 @@ private struct MonitorRowView: View {
     let item: MonitorItem
     let openURL: OpenURLAction
 
+    @EnvironmentObject private var settingsVM: SettingsViewModel
     @State private var selectedSegment: SparklineSegment? = nil
 
     private var selectionLabel: String? {
@@ -140,6 +195,15 @@ private struct MonitorRowView: View {
         default: status = "?"
         }
         return "\(time) · \(status)"
+    }
+
+    /// Durante lo scrubbing su un campione mismatch, restituisce lo stato per-sonda
+    /// dal campione storico. nil se non in scrubbing o se il campione non ha dati per-sonda.
+    private func probeOverride(for probe: KeyPath<SparklineSegment, Int?>) -> ProbeStatus? {
+        guard let seg = selectedSegment,
+              seg.severity == 1, // solo mismatch
+              let val = seg[keyPath: probe] else { return nil }
+        return val == 0 ? .down : .up
     }
 
     var body: some View {
@@ -162,10 +226,10 @@ private struct MonitorRowView: View {
             }
 
             HStack(spacing: 8) {
-                ProbeIndicator(label: "Aruba", status: item.k1)
-                ProbeIndicator(label: "TIM", status: item.k2)
-                ProbeIndicator(label: "ILIAD", status: item.k3)
-                ProbeIndicator(label: "NodePing", status: item.n1)
+                ProbeIndicator(label: "Aruba", status: probeOverride(for: \.k1) ?? item.k1)
+                ProbeIndicator(label: "TIM", status: probeOverride(for: \.k2) ?? item.k2)
+                ProbeIndicator(label: "ILIAD", status: probeOverride(for: \.k3) ?? item.k3)
+                ProbeIndicator(label: "NodePing", status: probeOverride(for: \.n1) ?? item.n1)
                 Spacer()
                 if let label = selectionLabel {
                     Text(label)
@@ -176,7 +240,7 @@ private struct MonitorRowView: View {
             }
             .animation(.easeInOut(duration: 0.12), value: selectedSegment?.id)
 
-            SparklineView(history: item.history, selectedSegment: $selectedSegment)
+            SparklineView(history: item.history, selectedSegment: $selectedSegment, hapticEnabled: settingsVM.hapticEnabled)
                 .frame(height: 28)
         }
         .padding(.vertical, 6)
@@ -194,7 +258,8 @@ private struct ProbeIndicator: View {
             Circle()
                 .fill(status == .up ? Color.green : Color.red)
                 .frame(width: 8, height: 8)
-            Text(label).font(.caption2).foregroundColor(.secondary)
+                .animation(.easeInOut(duration: 0.3), value: status)
+            Text(label).font(.caption).foregroundColor(.secondary)
         }
     }
 }
