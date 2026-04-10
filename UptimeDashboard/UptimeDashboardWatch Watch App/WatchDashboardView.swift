@@ -43,6 +43,13 @@ struct WatchDashboardView: View {
                         .fill(ledColor)
                         .frame(width: 10, height: 10)
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await viewModel.fetchFromAPI() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
             }
         }
     }

@@ -104,9 +104,10 @@ final class WatchDashboardViewModel: NSObject, ObservableObject {
     }
 
     private func loadWatchConfig() -> WatchConfig? {
-        guard let url = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String,
-              let token = Bundle.main.object(forInfoDictionaryKey: "WATCH_API_TOKEN") as? String,
-              !url.isEmpty, !token.isEmpty else { return nil }
+        let url = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String
+        let token = Bundle.main.object(forInfoDictionaryKey: "WATCH_API_TOKEN") as? String
+        print("[Watch] Config — URL: \(url ?? "nil"), Token: \(token != nil ? "present (\(token!.prefix(8))...)" : "nil")")
+        guard let url = url, let token = token, !url.isEmpty, !token.isEmpty else { return nil }
         return WatchConfig(baseURL: url, token: token)
     }
 }
