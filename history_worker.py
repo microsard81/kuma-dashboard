@@ -2,6 +2,7 @@
 
 import time
 import logging
+from datetime import datetime
 
 from config import (
     STATUS_URL,
@@ -30,11 +31,58 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s - %(message)s"
 )
 
+# Mappa nomi sonde per le notifiche
+PROBE_NAMES = {
+    "bg": "Aruba",
+    "tim": "TIM",
+    "iliad": "ILIAD",
+    "nodeping": "NodePing",
+}
+
+
+def _build_detail_body(monitor_details, new_state):
+    """
+    Costruisce il corpo dettagliato della notifica push.
+    monitor_details: lista di dict con chiavi name, bg, tim, iliad, nodeping, severity
+    Convenzione: 0 = DOWN, 1 = UP
+    """
+    now_str = datetime.now().strftime("%H:%M:%S")
+    lines = []
+
+    if new_state == "RED":
+        # Risorse completamente DOWN (severity 2)
+        down_resources = [m for m in monitor_details if m["severity"] == 2]
+        mismatch_resources = [m for m in monitor_details if m["severity"] == 1]
+
+        for m in down_resources:
+            lines.append(f"{m['name']} — DOWN su tutte le sonde")
+
+        for m in mismatch_resources:
+            down_probes = [PROBE_NAMES[k] for k in ("bg", "tim", "iliad", "nodeping") if m[k] == 0]
+            if down_probes:
+                lines.append(f"⚠ {m['name']} — DOWN su {', '.join(down_probes)}")
+
+    elif new_state == "YELLOW":
+        # Solo mismatch
+        mismatch_resources = [m for m in monitor_details if m["severity"] == 1]
+        for m in mismatch_resources:
+            down_probes = [PROBE_NAMES[k] for k in ("bg", "tim", "iliad", "nodeping") if m[k] == 0]
+            if down_probes:
+                lines.append(f"{m['name']} — DOWN su {', '.join(down_probes)}")
+
+    elif new_state == "GREEN":
+        lines.append("Tutte le risorse risultano UP su tutte le sonde.")
+
+    if lines:
+        lines.append(f"Ore {now_str}")
+
+    return "\n".join(lines) if lines else None
+
 
 # ------------------------------------------------------
 # Notifiche push basate su transizioni stato globale
 # ------------------------------------------------------
-def maybe_send_global_push(new_state):
+def maybe_send_global_push(new_state, monitor_details=None):
     previous = get_global_state()
     set_global_state(new_state)
 
@@ -46,23 +94,21 @@ def maybe_send_global_push(new_state):
     if not PUSH_ENABLED:
         return
 
+    details = monitor_details or []
+
     # 🔴 RED – finale DOWN
     if (
         PUSH_NOTIFY_ON.get("final_down", False)
         and previous != "RED"
         and new_state == "RED"
     ):
-        send_push_to_all(
-            "🔴 Servizi DOWN",
-            "Una o più risorse risultano DOWN su una o più sonde.",
-            {"state": "RED"},
-        )
+        title = "🔴 Servizi DOWN"
+        body = _build_detail_body(details, "RED") or "Una o più risorse risultano DOWN."
+        data = {"state": "RED"}
+
+        send_push_to_all(title, body, data)
         try:
-            send_apns_to_all(
-                "🔴 Servizi DOWN",
-                "Una o più risorse risultano DOWN su una o più sonde.",
-                {"state": "RED"},
-            )
+            send_apns_to_all(title, body, data)
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato RED")
 
@@ -72,17 +118,13 @@ def maybe_send_global_push(new_state):
         and previous != "YELLOW"
         and new_state == "YELLOW"
     ):
-        send_push_to_all(
-            "🟡 Incongruenza tra sonde",
-            "Una o più risorse hanno stato diverso tra le sonde.",
-            {"state": "YELLOW"},
-        )
+        title = "🟡 Incongruenza tra sonde"
+        body = _build_detail_body(details, "YELLOW") or "Una o più risorse hanno stato diverso tra le sonde."
+        data = {"state": "YELLOW"}
+
+        send_push_to_all(title, body, data)
         try:
-            send_apns_to_all(
-                "🟡 Incongruenza tra sonde",
-                "Una o più risorse hanno stato diverso tra le sonde.",
-                {"state": "YELLOW"},
-            )
+            send_apns_to_all(title, body, data)
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato YELLOW")
 
@@ -92,17 +134,14 @@ def maybe_send_global_push(new_state):
         and previous in ("RED", "YELLOW")
         and new_state == "GREEN"
     ):
-        send_push_to_all(
-            "🟢 Tutto OK",
-            "Tutte le risorse risultano UP su tutte le sonde.",
-            {"state": "GREEN"},
-        )
+        now_str = datetime.now().strftime("%H:%M:%S")
+        title = "🟢 Tutto OK"
+        body = f"Tutte le risorse risultano UP su tutte le sonde.\nOre {now_str}"
+        data = {"state": "GREEN"}
+
+        send_push_to_all(title, body, data)
         try:
-            send_apns_to_all(
-                "🟢 Tutto OK",
-                "Tutte le risorse risultano UP su tutte le sonde.",
-                {"state": "GREEN"},
-            )
+            send_apns_to_all(title, body, data)
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato GREEN")
 
@@ -119,6 +158,7 @@ def loop_once():
 
     common = sorted(set(m1.keys()) & set(m2.keys()) & set(m3.keys()))
     severities = []
+    monitor_details = []
 
     # Nessun dato → tutto green
     if not statuses:
@@ -127,10 +167,13 @@ def loop_once():
         for name_norm in common:
             save_point(name_norm, 0, k1=0, k2=0, k3=0, n1=0)
             severities.append(0)
+            monitor_details.append({
+                "name": m1[name_norm], "bg": 1, "tim": 1, "iliad": 1, "nodeping": 1, "severity": 0
+            })
             logging.info(f"[ALL-UP] {m1[name_norm]} → sev=0")
 
         new_state = compute_global_state(severities)
-        maybe_send_global_push(new_state)
+        maybe_send_global_push(new_state, monitor_details)
         return
 
     # Processa monitor
@@ -157,13 +200,21 @@ def loop_once():
 
         severity = compute_severity(bg, tim, iliad, nodeping)
         severities.append(severity)
+        monitor_details.append({
+            "name": display_name,
+            "bg": bg,
+            "tim": tim,
+            "iliad": iliad,
+            "nodeping": nodeping,
+            "severity": severity,
+        })
 
         save_point(name_norm, severity, k1=bg, k2=tim, k3=iliad, n1=nodeping)
         logging.info(f"[OK] {display_name} → sev={severity}")
 
     # Calcola stato globale
     new_state = compute_global_state(severities)
-    maybe_send_global_push(new_state)
+    maybe_send_global_push(new_state, monitor_details)
 
 
 # ------------------------------------------------------

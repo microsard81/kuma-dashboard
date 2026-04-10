@@ -11,6 +11,7 @@ enum AuthState: Equatable {
     case idle
     case requires2FA
     case requiresTOTPSetup(secret: String, uri: String)
+    case requiresPasswordChange
     case authenticated
     case unauthenticated
 }
@@ -116,6 +117,8 @@ final class AuthViewModel: ObservableObject {
                     try? keychain.save(token: trimmedPass, forKey: "saved_password")
                 }
                 state = .requiresTOTPSetup(secret: secret, uri: uri)
+            case .requiresPasswordChange:
+                state = .requiresPasswordChange
             case .success:
                 if rememberMe {
                     try? keychain.save(token: trimmedUser, forKey: "saved_username")
@@ -125,6 +128,35 @@ final class AuthViewModel: ObservableObject {
             }
         } catch NetworkError.unauthorized {
             errorMessage = "Credenziali non valide"
+        } catch {
+            errorMessage = "Errore di connessione"
+        }
+    }
+
+    // MARK: - changePassword
+
+    /// Changes the password when forced by the server.
+    func changePassword(newPassword: String) async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            let result = try await network.changePassword(newPassword: newPassword)
+            switch result {
+            case .requires2FA:
+                state = .requires2FA
+            case .requiresTOTPSetup(let secret, let uri):
+                state = .requiresTOTPSetup(secret: secret, uri: uri)
+            case .requiresPasswordChange:
+                errorMessage = "Errore imprevisto"
+            case .success:
+                state = .authenticated
+            }
+        } catch NetworkError.validationError(let message) {
+            errorMessage = message
+        } catch NetworkError.invalidResponse(statusCode: 400) {
+            errorMessage = "La password non rispetta i requisiti di complessità"
         } catch {
             errorMessage = "Errore di connessione"
         }

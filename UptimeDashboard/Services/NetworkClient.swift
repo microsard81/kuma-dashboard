@@ -8,6 +8,7 @@ enum NetworkError: Error, Equatable {
     case sessionExpired
     case unauthorized
     case invalidResponse(statusCode: Int)
+    case validationError(message: String)
     case decodingError(Error)
     case networkError(Error)
     case insecureURL
@@ -18,6 +19,7 @@ enum NetworkError: Error, Equatable {
         case (.unauthorized, .unauthorized): return true
         case (.insecureURL, .insecureURL): return true
         case (.invalidResponse(let a), .invalidResponse(let b)): return a == b
+        case (.validationError(let a), .validationError(let b)): return a == b
         case (.decodingError, .decodingError): return true
         case (.networkError, .networkError): return true
         default: return false
@@ -29,12 +31,14 @@ enum NetworkError: Error, Equatable {
 enum LoginResult: Equatable {
     case requires2FA
     case requiresTOTPSetup(secret: String, uri: String)
+    case requiresPasswordChange
     case success
 }
 
 // MARK: - Protocol
 protocol NetworkClientProtocol {
     func login(username: String, password: String) async throws -> LoginResult
+    func changePassword(newPassword: String) async throws -> LoginResult
     func verify2FA(code: String) async throws -> Bool
     func enrollTOTP(code: String) async throws -> Bool
     func logout() async throws
@@ -117,6 +121,49 @@ final class NetworkClient: NetworkClientProtocol {
         }
 
         // Decodifica flessibile — "next" può essere presente o meno
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let next = json["next"] as? String {
+            if next == "change_password" {
+                return .requiresPasswordChange
+            }
+            if next == "totp_setup",
+               let secret = json["totp_secret"] as? String,
+               let uri = json["totp_uri"] as? String {
+                return .requiresTOTPSetup(secret: secret, uri: uri)
+            }
+            if next == "2fa" {
+                return .requires2FA
+            }
+        }
+        return .success
+    }
+
+    // MARK: - changePassword
+    func changePassword(newPassword: String) async throws -> LoginResult {
+        let url = baseURL.appendingPathComponent("api/change-password")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["new_password": newPassword])
+
+        let (data, response) = try await performRequest(request, session: session)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse(statusCode: 0)
+        }
+
+        if http.statusCode == 400 {
+            // Estrai il messaggio di errore dal server
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errorMsg = json["error"] as? String {
+                throw NetworkError.validationError(message: errorMsg)
+            }
+            throw NetworkError.invalidResponse(statusCode: 400)
+        }
+        if http.statusCode == 401 { throw NetworkError.unauthorized }
+        guard http.statusCode == 200 else {
+            throw NetworkError.invalidResponse(statusCode: http.statusCode)
+        }
+
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let next = json["next"] as? String {
             if next == "totp_setup",

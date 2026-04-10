@@ -24,6 +24,7 @@
 		B002001B /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B002001C /* SplashView.swift */; };
 		B002001D /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B002001E /* SettingsView.swift */; };
 		B0020030 /* TOTPSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020031 /* TOTPSetupView.swift */; };
+		B0020032 /* ChangePasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020033 /* ChangePasswordView.swift */; };
 		B0040001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0040002 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -48,6 +49,7 @@
 		B002001C /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		B002001E /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B0020031 /* TOTPSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOTPSetupView.swift; sourceTree = "<group>"; };
+		B0020033 /* ChangePasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangePasswordView.swift; sourceTree = "<group>"; };
 		B0040002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -140,6 +142,7 @@
 				B002001C /* SplashView.swift */,
 				B002001E /* SettingsView.swift */,
 				B0020031 /* TOTPSetupView.swift */,
+				B0020033 /* ChangePasswordView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -238,6 +241,7 @@
 				B002001B /* SplashView.swift in Sources */,
 				B002001D /* SettingsView.swift in Sources */,
 				B0020030 /* TOTPSetupView.swift in Sources */,
+				B0020032 /* ChangePasswordView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

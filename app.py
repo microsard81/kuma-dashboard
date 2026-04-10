@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 
 from kuma_client import load_monitors
 from status_client import load_status, process_monitor
-from auth import verify_user, verify_totp, is_totp_enrolled, get_totp_secret, enroll_totp
+from auth import verify_user, verify_totp, is_totp_enrolled, get_totp_secret, enroll_totp, must_change_password, change_password, validate_password_complexity, PasswordValidationError
 from severity import compute_global_state
 from config import (
     FLASK_SECRET_KEY,
@@ -88,8 +88,11 @@ def login():
             session["pending_user"] = username
             session["remember_choice"] = remember
 
+            if must_change_password(username):
+                session["password_change_pending"] = True
+                return redirect(url_for("force_change_password"))
+
             if not is_totp_enrolled(username):
-                # Primo accesso — enrollment TOTP
                 session["totp_setup_pending"] = True
                 return redirect(url_for("totp_setup"))
 
@@ -161,6 +164,40 @@ def totp_setup():
     return render_template("totp_setup.html",
                            totp_secret=totp_secret,
                            totp_uri=totp_uri)
+
+
+@app.route("/change-password", methods=["GET", "POST"])
+def force_change_password():
+    """Cambio password obbligatorio — mostrato dopo il login se il flag è attivo."""
+    if "pending_user" not in session or not session.get("password_change_pending"):
+        return redirect(url_for("login"))
+
+    username = session["pending_user"]
+
+    if request.method == "POST":
+        new_password = request.form.get("new_password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
+        if new_password != confirm_password:
+            return render_template("change_password.html",
+                                   error="Le password non corrispondono.")
+
+        try:
+            change_password(username, new_password)
+        except PasswordValidationError as e:
+            return render_template("change_password.html", error=str(e))
+
+        session.pop("password_change_pending", None)
+
+        # Prosegui con il flusso normale
+        if not is_totp_enrolled(username):
+            session["totp_setup_pending"] = True
+            return redirect(url_for("totp_setup"))
+
+        session["2fa_pending"] = True
+        return redirect(url_for("twofa"))
+
+    return render_template("change_password.html")
 
 
 @app.route("/logout")
@@ -320,6 +357,10 @@ def api_login():
 
     session["pending_user"] = username
 
+    if must_change_password(username):
+        session["password_change_pending"] = True
+        return {"ok": True, "next": "change_password"}, 200
+
     if not is_totp_enrolled(username):
         # Enrollment TOTP pendente
         totp_secret = get_totp_secret(username)
@@ -364,6 +405,39 @@ def api_2fa():
     r.setex(key, 90 * 24 * 3600, "1")
 
     return {"ok": True, "biometric_token": signed_token, "username": username}, 200
+
+
+@app.route("/api/change-password", methods=["POST"])
+def api_change_password():
+    """Cambio password obbligatorio per l'app iOS."""
+    if "pending_user" not in session or not session.get("password_change_pending"):
+        return {"ok": False, "error": "no pending password change"}, 401
+
+    data = request.get_json(silent=True) or {}
+    new_password = data.get("new_password", "").strip()
+
+    username = session["pending_user"]
+
+    try:
+        change_password(username, new_password)
+    except PasswordValidationError as e:
+        return {"ok": False, "error": str(e)}, 400
+
+    session.pop("password_change_pending", None)
+
+    # Determina il prossimo step
+    if not is_totp_enrolled(username):
+        totp_secret = get_totp_secret(username)
+        import pyotp
+        totp_uri = pyotp.TOTP(totp_secret).provisioning_uri(
+            name=username,
+            issuer_name="INVA Dashboard"
+        )
+        session["totp_setup_pending"] = True
+        return {"ok": True, "next": "totp_setup", "totp_secret": totp_secret, "totp_uri": totp_uri}, 200
+
+    session["2fa_pending"] = True
+    return {"ok": True, "next": "2fa"}, 200
 
 
 @app.route("/api/totp/enroll", methods=["POST"])

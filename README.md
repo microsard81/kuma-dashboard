@@ -40,6 +40,43 @@ Sistema di monitoraggio uptime multi-sonda con dashboard web (PWA) e app iOS nat
 - Redis 6+
 - Virtualenv
 
+### Installazione prerequisiti
+
+**RHEL / CentOS / Rocky / AlmaLinux:**
+
+```bash
+# Python 3.11 e pip
+sudo dnf install python3.11 python3.11-pip python3.11-devel
+
+# Redis
+sudo dnf install redis
+sudo systemctl enable --now redis
+
+# Virtualenv
+pip3.11 install virtualenv
+```
+
+**Debian / Ubuntu:**
+
+```bash
+# Python 3.11 e pip
+sudo apt update
+sudo apt install python3.11 python3.11-venv python3.11-dev python3-pip
+
+# Redis
+sudo apt install redis-server
+sudo systemctl enable --now redis-server
+
+# Virtualenv (incluso in python3.11-venv)
+```
+
+**Verifica:**
+
+```bash
+python3.11 --version   # Python 3.11.x
+redis-cli ping          # PONG
+```
+
 ### Setup
 
 ```bash
@@ -67,8 +104,9 @@ Copia `.env.example` in `.env` e compila tutti i campi:
 | `PUSH_VAPID_PUBLIC_KEY` | ✅ | Chiave pubblica VAPID per Web Push |
 | `PUSH_VAPID_PRIVATE_KEY` | ✅ | Chiave privata VAPID per Web Push |
 | `PUSH_VAPID_EMAIL` | ✅ | Email per i VAPID claims |
-| `AUTH_PASSWORD_HASH` | ✅ | Hash bcrypt della password (generato con `werkzeug`) |
-| `AUTH_TOTP_SECRET` | ✅ | Segreto TOTP base32 per il 2FA |
+| `AUTH_PASSWORD_HASH` | — | (Legacy) Hash password utente singolo — migrato in Redis al primo avvio |
+| `AUTH_TOTP_SECRET` | — | (Legacy) Segreto TOTP utente singolo — migrato in Redis al primo avvio |
+| `AUTH_LEGACY_USERNAME` | — | Username per la migrazione legacy (default: `itcarmat`) |
 | `APNS_KEY_ID` | ⚠️ | Key ID della chiave `.p8` Apple (per notifiche iOS) |
 | `APNS_TEAM_ID` | ⚠️ | Team ID Apple Developer |
 | `APNS_BUNDLE_ID` | ⚠️ | Bundle ID dell'app iOS |
@@ -80,17 +118,7 @@ Copia `.env.example` in `.env` e compila tutti i campi:
 
 > ⚠️ Le variabili APNs sono opzionali se non si usa l'app iOS nativa. Se assenti, le notifiche APNs vengono silenziosamente saltate.
 
-**Generare `AUTH_PASSWORD_HASH`:**
-```python
-from werkzeug.security import generate_password_hash
-print(generate_password_hash("la-tua-password"))
-```
-
-**Generare `AUTH_TOTP_SECRET`:**
-```python
-import pyotp
-print(pyotp.random_base32())
-```
+> Gli utenti sono ora gestiti in Redis tramite `manage_users.py`. Le variabili `AUTH_PASSWORD_HASH` e `AUTH_TOTP_SECRET` servono solo per la migrazione automatica dell'utente legacy al primo avvio. Possono essere rimosse dal `.env` dopo la migrazione.
 
 ### Avvio
 
@@ -110,7 +138,7 @@ python history_worker.py
 
 ```
 app.py                  # Flask app — routing, autenticazione, API
-auth.py                 # Verifica password e TOTP
+auth.py                 # Autenticazione multi-utente con Redis
 config.py               # Configurazione da variabili d'ambiente
 history_worker.py       # Worker che aggiorna lo storico Redis e invia push
 kuma_client.py          # Client per le API di Uptime Kuma
@@ -119,12 +147,11 @@ push_utils.py           # Web Push VAPID (browser/PWA)
 apns_utils.py           # APNs push (app iOS nativa)
 redis_history.py        # Lettura/scrittura storico e stato globale su Redis
 severity.py             # Calcolo severità e stato globale
+manage_users.py         # CLI gestione utenti (add, remove, list, reset)
 wsgi.py                 # Entry point WSGI per produzione
-send_test_push.py       # Invio manuale notifica Web Push di test
-test_push.py            # Debug Web Push con log dettagliato per endpoint
 keys/                   # Chiavi .p8 APNs (non committare, solo deploy)
 static/                 # Asset PWA (CSS, JS, immagini, manifest.json)
-templates/              # Template Jinja2 (login.html, 2fa.html, dashboard.html)
+templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, change_password)
 ```
 
 ### API endpoints
@@ -133,13 +160,20 @@ templates/              # Template Jinja2 (login.html, 2fa.html, dashboard.html)
 |---|---|---|---|
 | `GET/POST` | `/login` | — | Login con username/password |
 | `GET/POST` | `/2fa` | — | Verifica codice TOTP |
+| `GET/POST` | `/change-password` | — | Cambio password obbligatorio (primo accesso / reset) |
+| `GET/POST` | `/totp-setup` | — | Enrollment TOTP con QR code (primo accesso / reset) |
 | `GET` | `/logout` | ✅ | Logout |
 | `GET` | `/` | ✅ | Dashboard web |
 | `GET` | `/api/dashboard-data` | ✅ | Dati dashboard in JSON |
+| `POST` | `/api/login` | — | Login JSON (app iOS) |
+| `POST` | `/api/2fa` | — | Verifica 2FA JSON (app iOS) |
+| `POST` | `/api/change-password` | — | Cambio password JSON (app iOS) |
+| `POST` | `/api/totp/enroll` | — | Enrollment TOTP JSON (app iOS) |
 | `POST` | `/push/subscribe` | ✅ | Registra subscription Web Push (VAPID) |
 | `POST` | `/push/unsubscribe` | ✅ | Rimuove subscription Web Push |
 | `POST` | `/push/apns/subscribe` | ✅ | Registra device token APNs (iOS) |
 | `POST` | `/push/apns/unsubscribe` | ✅ | Rimuove device token APNs (iOS) |
+| `POST` | `/auth/biometric/login` | — | Login con token biometrico (Face ID / Touch ID) |
 
 **Formato risposta `/api/dashboard-data`:**
 ```json
@@ -153,7 +187,11 @@ templates/              # Template Jinja2 (login.html, 2fa.html, dashboard.html)
       "n1": "UP",
       "final": "UP",
       "severity": 1,
-      "history": [0, 0, 1, 2, 0],
+      "history": [
+        {"s": 0, "k1": 1, "k2": 1, "k3": 1, "n1": 1},
+        {"s": 1, "k1": 1, "k2": 0, "k3": 1, "n1": 1},
+        {"s": 0, "k1": 1, "k2": 1, "k3": 1, "n1": 1}
+      ],
       "link": "https://example.com"
     }
   ],
@@ -161,6 +199,8 @@ templates/              # Template Jinja2 (login.html, 2fa.html, dashboard.html)
   "timestamp": "2024-01-15T10:30:00"
 }
 ```
+
+> Lo storico usa la convenzione `0 = DOWN, 1 = UP` per ogni sonda. I punti vecchi (pre-migrazione) possono apparire come semplici interi.
 
 ### Redis — schema chiavi
 
@@ -170,7 +210,7 @@ templates/              # Template Jinja2 (login.html, 2fa.html, dashboard.html)
 | `global_state` | String | Stato globale corrente (`GREEN`/`YELLOW`/`RED`) |
 | `push:subs_by_endpoint` | Hash | Subscription Web Push VAPID |
 | `apns:subs_by_token` | Hash | Device token APNs iOS |
-| `user:<username>` | Hash | Credenziali utente (`password_hash`, `totp_secret`) |
+| `user:<username>` | Hash | Credenziali utente (`password_hash`, `totp_secret`, `totp_enrolled`, `must_change_password`, `password_history`) |
 | `biometric:<username>:<token>` | String | Token biometrico con TTL 90 giorni |
 
 ### Gestione utenti
@@ -180,23 +220,35 @@ Gli utenti sono salvati in Redis. Usa lo script CLI per gestirli:
 ```bash
 source /home/venvs/kuma-dashboard/bin/activate
 
-# Aggiungi un utente (chiede password interattivamente, genera TOTP)
+# Aggiungi un utente (chiede password interattivamente)
 python manage_users.py add <username>
 
 # Lista utenti
 python manage_users.py list
 
-# Reset password
+# Reset password (obbliga il cambio al prossimo login)
 python manage_users.py reset-password <username>
 
-# Reset TOTP (genera nuovo secret)
+# Reset TOTP (obbliga la riconfigurazione 2FA al prossimo login)
 python manage_users.py reset-totp <username>
 
 # Rimuovi utente
 python manage_users.py remove <username>
 ```
 
-> Al primo avvio, se le variabili `AUTH_PASSWORD_HASH` e `AUTH_TOTP_SECRET` sono presenti in `.env`, l'utente legacy viene migrato automaticamente in Redis.
+**Flusso primo accesso di un nuovo utente:**
+1. L'admin crea l'utente con `manage_users.py add`
+2. L'admin comunica username e password temporanea all'utente
+3. Al primo login, l'utente è obbligato a cambiare la password
+4. Dopo il cambio password, viene mostrata la schermata di setup 2FA con QR code
+5. L'utente scansiona il QR con la sua app authenticator e verifica il codice
+6. Dai login successivi: username + password + codice TOTP
+
+> Il TOTP secret non viene mai mostrato nel terminale dell'admin — è visibile solo all'utente durante l'enrollment in-app/PWA.
+
+> Requisiti password: almeno 8 caratteri, una maiuscola, una minuscola, un numero e un carattere speciale. Le ultime 5 password non possono essere riutilizzate (il reset da CLI azzera lo storico).
+
+> Al primo avvio, se le variabili `AUTH_PASSWORD_HASH` e `AUTH_TOTP_SECRET` sono presenti in `.env`, l'utente legacy viene migrato automaticamente in Redis come già enrolled.
 
 ### Test backend
 
@@ -256,11 +308,13 @@ UptimeDashboard/
 ├── Views/
 │   ├── SplashView.swift            # Splash screen animata all'avvio
 │   ├── LoginView.swift             # Form login con "Ricordami"
+│   ├── ChangePasswordView.swift    # Cambio password obbligatorio (primo accesso / reset)
+│   ├── TOTPSetupView.swift         # Enrollment TOTP con QR code
 │   ├── TwoFAView.swift             # Input TOTP con autocompletamento SMS
 │   ├── BiometricGateView.swift     # Gate Face ID / Touch ID per sessioni salvate
-│   ├── DashboardView.swift         # Lista monitor, LED, badge, filtro DOWN
+│   ├── DashboardView.swift         # Lista monitor, LED, badge, filtro DOWN, raggruppamento per stato
 │   ├── SettingsView.swift          # Menu impostazioni (tema, ordinamento, refresh, notifiche, biometria, info)
-│   └── SparklineView.swift         # Barre colorate con gesture di scorrimento
+│   └── SparklineView.swift         # Barre colorate con effetto fisheye e haptic feedback
 ├── Services/
 │   ├── NetworkClient.swift         # URLSession, cookie Flask, tutti gli endpoint
 │   ├── KeychainStore.swift         # Archiviazione sicura session token
@@ -284,15 +338,18 @@ UptimeDashboardTests/
 
 - **Splash screen** — schermata animata all'avvio con logo
 - **Autenticazione** — login username/password + TOTP 2FA, "Ricordami" con session token nel Keychain
+- **Cambio password obbligatorio** — al primo accesso o dopo reset da parte dell'admin
+- **Enrollment TOTP** — configurazione 2FA con QR code al primo accesso o dopo reset
 - **Biometria** — accesso rapido con Face ID / Touch ID quando c'è una sessione salvata nel Keychain
-- **Dashboard** — lista monitor con stato per sonda (k1/k2/k3/n1), colore riga, sparkline storico
-- **Auto-refresh** — aggiornamento automatico ogni 10 secondi in foreground
-- **Filtro DOWN** — toggle per mostrare solo i monitor in stato DOWN
+- **Dashboard** — lista monitor con stato per sonda, colore riga, sparkline storico, raggruppamento per stato (DOWN/Mismatch/UP)
+- **Auto-refresh** — aggiornamento automatico configurabile (default 60s)
+- **Filtro DOWN** — toggle per mostrare solo i monitor in stato DOWN o mismatch
 - **LED globale** — indicatore colorato nella navbar che riflette lo stato globale
-- **Sparkline** — barre colorate (verde/giallo/rosso) con gesture di scorrimento per esplorare lo storico; orario e stato del campione mostrati nella riga delle sonde
-- **Notifiche push** — notifiche native APNs al cambio di stato globale
-- **Impostazioni** — menu dedicato con: tema (chiaro/scuro/auto), ordinamento monitor (gravità/alfabetico/stato globale), intervallo auto-refresh (10s/30s/60s/disabilitato), toggle notifiche push, toggle biometria (Face ID/Touch ID), info app con stato connessione backend
-- **Tema** — chiaro / scuro / automatico (segue iOS), persistito tra i riavvii
+- **Sparkline** — barre colorate con effetto fisheye (stile Dock macOS) e haptic feedback durante lo scrubbing; orario e stato del campione mostrati nella riga delle sonde; dettaglio per-sonda su campioni mismatch
+- **Badge icona app** — numero di risorse con problemi mostrato sull'icona dell'app (disattivabile)
+- **Notifiche push** — notifiche native APNs al cambio di stato globale con dettaglio risorse e sonde
+- **Impostazioni** — tema (dark default/chiaro/auto), ordinamento, intervallo auto-refresh, notifiche, biometria, haptic feedback, badge, info app
+- **Tema dark** — sfondo #141c2b (come splash screen), default all'installazione
 - **Logout** — con conferma, elimina il token dal Keychain
 
 ### Test iOS
@@ -342,20 +399,33 @@ Il sistema supporta due canali di notifica paralleli:
 - JWT firmato con ES256, richieste HTTP/2 ad `api.push.apple.com`
 - Token non validi (410 / `BadDeviceToken`) rimossi automaticamente
 
-Le notifiche vengono inviate da `history_worker.py` alle transizioni di stato:
-- 🔴 `GREEN → RED` — "Servizi DOWN"
-- 🟡 `* → YELLOW` — "Incongruenza tra sonde"
-- 🟢 `RED/YELLOW → GREEN` — "Tutto OK"
+Le notifiche vengono inviate da `history_worker.py` alle transizioni di stato, con dettaglio delle risorse coinvolte:
+
+- 🔴 `GREEN → RED` — "Servizi DOWN" + elenco risorse DOWN con sonde specifiche e orario
+- 🟡 `* → YELLOW` — "Incongruenza tra sonde" + elenco risorse in mismatch con sonde DOWN e orario
+- 🟢 `RED/YELLOW → GREEN` — "Tutto OK" + conferma ripristino con orario
+
+Esempio notifica mismatch:
+```
+🟡 Incongruenza tra sonde
+INVA - www.regione.vda.it — DOWN su NodePing
+Ore 14:32:15
+```
 
 ---
 
 ## Sicurezza
 
 - Sessioni Flask con cookie `HttpOnly`, `Secure`, `SameSite=Lax`
-- Password hashata con bcrypt (werkzeug)
-- 2FA TOTP obbligatorio
+- Password hashata con bcrypt (werkzeug), salvata in Redis
+- Cambio password obbligatorio al primo accesso e dopo reset
+- Validazione complessità password: minimo 8 caratteri, maiuscola, minuscola, numero, carattere speciale
+- Storico ultime 5 password: l'utente non può riutilizzarle (azzerato solo da reset admin)
+- 2FA TOTP obbligatorio con enrollment in-app (QR code mai esposto all'admin)
+- Autenticazione multi-utente con credenziali in Redis (namespace `user:`)
+- Token biometrici firmati con HMAC-SHA256, salvati in Redis con TTL 90 giorni
 - Session token iOS conservato nel Keychain con `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
 - Comunicazione backend esclusivamente via HTTPS (validata lato app)
 - Credenziali e token mai scritti nei log
-- Namespace Redis separati per VAPID (`push:`) e APNs (`apns:`)
-- Endpoint APNs protetti da `@login_required`
+- Namespace Redis separati per VAPID (`push:`), APNs (`apns:`), utenti (`user:`), biometria (`biometric:`)
+- Endpoint protetti da `@login_required`

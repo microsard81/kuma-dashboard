@@ -30,6 +30,8 @@ final class MockNetworkClient: NetworkClientProtocol {
 
     func enrollTOTP(code: String) async throws -> Bool { true }
 
+    func changePassword(newPassword: String) async throws -> LoginResult { .success }
+
     func logout() async throws {
         logoutCallCount += 1
         if let error = logoutError { throw error }

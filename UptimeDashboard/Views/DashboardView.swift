@@ -25,8 +25,11 @@ struct DashboardView: View {
                 if viewModel.isStale { staleBanner }
 
                 List {
-                    // Sezione DOWN
                     let downItems = viewModel.filteredItems.filter { $0.rowColor == .red }
+                    let mismatchItems = viewModel.filteredItems.filter { $0.rowColor == .yellow }
+                    let upItems = viewModel.filteredItems.filter { $0.rowColor == .green }
+                    let allUp = downItems.isEmpty && mismatchItems.isEmpty
+
                     if !downItems.isEmpty {
                         Section {
                             ForEach(downItems) { item in
@@ -40,8 +43,6 @@ struct DashboardView: View {
                         }
                     }
 
-                    // Sezione Mismatch
-                    let mismatchItems = viewModel.filteredItems.filter { $0.rowColor == .yellow }
                     if !mismatchItems.isEmpty {
                         Section {
                             ForEach(mismatchItems) { item in
@@ -55,18 +56,24 @@ struct DashboardView: View {
                         }
                     }
 
-                    // Sezione UP
-                    let upItems = viewModel.filteredItems.filter { $0.rowColor == .green }
                     if !upItems.isEmpty {
-                        Section {
+                        if allUp {
+                            // Tutto UP — lista piatta senza header
                             ForEach(upItems) { item in
                                 MonitorRowView(item: item, openURL: openURL)
                                     .listRowBackground(rowBackground(for: item.rowColor))
                             }
-                        } header: {
-                            Label("UP", systemImage: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                                .font(.caption.bold())
+                        } else {
+                            Section {
+                                ForEach(upItems) { item in
+                                    MonitorRowView(item: item, openURL: openURL)
+                                        .listRowBackground(rowBackground(for: item.rowColor))
+                                }
+                            } header: {
+                                Label("UP", systemImage: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                    .font(.caption.bold())
+                            }
                         }
                     }
                 }
