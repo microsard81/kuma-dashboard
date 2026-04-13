@@ -586,3 +586,21 @@ def api_watch_data():
     return jsonify(
         {"items": rows, "global_state": global_state, "timestamp": datetime.now().isoformat()}
     )
+
+
+@app.route("/api/mac/apns/subscribe", methods=["POST"])
+def api_mac_apns_subscribe():
+    """Registra device token APNs dal Mac. Autenticato con token API."""
+    token = request.headers.get("X-Watch-Token", "")
+    if not WATCH_API_TOKEN or not hmac.compare_digest(token, WATCH_API_TOKEN):
+        return {"ok": False, "error": "unauthorized"}, 401
+
+    data = request.get_json(silent=True) or {}
+    device_token = data.get("device_token")
+    if not device_token:
+        return {"ok": False, "error": "missing device_token"}, 400
+
+    device_id = data.get("device_id", "")
+    environment = data.get("environment", "production")
+    add_apns_subscription(device_token, device_id, environment)
+    return {"ok": True}, 201
