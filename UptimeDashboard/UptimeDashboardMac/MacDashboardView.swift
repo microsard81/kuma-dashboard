@@ -202,6 +202,22 @@ private struct MacMonitorRow: View {
     @Environment(\.openURL) var openURL
     @Environment(\.textScale) var scale
     @State private var selectionLabel: String? = nil
+    @State private var hoveredSegment: MacSparklineSegment? = nil
+
+    /// Override sonda durante hover su mismatch
+    private func probeOverride(k1: Int?, k2: Int?, k3: Int?, n1: Int?, probe: String) -> String? {
+        guard let seg = hoveredSegment, seg.severity == 1 else { return nil }
+        let val: Int?
+        switch probe {
+        case "k1": val = seg.k1
+        case "k2": val = seg.k2
+        case "k3": val = seg.k3
+        case "n1": val = seg.n1
+        default: val = nil
+        }
+        guard let v = val else { return nil }
+        return v == 0 ? "DOWN" : "UP"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -225,10 +241,10 @@ private struct MacMonitorRow: View {
             }
 
             HStack(spacing: 10) {
-                ProbeIndicator(label: "Aruba", status: monitor.k1)
-                ProbeIndicator(label: "TIM", status: monitor.k2)
-                ProbeIndicator(label: "ILIAD", status: monitor.k3)
-                ProbeIndicator(label: "NodePing", status: monitor.n1)
+                ProbeIndicator(label: "Aruba", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "k1") ?? monitor.k1)
+                ProbeIndicator(label: "TIM", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "k2") ?? monitor.k2)
+                ProbeIndicator(label: "ILIAD", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "k3") ?? monitor.k3)
+                ProbeIndicator(label: "NodePing", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "n1") ?? monitor.n1)
                 Spacer()
                 if let label = selectionLabel {
                     Text(label)
@@ -239,7 +255,7 @@ private struct MacMonitorRow: View {
             }
             .animation(.easeInOut(duration: 0.12), value: selectionLabel)
 
-            MacSparklineView(history: monitor.history, selectionLabel: $selectionLabel)
+            MacSparklineView(history: monitor.history, selectionLabel: $selectionLabel, hoveredSegment: $hoveredSegment)
                 .frame(height: 28)
         }
         .padding(.horizontal, 16)
@@ -277,6 +293,7 @@ private struct ProbeIndicator: View {
 private struct MacSparklineView: View {
     let history: [[String: Any]]
     @Binding var selectionLabel: String?
+    @Binding var hoveredSegment: MacSparklineSegment?
 
     private let samplingInterval: TimeInterval = 60
 
@@ -315,6 +332,7 @@ private struct MacSparklineView: View {
                     let idx = Int(location.x / cellWidth)
                     if idx >= 0, idx < count {
                         let seg = segments[idx]
+                        hoveredSegment = seg
                         let formatter = DateFormatter()
                         formatter.locale = Locale(identifier: "it-IT")
                         formatter.dateFormat = "HH:mm:ss"
@@ -331,6 +349,7 @@ private struct MacSparklineView: View {
                 case .ended:
                     hoverX = nil
                     selectionLabel = nil
+                    hoveredSegment = nil
                 }
             }
         }

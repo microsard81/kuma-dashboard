@@ -138,6 +138,13 @@
 			);
 			target = 8119B5D02F8CD47E00D887AC /* UptimeDashboardWidgetExtension */;
 		};
+		812ACD132F8D362D00F57706 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 819D22D92F8D01A7006BDA8D /* UptimeDashboardMac */;
+		};
 		81925FF62F89477E00FDC6C5 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -157,7 +164,7 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		8119B5D72F8CD47E00D887AC /* UptimeDashboardWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (8119B5E72F8CD47F00D887AC /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = UptimeDashboardWidget; sourceTree = "<group>"; };
 		816E9C612F893486004F93EF /* UptimeDashboardWatch Watch App */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (81925FF62F89477E00FDC6C5 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = "UptimeDashboardWatch Watch App"; sourceTree = "<group>"; };
-		819D22DB2F8D01A7006BDA8D /* UptimeDashboardMac */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = UptimeDashboardMac; sourceTree = "<group>"; };
+		819D22DB2F8D01A7006BDA8D /* UptimeDashboardMac */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (812ACD132F8D362D00F57706 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = UptimeDashboardMac; sourceTree = "<group>"; };
 		81CFDD0D2F8D0816004F2EA8 /* UptimeDashboardMacWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (81CFDD1A2F8D0818004F2EA8 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = UptimeDashboardMacWidget; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
@@ -761,6 +768,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = UptimeDashboardMac/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Dashboard INVA MAC";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -772,7 +780,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = cloud.sundata.UptimeDashboardMac;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Dashboard INVA MAC";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -811,6 +819,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = UptimeDashboardMac/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Dashboard INVA MAC";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -823,7 +832,7 @@
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = cloud.sundata.UptimeDashboardMac;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Dashboard INVA MAC";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
