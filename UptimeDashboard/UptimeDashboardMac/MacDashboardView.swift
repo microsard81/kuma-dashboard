@@ -31,7 +31,15 @@ struct MacDashboardView: View {
     @State private var showOnlyProblems = false
 
     private var filteredMonitors: [MacMonitor] {
-        let sorted = viewModel.monitors.sorted { rank($0) > rank($1) }
+        var sorted: [MacMonitor]
+        switch viewModel.sortOrder {
+        case "alphabetical":
+            sorted = viewModel.monitors.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case "globalState":
+            sorted = viewModel.monitors.sorted { globalRank($0) > globalRank($1) }
+        default: // severity
+            sorted = viewModel.monitors.sorted { rank($0) > rank($1) }
+        }
         if showOnlyProblems {
             return sorted.filter { $0.isDown || $0.isMismatch }
         }
@@ -153,6 +161,13 @@ struct MacDashboardView: View {
     }
 
     private func rank(_ m: MacMonitor) -> Int {
+        if m.isDown { return 2 }
+        if m.isMismatch { return 1 }
+        return 0
+    }
+
+    private func globalRank(_ m: MacMonitor) -> Int {
+        // red > yellow > green
         if m.isDown { return 2 }
         if m.isMismatch { return 1 }
         return 0

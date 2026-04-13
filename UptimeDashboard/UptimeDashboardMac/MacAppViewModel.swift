@@ -49,6 +49,9 @@ final class MacAppViewModel: ObservableObject {
     // Preferenze
     @Published var themeMode: String
     @Published var textScale: Double
+    @Published var refreshInterval: Int  // secondi, 0 = disabilitato
+    @Published var sortOrder: String     // "severity", "alphabetical", "globalState"
+    @Published var badgeEnabled: Bool
 
     func setTheme(_ mode: String) {
         themeMode = mode
@@ -58,6 +61,25 @@ final class MacAppViewModel: ObservableObject {
     func setTextScale(_ scale: Double) {
         textScale = scale
         defaults.set(scale, forKey: "mac_text_scale")
+    }
+
+    func setRefreshInterval(_ interval: Int) {
+        refreshInterval = interval
+        defaults.set(interval, forKey: "mac_refresh_interval")
+        restartAutoRefresh()
+    }
+
+    func setSortOrder(_ order: String) {
+        sortOrder = order
+        defaults.set(order, forKey: "mac_sort_order")
+    }
+
+    func setBadgeEnabled(_ enabled: Bool) {
+        badgeEnabled = enabled
+        defaults.set(enabled, forKey: "mac_badge_enabled")
+        if !enabled {
+            NSApplication.shared.dockTile.badgeLabel = nil
+        }
     }
 
     private var refreshTimer: Timer?
@@ -71,6 +93,9 @@ final class MacAppViewModel: ObservableObject {
         self.baseURL = "https://kuma-dashboard.sundata.cloud"
         self.themeMode = defaults.string(forKey: "mac_theme") ?? "dark"
         self.textScale = defaults.double(forKey: "mac_text_scale").nonZero ?? 1.0
+        self.refreshInterval = defaults.object(forKey: "mac_refresh_interval") as? Int ?? 60
+        self.sortOrder = defaults.string(forKey: "mac_sort_order") ?? "severity"
+        self.badgeEnabled = defaults.object(forKey: "mac_badge_enabled") as? Bool ?? true
 
         // Ripristina sessione se "Ricordami" era attivo
         if defaults.bool(forKey: "mac_remember_me"),
@@ -273,6 +298,7 @@ final class MacAppViewModel: ObservableObject {
             }
             globalState = json["global_state"] as? String ?? "GREEN"
             lastUpdated = Date()
+            updateBadge()
         } catch {
             // Silently fail
         }
@@ -283,7 +309,8 @@ final class MacAppViewModel: ObservableObject {
     func startAutoRefresh() {
         stopAutoRefresh()
         Task { await fetchDashboard() }
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        guard refreshInterval > 0 else { return }
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(refreshInterval), repeats: true) { [weak self] _ in
             Task { await self?.fetchDashboard() }
         }
     }
@@ -291,6 +318,20 @@ final class MacAppViewModel: ObservableObject {
     func stopAutoRefresh() {
         refreshTimer?.invalidate()
         refreshTimer = nil
+    }
+
+    private func restartAutoRefresh() {
+        guard authState == .authenticated else { return }
+        startAutoRefresh()
+    }
+
+    private func updateBadge() {
+        let count = monitors.filter { $0.isDown || $0.isMismatch }.count
+        if badgeEnabled && count > 0 {
+            NSApplication.shared.dockTile.badgeLabel = "\(count)"
+        } else {
+            NSApplication.shared.dockTile.badgeLabel = nil
+        }
     }
 
     // MARK: - Logout
