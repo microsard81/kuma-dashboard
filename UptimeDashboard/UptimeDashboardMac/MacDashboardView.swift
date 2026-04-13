@@ -184,6 +184,7 @@ private struct SectionHeader: View {
 private struct MacMonitorRow: View {
     let monitor: MacMonitor
     @Environment(\.openURL) var openURL
+    @State private var selectionLabel: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -212,11 +213,17 @@ private struct MacMonitorRow: View {
                 ProbeIndicator(label: "ILIAD", status: monitor.k3)
                 ProbeIndicator(label: "NodePing", status: monitor.n1)
                 Spacer()
+                if let label = selectionLabel {
+                    Text(label)
+                        .font(.caption2.bold())
+                        .foregroundColor(.secondary)
+                        .transition(.opacity)
+                }
             }
+            .animation(.easeInOut(duration: 0.12), value: selectionLabel)
 
-            // Sparkline
-            MacSparklineView(history: monitor.history)
-                .frame(height: 24)
+            MacSparklineView(history: monitor.history, selectionLabel: $selectionLabel)
+                .frame(height: 28)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -247,27 +254,102 @@ private struct ProbeIndicator: View {
     }
 }
 
-// MARK: - Sparkline (semplificata per macOS, senza gesture)
+// MARK: - Sparkline con effetto fisheye e tooltip (macOS)
 
 private struct MacSparklineView: View {
     let history: [[String: Any]]
+    @Binding var selectionLabel: String?
+
+    private let maxScale: CGFloat = 2.2
+    private let spread: CGFloat = 3.0
+    private let samplingInterval: TimeInterval = 60
+
+    @State private var hoverX: CGFloat? = nil
+
+    private var segments: [MacSparklineSegment] {
+        let pts = points
+        let now = Date()
+        return pts.enumerated().map { offset, point in
+            let secsAgo = TimeInterval(pts.count - 1 - offset) * samplingInterval
+            let timestamp = now.addingTimeInterval(-secsAgo)
+            return MacSparklineSegment(id: offset, severity: point.severity,
+                                        k1: point.k1, k2: point.k2, k3: point.k3, n1: point.n1,
+                                        timestamp: timestamp)
+        }
+    }
 
     var body: some View {
         GeometryReader { geo in
-            HStack(spacing: 1) {
-                ForEach(Array(points.enumerated()), id: \.offset) { _, severity in
+            let count = segments.count
+            let bw = barWidth(totalWidth: geo.size.width, count: count)
+            let cellWidth = bw + 1.0
+
+            HStack(alignment: .bottom, spacing: 1) {
+                ForEach(segments) { seg in
+                    let scale = scaleFor(index: seg.id, cellWidth: cellWidth)
                     Rectangle()
-                        .fill(colorFor(severity))
-                        .frame(width: barWidth(totalWidth: geo.size.width))
+                        .fill(colorFor(seg.severity))
+                        .frame(width: bw, height: geo.size.height * scale)
+                }
+            }
+            .frame(maxHeight: .infinity, alignment: .bottom)
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let location):
+                    withAnimation(.interactiveSpring(response: 0.12, dampingFraction: 0.7)) {
+                        hoverX = location.x
+                    }
+                    let idx = Int(location.x / cellWidth)
+                    if idx >= 0, idx < count {
+                        let seg = segments[idx]
+                        let formatter = DateFormatter()
+                        formatter.locale = Locale(identifier: "it-IT")
+                        formatter.dateFormat = "HH:mm:ss"
+                        let time = formatter.string(from: seg.timestamp)
+                        let status: String
+                        switch seg.severity {
+                        case 0: status = "UP"
+                        case 1: status = "Mismatch"
+                        case 2: status = "DOWN"
+                        default: status = "?"
+                        }
+                        selectionLabel = "\(time) · \(status)"
+                    }
+                case .ended:
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.6)) {
+                        hoverX = nil
+                    }
+                    selectionLabel = nil
                 }
             }
         }
     }
 
-    private var points: [Int] {
-        // history può essere [Int] o [[String:Any]] — estraiamo severity
+    private func scaleFor(index: Int, cellWidth: CGFloat) -> CGFloat {
+        guard let x = hoverX else { return 1.0 }
+        let barCenter = CGFloat(index) * cellWidth + cellWidth / 2.0
+        let distance = abs(x - barCenter) / cellWidth
+        let gaussian = exp(-(distance * distance) / (2.0 * spread * spread))
+        return 1.0 + (maxScale - 1.0) * gaussian
+    }
+
+    private struct HistoryPoint {
+        let severity: Int
+        let k1: Int?
+        let k2: Int?
+        let k3: Int?
+        let n1: Int?
+    }
+
+    private var points: [HistoryPoint] {
         history.compactMap { dict in
-            if let s = dict["s"] as? Int { return s }
+            if let s = dict["s"] as? Int {
+                return HistoryPoint(severity: s,
+                                    k1: dict["k1"] as? Int,
+                                    k2: dict["k2"] as? Int,
+                                    k3: dict["k3"] as? Int,
+                                    n1: dict["n1"] as? Int)
+            }
             return nil
         }
     }
@@ -281,9 +363,19 @@ private struct MacSparklineView: View {
         }
     }
 
-    private func barWidth(totalWidth: CGFloat) -> CGFloat {
-        let count = max(points.count, 1)
+    private func barWidth(totalWidth: CGFloat, count: Int) -> CGFloat {
+        guard count > 0 else { return 0 }
         let spacing = CGFloat(count - 1) * 1.0
         return max(1, (totalWidth - spacing) / CGFloat(count))
     }
+}
+
+private struct MacSparklineSegment: Identifiable {
+    let id: Int
+    let severity: Int
+    let k1: Int?
+    let k2: Int?
+    let k3: Int?
+    let n1: Int?
+    let timestamp: Date
 }
