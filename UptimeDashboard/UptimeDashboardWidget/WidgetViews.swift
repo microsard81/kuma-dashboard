@@ -83,68 +83,88 @@ struct SmallWidgetView: View {
     }
 }
 
-// MARK: - Medium Widget: LED + lista problemi
+// MARK: - Medium Widget: come il large ma con meno righe
 
 struct MediumWidgetView: View {
     let entry: DashboardEntry
 
-    private var problemMonitors: [WidgetMonitor] {
-        entry.monitors.filter { !$0.isUp }
-    }
-
     var body: some View {
-        HStack(spacing: 12) {
-            // LED a sinistra
-            VStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
+            // Header
+            HStack {
                 Circle()
                     .fill(ledColor)
-                    .frame(width: 32, height: 32)
-                    .shadow(color: ledColor.opacity(0.6), radius: 6)
-                Text("INVA")
-                    .font(.caption2.bold())
+                    .frame(width: 14, height: 14)
+                    .shadow(color: ledColor.opacity(0.6), radius: 4)
+                Text("INVA Dashboard")
+                    .font(.caption.bold())
                     .foregroundColor(.white)
+                Spacer()
+                if !entry.isPlaceholder {
+                    Text(entry.date, style: .time)
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
             }
-            .frame(width: 60)
+            .padding(.bottom, 2)
 
-            // Lista problemi a destra
-            VStack(alignment: .leading, spacing: 4) {
-                if entry.isPlaceholder {
+            if entry.isPlaceholder {
+                Spacer()
+                HStack {
+                    Spacer()
                     Text("Caricamento...")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                } else if problemMonitors.isEmpty {
-                    Text("Tutto OK")
-                        .font(.caption.bold())
-                        .foregroundColor(.green)
-                    Text("\(entry.monitors.count) servizi UP")
-                        .font(.caption2)
+                    Spacer()
+                }
+                Spacer()
+            } else {
+                ForEach(sortedMonitors.prefix(5)) { monitor in
+                    HStack(spacing: 6) {
+                        Text(shortName(monitor.name))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        ProbeDotsView(monitor: monitor)
+
+                        Text(monitor.finalStatus)
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(statusColor(monitor))
+                            .frame(width: 32)
+                    }
+                    .padding(.vertical, 1)
+                }
+
+                if entry.monitors.count > 5 {
+                    Text("+\(entry.monitors.count - 5) altri servizi")
+                        .font(.system(size: 9))
                         .foregroundColor(.secondary)
-                } else {
-                    ForEach(problemMonitors.prefix(4)) { monitor in
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(monitor.isDown ? Color.red : Color.yellow)
-                                .frame(width: 6, height: 6)
-                            Text(shortName(monitor.name))
-                                .font(.caption2)
-                                .foregroundColor(.white)
-                                .lineLimit(1)
-                            Spacer()
-                            Text(monitor.finalStatus)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(monitor.isDown ? .red : .yellow)
-                        }
-                    }
-                    if problemMonitors.count > 4 {
-                        Text("+\(problemMonitors.count - 4) altri")
-                            .font(.system(size: 9))
-                            .foregroundColor(.secondary)
-                    }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var sortedMonitors: [WidgetMonitor] {
+        entry.monitors.sorted { m1, m2 in
+            rank(m1) > rank(m2)
+        }
+    }
+
+    private func rank(_ m: WidgetMonitor) -> Int {
+        if m.isDown { return 2 }
+        if m.isMismatch { return 1 }
+        return 0
+    }
+
+    private func statusColor(_ m: WidgetMonitor) -> Color {
+        if m.isDown { return .red }
+        if m.isMismatch { return .yellow }
+        return .green
     }
 
     private var ledColor: Color {
