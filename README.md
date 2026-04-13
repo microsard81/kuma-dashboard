@@ -385,6 +385,51 @@ I test coprono 18 proprietà di correttezza (100 iterazioni ciascuna):
 
 ---
 
+## App macOS
+
+App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
+
+### Funzionalità
+
+- Login con supporto 1Password (`.textContentType`)
+- "Ricordami" con cookie persistiti in UserDefaults
+- Cambio password obbligatorio e TOTP enrollment con QR code
+- Dashboard con sparkline, sonde colorate, raggruppamento per stato
+- Hover sulle sparkline mostra orario e stato; su mismatch evidenzia le sonde DOWN
+- Auto-refresh configurabile (10s/30s/60s/disabilitato)
+- Ordinamento: per gravità, alfabetico, per stato globale
+- Badge Dock con contatore risorse DOWN/mismatch (disattivabile)
+- Notifiche push APNs native
+- Tema: Auto/Chiaro/Scuro (default Scuro con sfondo #141c2b)
+- Dimensione testo regolabile (80%-160%)
+- La X minimizza nel Dock invece di chiudere l'app
+- Widget macOS (small/medium/large) con stato servizi
+
+### Setup
+
+1. In Xcode: File → New → Target → macOS → App → "UptimeDashboardMac"
+2. Aggiungi i file Swift dalla cartella `UptimeDashboardMac/` al target
+3. Signing & Capabilities: aggiungi Push Notifications e App Sandbox (Outgoing Connections)
+4. Genera `WATCH_API_TOKEN` e aggiungilo al `.env` del server e all'Info.plist dell'app
+
+### Struttura
+
+```
+UptimeDashboardMac/
+├── UptimeDashboardMacApp.swift     # @main, AppDelegate, gestione finestra
+├── MacAppViewModel.swift           # Auth, fetch, preferenze, badge Dock
+├── MacRootView.swift               # Router per stato auth
+├── MacLoginView.swift              # Login con 1Password
+├── MacChangePasswordView.swift     # Cambio password obbligatorio
+├── MacTOTPSetupView.swift          # Enrollment TOTP con QR code
+├── MacTwoFAView.swift              # Verifica 2FA
+├── MacDashboardView.swift          # Dashboard con sparkline e sonde
+├── MacSettingsView.swift           # Impostazioni (Cmd+,)
+└── TextScaleModifier.swift         # Font scalati custom
+```
+
+---
+
 ## App Apple Watch
 
 App companion watchOS che mostra lo stato dei servizi con card compatte. Funziona indipendentemente dall'iPhone tramite fetch diretto all'API.

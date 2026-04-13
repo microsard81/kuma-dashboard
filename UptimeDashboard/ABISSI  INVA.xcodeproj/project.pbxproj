@@ -103,7 +103,7 @@
 		8119B5D52F8CD47E00D887AC /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		816E9C602F893486004F93EF /* UptimeDashboardWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "UptimeDashboardWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		816E9C772F89397A004F93EF /* WCSessionDelegateHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WCSessionDelegateHandler.swift; sourceTree = "<group>"; };
-		819D22DA2F8D01A7006BDA8D /* UptimeDashboardMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UptimeDashboardMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		819D22DA2F8D01A7006BDA8D /* Dashboard INVA MAC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Dashboard INVA MAC.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		81B2E7F62F86A62200856F5A /* UptimeDashboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = UptimeDashboard.entitlements; sourceTree = "<group>"; };
 		81CFDD0A2F8D0816004F2EA8 /* UptimeDashboardMacWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = UptimeDashboardMacWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		B001000B /* UptimeDashboardApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UptimeDashboardApp.swift; sourceTree = "<group>"; };
@@ -254,7 +254,7 @@
 				B001000D /* Dashboard INVA.app */,
 				816E9C602F893486004F93EF /* UptimeDashboardWatch Watch App.app */,
 				8119B5D12F8CD47E00D887AC /* UptimeDashboardWidgetExtension.appex */,
-				819D22DA2F8D01A7006BDA8D /* UptimeDashboardMac.app */,
+				819D22DA2F8D01A7006BDA8D /* Dashboard INVA MAC.app */,
 				81CFDD0A2F8D0816004F2EA8 /* UptimeDashboardMacWidgetExtension.appex */,
 			);
 			name = Products;
@@ -390,7 +390,7 @@
 			packageProductDependencies = (
 			);
 			productName = UptimeDashboardMac;
-			productReference = 819D22DA2F8D01A7006BDA8D /* UptimeDashboardMac.app */;
+			productReference = 819D22DA2F8D01A7006BDA8D /* Dashboard INVA MAC.app */;
 			productType = "com.apple.product-type.application";
 		};
 		81CFDD092F8D0816004F2EA8 /* UptimeDashboardMacWidgetExtension */ = {
@@ -1073,6 +1073,9 @@
 				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = cloud.sundata.uptimeDashboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1101,6 +1104,9 @@
 				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = cloud.sundata.uptimeDashboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
