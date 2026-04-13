@@ -1,7 +1,33 @@
 import SwiftUI
 
+// MARK: - Color hex extension for macOS
+private extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let r, g, b, a: UInt64
+        switch hex.count {
+        case 6:
+            (r, g, b, a) = ((int >> 16) & 0xFF, (int >> 8) & 0xFF, int & 0xFF, 255)
+        case 8:
+            (r, g, b, a) = ((int >> 24) & 0xFF, (int >> 16) & 0xFF, (int >> 8) & 0xFF, int & 0xFF)
+        default:
+            (r, g, b, a) = (0, 0, 0, 255)
+        }
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
+}
+
 struct MacDashboardView: View {
     @EnvironmentObject var viewModel: MacAppViewModel
+    @Environment(\.colorScheme) var colorScheme
     @State private var showOnlyProblems = false
 
     private var filteredMonitors: [MacMonitor] {
@@ -16,11 +42,14 @@ struct MacDashboardView: View {
         viewModel.monitors.filter { $0.isDown || $0.isMismatch }.count
     }
 
+    private var dashboardBackground: Color {
+        colorScheme == .dark ? Color(hex: "#141c2b") : Color(.windowBackgroundColor)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Toolbar
             HStack {
-                // LED globale
                 Circle()
                     .fill(ledColor)
                     .frame(width: 14, height: 14)
@@ -73,47 +102,46 @@ struct MacDashboardView: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-            .background(.bar)
 
             Divider()
 
             // Lista monitor
-            List {
-                let downItems = filteredMonitors.filter { $0.isDown }
-                let mismatchItems = filteredMonitors.filter { $0.isMismatch }
-                let upItems = filteredMonitors.filter { !$0.isDown && !$0.isMismatch }
-                let allUp = downItems.isEmpty && mismatchItems.isEmpty
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    let downItems = filteredMonitors.filter { $0.isDown }
+                    let mismatchItems = filteredMonitors.filter { $0.isMismatch }
+                    let upItems = filteredMonitors.filter { !$0.isDown && !$0.isMismatch }
+                    let allUp = downItems.isEmpty && mismatchItems.isEmpty
 
-                if !downItems.isEmpty {
-                    Section {
-                        ForEach(downItems) { MacMonitorRow(monitor: $0) }
-                    } header: {
-                        Label("DOWN", systemImage: "xmark.circle.fill").foregroundColor(.red)
+                    if !downItems.isEmpty {
+                        SectionHeader(title: "DOWN", icon: "xmark.circle.fill", color: .red)
+                        ForEach(downItems) { monitor in
+                            MacMonitorRow(monitor: monitor)
+                                .background(Color.red.opacity(0.12))
+                        }
                     }
-                }
 
-                if !mismatchItems.isEmpty {
-                    Section {
-                        ForEach(mismatchItems) { MacMonitorRow(monitor: $0) }
-                    } header: {
-                        Label("Mismatch", systemImage: "exclamationmark.triangle.fill").foregroundColor(.yellow)
+                    if !mismatchItems.isEmpty {
+                        SectionHeader(title: "Mismatch", icon: "exclamationmark.triangle.fill", color: .yellow)
+                        ForEach(mismatchItems) { monitor in
+                            MacMonitorRow(monitor: monitor)
+                                .background(Color.yellow.opacity(0.10))
+                        }
                     }
-                }
 
-                if !upItems.isEmpty {
-                    if allUp {
-                        ForEach(upItems) { MacMonitorRow(monitor: $0) }
-                    } else {
-                        Section {
-                            ForEach(upItems) { MacMonitorRow(monitor: $0) }
-                        } header: {
-                            Label("UP", systemImage: "checkmark.circle.fill").foregroundColor(.green)
+                    if !upItems.isEmpty {
+                        if !allUp {
+                            SectionHeader(title: "UP", icon: "checkmark.circle.fill", color: .green)
+                        }
+                        ForEach(upItems) { monitor in
+                            MacMonitorRow(monitor: monitor)
                         }
                     }
                 }
             }
-            .listStyle(.inset(alternatesRowBackgrounds: true))
         }
+        .background(dashboardBackground)
+        .preferredColorScheme(.dark)
     }
 
     private var ledColor: Color {
@@ -131,6 +159,26 @@ struct MacDashboardView: View {
     }
 }
 
+// MARK: - Section Header
+
+private struct SectionHeader: View {
+    let title: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        HStack {
+            Label(title, systemImage: icon)
+                .font(.caption.bold())
+                .foregroundColor(color)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.05))
+    }
+}
+
 // MARK: - Monitor Row
 
 private struct MacMonitorRow: View {
@@ -138,37 +186,42 @@ private struct MacMonitorRow: View {
     @Environment(\.openURL) var openURL
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Nome (cliccabile se ha link)
-            if let urlString = monitor.link, let url = URL(string: urlString) {
-                Button { openURL(url) } label: {
-                    Text(monitor.name).foregroundColor(.accentColor)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                if let urlString = monitor.link, let url = URL(string: urlString) {
+                    Button { openURL(url) } label: {
+                        Text(monitor.name).font(.body.weight(.semibold)).foregroundColor(.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text(monitor.name).font(.body.weight(.semibold))
                 }
-                .buttonStyle(.plain)
-            } else {
-                Text(monitor.name)
+                Spacer()
+                Text(monitor.finalStatus)
+                    .font(.caption.bold())
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(badgeColor)
+                    .clipShape(Capsule())
             }
 
-            Spacer()
-
-            // Sonde
-            HStack(spacing: 8) {
-                ProbeLabel(name: "Aruba", status: monitor.k1)
-                ProbeLabel(name: "TIM", status: monitor.k2)
-                ProbeLabel(name: "ILIAD", status: monitor.k3)
-                ProbeLabel(name: "NodePing", status: monitor.n1)
+            HStack(spacing: 10) {
+                ProbeIndicator(label: "Aruba", status: monitor.k1)
+                ProbeIndicator(label: "TIM", status: monitor.k2)
+                ProbeIndicator(label: "ILIAD", status: monitor.k3)
+                ProbeIndicator(label: "NodePing", status: monitor.n1)
+                Spacer()
             }
 
-            // Badge stato
-            Text(monitor.finalStatus)
-                .font(.caption.bold())
-                .foregroundColor(.white)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(badgeColor)
-                .clipShape(Capsule())
+            // Sparkline
+            MacSparklineView(history: monitor.history)
+                .frame(height: 24)
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+
+        Divider().padding(.leading, 16)
     }
 
     private var badgeColor: Color {
@@ -176,10 +229,10 @@ private struct MacMonitorRow: View {
     }
 }
 
-// MARK: - Probe Label
+// MARK: - Probe Indicator
 
-private struct ProbeLabel: View {
-    let name: String
+private struct ProbeIndicator: View {
+    let label: String
     let status: String
 
     var body: some View {
@@ -187,9 +240,50 @@ private struct ProbeLabel: View {
             Circle()
                 .fill(status == "UP" ? Color.green : Color.red)
                 .frame(width: 8, height: 8)
-            Text(name)
+            Text(label)
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
+    }
+}
+
+// MARK: - Sparkline (semplificata per macOS, senza gesture)
+
+private struct MacSparklineView: View {
+    let history: [[String: Any]]
+
+    var body: some View {
+        GeometryReader { geo in
+            HStack(spacing: 1) {
+                ForEach(Array(points.enumerated()), id: \.offset) { _, severity in
+                    Rectangle()
+                        .fill(colorFor(severity))
+                        .frame(width: barWidth(totalWidth: geo.size.width))
+                }
+            }
+        }
+    }
+
+    private var points: [Int] {
+        // history può essere [Int] o [[String:Any]] — estraiamo severity
+        history.compactMap { dict in
+            if let s = dict["s"] as? Int { return s }
+            return nil
+        }
+    }
+
+    private func colorFor(_ severity: Int) -> Color {
+        switch severity {
+        case 0: return Color(hex: "#34d399")
+        case 1: return Color(hex: "#FFEE00")
+        case 2: return Color(hex: "#f87171")
+        default: return .gray
+        }
+    }
+
+    private func barWidth(totalWidth: CGFloat) -> CGFloat {
+        let count = max(points.count, 1)
+        let spacing = CGFloat(count - 1) * 1.0
+        return max(1, (totalWidth - spacing) / CGFloat(count))
     }
 }
