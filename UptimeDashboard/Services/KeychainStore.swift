@@ -50,7 +50,7 @@ final class KeychainStore: KeychainStoreProtocol {
             // Item doesn't exist yet — insert it
             var insertQuery = baseQuery(forKey: key)
             insertQuery[kSecValueData] = data
-            insertQuery[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            insertQuery[kSecAttrAccessible] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 
             let insertStatus = SecItemAdd(insertQuery as CFDictionary, nil)
             guard insertStatus == errSecSuccess else {
