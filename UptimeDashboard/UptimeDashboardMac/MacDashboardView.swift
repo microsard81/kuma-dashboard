@@ -165,11 +165,12 @@ private struct SectionHeader: View {
     let title: String
     let icon: String
     let color: Color
+    @Environment(\.textScale) var scale
 
     var body: some View {
         HStack {
             Label(title, systemImage: icon)
-                .font(.caption.bold())
+                .font(.scaled(.caption, scale: scale, weight: .bold))
                 .foregroundColor(color)
             Spacer()
         }
@@ -184,6 +185,7 @@ private struct SectionHeader: View {
 private struct MacMonitorRow: View {
     let monitor: MacMonitor
     @Environment(\.openURL) var openURL
+    @Environment(\.textScale) var scale
     @State private var selectionLabel: String? = nil
 
     var body: some View {
@@ -191,15 +193,15 @@ private struct MacMonitorRow: View {
             HStack {
                 if let urlString = monitor.link, let url = URL(string: urlString) {
                     Button { openURL(url) } label: {
-                        Text(monitor.name).font(.body.weight(.semibold)).foregroundColor(.accentColor)
+                        Text(monitor.name).font(.scaled(.body, scale: scale, weight: .semibold)).foregroundColor(.accentColor)
                     }
                     .buttonStyle(.plain)
                 } else {
-                    Text(monitor.name).font(.body.weight(.semibold))
+                    Text(monitor.name).font(.scaled(.body, scale: scale, weight: .semibold))
                 }
                 Spacer()
                 Text(monitor.finalStatus)
-                    .font(.caption.bold())
+                    .font(.scaled(.caption, scale: scale, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -215,7 +217,7 @@ private struct MacMonitorRow: View {
                 Spacer()
                 if let label = selectionLabel {
                     Text(label)
-                        .font(.caption2.bold())
+                        .font(.scaled(.caption2, scale: scale, weight: .bold))
                         .foregroundColor(.secondary)
                         .transition(.opacity)
                 }
@@ -241,6 +243,7 @@ private struct MacMonitorRow: View {
 private struct ProbeIndicator: View {
     let label: String
     let status: String
+    @Environment(\.textScale) var scale
 
     var body: some View {
         HStack(spacing: 3) {
@@ -248,7 +251,7 @@ private struct ProbeIndicator: View {
                 .fill(status == "UP" ? Color.green : Color.red)
                 .frame(width: 8, height: 8)
             Text(label)
-                .font(.caption)
+                .font(.scaled(.caption, scale: scale))
                 .foregroundColor(.secondary)
         }
     }

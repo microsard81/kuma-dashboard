@@ -29,16 +29,6 @@ struct MacRootView: View {
             }
         }
         .preferredColorScheme(colorScheme)
-        .environment(\.sizeCategory, sizeCategory)
-    }
-
-    private var sizeCategory: ContentSizeCategory {
-        switch viewModel.textScale {
-        case ..<0.9: return .small
-        case 0.9..<1.1: return .medium
-        case 1.1..<1.3: return .large
-        case 1.3..<1.5: return .extraLarge
-        default: return .extraExtraLarge
-        }
+        .environment(\.textScale, viewModel.textScale)
     }
 }
