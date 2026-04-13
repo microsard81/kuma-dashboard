@@ -18,6 +18,11 @@ struct UptimeDashboardMacApp: App {
         }
         .windowStyle(.titleBar)
         .defaultSize(width: 900, height: 650)
+
+        Settings {
+            MacSettingsView()
+                .environmentObject(viewModel)
+        }
     }
 }
 

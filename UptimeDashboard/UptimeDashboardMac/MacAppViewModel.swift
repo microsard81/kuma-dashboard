@@ -46,6 +46,14 @@ final class MacAppViewModel: ObservableObject {
     @Published var errorMessage: String? = nil
     @Published var lastUpdated: Date? = nil
 
+    // Preferenze
+    @Published var themeMode: String {
+        didSet { defaults.set(themeMode, forKey: "mac_theme") }
+    }
+    @Published var textScale: Double {
+        didSet { defaults.set(textScale, forKey: "mac_text_scale") }
+    }
+
     private var refreshTimer: Timer?
     private let baseURL: String
     private let defaults = UserDefaults.standard
@@ -55,11 +63,12 @@ final class MacAppViewModel: ObservableObject {
 
     init() {
         self.baseURL = "https://kuma-dashboard.sundata.cloud"
+        self.themeMode = defaults.string(forKey: "mac_theme") ?? "dark"
+        self.textScale = defaults.double(forKey: "mac_text_scale").nonZero ?? 1.0
 
         // Ripristina sessione se "Ricordami" era attivo
         if defaults.bool(forKey: "mac_remember_me"),
            let _ = defaults.string(forKey: "mac_session_active") {
-            // Prova a validare la sessione al prossimo fetch
             authState = .authenticated
             restoreCookies()
         }
@@ -359,5 +368,12 @@ final class MacAppViewModel: ObservableObject {
         } else {
             authState = .authenticated
         }
+    }
+}
+
+private extension Double {
+    /// Returns nil if the value is 0 (UserDefaults returns 0 for missing keys).
+    var nonZero: Double? {
+        self == 0 ? nil : self
     }
 }
