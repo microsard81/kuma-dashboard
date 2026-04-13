@@ -47,11 +47,17 @@ final class MacAppViewModel: ObservableObject {
     @Published var lastUpdated: Date? = nil
 
     // Preferenze
-    @Published var themeMode: String {
-        didSet { defaults.set(themeMode, forKey: "mac_theme") }
+    @Published var themeMode: String
+    @Published var textScale: Double
+
+    func setTheme(_ mode: String) {
+        themeMode = mode
+        defaults.set(mode, forKey: "mac_theme")
     }
-    @Published var textScale: Double {
-        didSet { defaults.set(textScale, forKey: "mac_text_scale") }
+
+    func setTextScale(_ scale: Double) {
+        textScale = scale
+        defaults.set(scale, forKey: "mac_text_scale")
     }
 
     private var refreshTimer: Timer?

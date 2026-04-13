@@ -5,15 +5,16 @@ struct MacSettingsView: View {
 
     var body: some View {
         Form {
-            // Tema
-            Picker("Tema", selection: $viewModel.themeMode) {
+            Picker("Tema", selection: Binding(
+                get: { viewModel.themeMode },
+                set: { viewModel.setTheme($0) }
+            )) {
                 Text("Auto").tag("auto")
                 Text("Chiaro").tag("light")
                 Text("Scuro").tag("dark")
             }
             .pickerStyle(.segmented)
 
-            // Dimensione testo
             VStack(alignment: .leading) {
                 HStack {
                     Text("Dimensione testo")
@@ -21,7 +22,10 @@ struct MacSettingsView: View {
                     Text(textScaleLabel)
                         .foregroundColor(.secondary)
                 }
-                Slider(value: $viewModel.textScale, in: 0.8...1.6, step: 0.1)
+                Slider(value: Binding(
+                    get: { viewModel.textScale },
+                    set: { viewModel.setTextScale($0) }
+                ), in: 0.8...1.6, step: 0.1)
                 HStack {
                     Text("A").font(.caption)
                     Spacer()
@@ -30,10 +34,9 @@ struct MacSettingsView: View {
                 .foregroundColor(.secondary)
             }
 
-            // Reset
             Button("Ripristina valori predefiniti") {
-                viewModel.themeMode = "dark"
-                viewModel.textScale = 1.0
+                viewModel.setTheme("dark")
+                viewModel.setTextScale(1.0)
             }
             .foregroundColor(.secondary)
         }
