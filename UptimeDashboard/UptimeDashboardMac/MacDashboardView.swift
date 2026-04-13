@@ -260,8 +260,6 @@ private struct MacSparklineView: View {
     let history: [[String: Any]]
     @Binding var selectionLabel: String?
 
-    private let maxScale: CGFloat = 2.2
-    private let spread: CGFloat = 3.0
     private let samplingInterval: TimeInterval = 60
 
     @State private var hoverX: CGFloat? = nil
@@ -286,19 +284,16 @@ private struct MacSparklineView: View {
 
             HStack(alignment: .bottom, spacing: 1) {
                 ForEach(segments) { seg in
-                    let scale = scaleFor(index: seg.id, cellWidth: cellWidth)
                     Rectangle()
                         .fill(colorFor(seg.severity))
-                        .frame(width: bw, height: geo.size.height * scale)
+                        .frame(width: bw)
                 }
             }
-            .frame(maxHeight: .infinity, alignment: .bottom)
+            .frame(maxHeight: .infinity)
             .onContinuousHover { phase in
                 switch phase {
                 case .active(let location):
-                    withAnimation(.interactiveSpring(response: 0.12, dampingFraction: 0.7)) {
-                        hoverX = location.x
-                    }
+                    hoverX = location.x
                     let idx = Int(location.x / cellWidth)
                     if idx >= 0, idx < count {
                         let seg = segments[idx]
@@ -316,21 +311,11 @@ private struct MacSparklineView: View {
                         selectionLabel = "\(time) · \(status)"
                     }
                 case .ended:
-                    withAnimation(.spring(response: 0.25, dampingFraction: 0.6)) {
-                        hoverX = nil
-                    }
+                    hoverX = nil
                     selectionLabel = nil
                 }
             }
         }
-    }
-
-    private func scaleFor(index: Int, cellWidth: CGFloat) -> CGFloat {
-        guard let x = hoverX else { return 1.0 }
-        let barCenter = CGFloat(index) * cellWidth + cellWidth / 2.0
-        let distance = abs(x - barCenter) / cellWidth
-        let gaussian = exp(-(distance * distance) / (2.0 * spread * spread))
-        return 1.0 + (maxScale - 1.0) * gaussian
     }
 
     private struct HistoryPoint {
