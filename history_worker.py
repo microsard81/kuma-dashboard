@@ -21,7 +21,13 @@ from config import (
 )
 from kuma_client import load_monitors
 from status_client import load_status
-from redis_history import save_point, get_global_state, set_global_state
+from redis_history import (
+    save_point,
+    get_global_state,
+    set_global_state,
+    get_anomalous_resources,
+    set_anomalous_resources,
+)
 from push_utils import send_push_to_all
 from apns_utils import send_apns_to_all
 from severity import compute_severity, compute_global_state
@@ -46,7 +52,7 @@ def _build_detail_body(monitor_details, new_state):
     monitor_details: lista di dict con chiavi name, bg, tim, iliad, nodeping, severity
     Convenzione: 0 = DOWN, 1 = UP
     """
-    now_str = datetime.now().strftime("%H:%M:%S")
+    now_str = datetime.now().strftime("%H:%M")
     lines = []
 
     if new_state == "RED":
@@ -86,17 +92,22 @@ def maybe_send_global_push(new_state, monitor_details=None):
     previous = get_global_state()
     set_global_state(new_state)
 
-    # Primo avvio → niente notifiche
+    details = monitor_details or []
+    current_anomalous = {m["name"] for m in details if m["severity"] > 0}
+
+    # Primo avvio → niente notifiche, ma persisti il set anomalo
     if previous is None:
+        set_anomalous_resources(current_anomalous)
         return
 
     # Push disabilitate
     if not PUSH_ENABLED:
+        set_anomalous_resources(current_anomalous)
         return
 
-    details = monitor_details or []
+    previous_anomalous = get_anomalous_resources()
 
-    # 🔴 RED – finale DOWN
+    # 🔴 RED – finale DOWN (transizione da non-RED)
     if (
         PUSH_NOTIFY_ON.get("final_down", False)
         and previous != "RED"
@@ -112,7 +123,26 @@ def maybe_send_global_push(new_state, monitor_details=None):
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato RED")
 
-    # 🟡 YELLOW – mismatch
+    # 🔴 RED → RED – nuove risorse DOWN
+    if (
+        PUSH_NOTIFY_ON.get("final_down", False)
+        and previous == "RED"
+        and new_state == "RED"
+    ):
+        newly_anomalous = current_anomalous - previous_anomalous
+        if newly_anomalous:
+            new_details = [m for m in details if m["name"] in newly_anomalous]
+            title = "🔴 Nuova risorsa DOWN"
+            body = _build_detail_body(new_details, "RED") or "Nuove risorse risultano DOWN."
+            data = {"state": "RED"}
+
+            send_push_to_all(title, body, data)
+            try:
+                send_apns_to_all(title, body, data)
+            except Exception:
+                logging.exception("Errore nell'invio notifica APNs per same-state RED")
+
+    # 🟡 YELLOW – mismatch (transizione da non-YELLOW)
     if (
         PUSH_NOTIFY_ON.get("probe_mismatch", False)
         and previous != "YELLOW"
@@ -128,13 +158,32 @@ def maybe_send_global_push(new_state, monitor_details=None):
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato YELLOW")
 
+    # 🟡 YELLOW → YELLOW – nuove risorse con mismatch
+    if (
+        PUSH_NOTIFY_ON.get("probe_mismatch", False)
+        and previous == "YELLOW"
+        and new_state == "YELLOW"
+    ):
+        newly_anomalous = current_anomalous - previous_anomalous
+        if newly_anomalous:
+            new_details = [m for m in details if m["name"] in newly_anomalous]
+            title = "🟡 Nuova incongruenza"
+            body = _build_detail_body(new_details, "YELLOW") or "Nuove risorse con incongruenza tra sonde."
+            data = {"state": "YELLOW"}
+
+            send_push_to_all(title, body, data)
+            try:
+                send_apns_to_all(title, body, data)
+            except Exception:
+                logging.exception("Errore nell'invio notifica APNs per same-state YELLOW")
+
     # 🟢 GREEN – ritorno alla normalità
     if (
         PUSH_NOTIFY_ON.get("back_to_green", False)
         and previous in ("RED", "YELLOW")
         and new_state == "GREEN"
     ):
-        now_str = datetime.now().strftime("%H:%M:%S")
+        now_str = datetime.now().strftime("%H:%M")
         title = "🟢 Tutto OK"
         body = f"Tutte le risorse risultano UP su tutte le sonde.\nOre {now_str}"
         data = {"state": "GREEN"}
@@ -144,6 +193,9 @@ def maybe_send_global_push(new_state, monitor_details=None):
             send_apns_to_all(title, body, data)
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato GREEN")
+
+    # Persisti il set anomalo corrente per il prossimo ciclo
+    set_anomalous_resources(current_anomalous)
 
 
 # ------------------------------------------------------

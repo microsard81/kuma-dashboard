@@ -32,12 +32,13 @@ _redis = redis.Redis(
 APNS_SUBS_HASH_KEY = "apns:subs_by_token"
 
 
-def add_apns_subscription(device_token: str, device_id: str, environment: str = "production") -> None:
+def add_apns_subscription(device_token: str, device_id: str, environment: str = "production", bundle_id: str | None = None) -> None:
     """Registra un device token APNs in Redis.
 
     Usa HSET con chiave apns:subs_by_token per mantenere il namespace
     separato dal namespace VAPID (push:).
     environment: 'sandbox' per app Xcode/debug, 'production' per TestFlight/AppStore
+    bundle_id: bundle ID dell'app (opzionale, usato per Mac con bundle ID diverso da iOS)
     """
     if not device_token or not device_id:
         logger.warning("add_apns_subscription: device_token o device_id mancante, ignorato")
@@ -49,6 +50,8 @@ def add_apns_subscription(device_token: str, device_id: str, environment: str = 
         "environment": environment,
         "registered_at": datetime.now(timezone.utc).isoformat(),
     }
+    if bundle_id:
+        record["bundle_id"] = bundle_id
     _redis.hset(APNS_SUBS_HASH_KEY, device_token, json.dumps(record))
     logger.info("APNs subscription aggiunta (%s): %s...", environment, device_token[:16])
 
@@ -120,26 +123,26 @@ def send_apns_to_all(title: str, body: str, data: dict) -> None:
         "state": data.get("state", "") if data else "",
     })
 
-    headers = {
-        "authorization": f"bearer {apns_jwt}",
-        "apns-topic": APNS_BUNDLE_ID,
-        "apns-push-type": "alert",
-        "content-type": "application/json",
-    }
-
     invalid_tokens: list[str] = []
 
     try:
         with httpx.Client(http2=True) as client:
             for sub in subscriptions:
+                headers = {
+                    "authorization": f"bearer {apns_jwt}",
+                    "apns-topic": sub.get("bundle_id", APNS_BUNDLE_ID),
+                    "apns-push-type": "alert",
+                    "content-type": "application/json",
+                }
                 device_token = sub.get("device_token", "")
                 if not device_token:
                     continue
 
                 # Determina l'host: prova prima quello salvato, poi l'altro come fallback
                 env = sub.get("environment", "production")
-                primary_host = "api.sandbox.push.apple.com" if env == "sandbox" else "api.push.apple.com"
-                fallback_host = "api.push.apple.com" if env == "sandbox" else "api.sandbox.push.apple.com"
+                is_sandbox = env in ("sandbox", "development")
+                primary_host = "api.sandbox.push.apple.com" if is_sandbox else "api.push.apple.com"
+                fallback_host = "api.push.apple.com" if is_sandbox else "api.sandbox.push.apple.com"
 
                 try:
                     url = f"https://{primary_host}/3/device/{device_token}"

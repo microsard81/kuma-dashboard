@@ -602,5 +602,6 @@ def api_mac_apns_subscribe():
 
     device_id = data.get("device_id", "")
     environment = data.get("environment", "production")
-    add_apns_subscription(device_token, device_id, environment)
+    bundle_id = data.get("bundle_id")
+    add_apns_subscription(device_token, device_id, environment, bundle_id=bundle_id)
     return {"ok": True}, 201

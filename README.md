@@ -172,6 +172,7 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 | `POST` | `/api/totp/enroll` | — | Enrollment TOTP JSON (app iOS) |
 | `POST` | `/push/subscribe` | ✅ | Registra subscription Web Push (VAPID) |
 | `POST` | `/push/unsubscribe` | ✅ | Rimuove subscription Web Push |
+| `POST` | `/api/mac/apns/subscribe` | Token | Registra device token APNs dal Mac (header `X-Watch-Token`, supporta `bundle_id`) |
 | `POST` | `/push/apns/subscribe` | ✅ | Registra device token APNs (iOS) |
 | `POST` | `/push/apns/unsubscribe` | ✅ | Rimuove device token APNs (iOS) |
 | `POST` | `/auth/biometric/login` | — | Login con token biometrico (Face ID / Touch ID) |
@@ -211,7 +212,8 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 | `history:<nome_monitor>` | List | Storico severity (max 60 punti) |
 | `global_state` | String | Stato globale corrente (`GREEN`/`YELLOW`/`RED`) |
 | `push:subs_by_endpoint` | Hash | Subscription Web Push VAPID |
-| `apns:subs_by_token` | Hash | Device token APNs iOS |
+| `apns:subs_by_token` | Hash | Device token APNs iOS/Mac (con `bundle_id` opzionale per Mac) |
+| `anomalous_resources` | Set | Nomi risorse anomale del ciclo corrente (per notifiche same-state) |
 | `user:<username>` | Hash | Credenziali utente (`password_hash`, `totp_secret`, `totp_enrolled`, `must_change_password`, `password_history`) |
 | `biometric:<username>:<token>` | String | Token biometrico con TTL 90 giorni |
 
@@ -271,6 +273,14 @@ I test coprono 5 proprietà di correttezza verificate con Hypothesis (property-b
 - **P15** — `send_apns_to_all` chiama esattamente N volte per N token registrati
 - **P16** — Rimozione automatica token non validi (status 410 / `BadDeviceToken`)
 - **P17** — Separazione namespace Redis `apns:` vs `push:`
+
+Bugfix Mac push notifications:
+- **Bug Condition** — `send_apns_to_all()` usa il `bundle_id` per-subscription come `apns-topic`; `add_apns_subscription()` accetta `bundle_id`
+- **Preservation** — Round-trip iOS senza `bundle_id`, header `apns-topic` iOS invariato, cleanup token invalidi invariato
+
+Bugfix same-state notifications:
+- **Bug Condition** — YELLOW→YELLOW e RED→RED con nuove risorse anomale inviano notifica
+- **Preservation** — Transizioni GREEN↔YELLOW↔RED, primo avvio, push disabilitate, GREEN→GREEN invariati
 
 ---
 
@@ -410,7 +420,9 @@ App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
 1. In Xcode: File → New → Target → macOS → App → "UptimeDashboardMac"
 2. Aggiungi i file Swift dalla cartella `UptimeDashboardMac/` al target
 3. Signing & Capabilities: aggiungi Push Notifications e App Sandbox (Outgoing Connections)
-4. Genera `WATCH_API_TOKEN` e aggiungilo al `.env` del server e all'Info.plist dell'app
+4. Genera `WATCH_API_TOKEN` e aggiungilo al `.env` del server
+5. In Xcode, target UptimeDashboardMac → Build Settings → User-Defined → aggiungi `WATCH_API_TOKEN` con il valore del token (l'Info.plist lo referenzia come `$(WATCH_API_TOKEN)`)
+6. L'environment APNs viene rilevato automaticamente: `development` per build Xcode, `production` per release
 
 ### Struttura
 
@@ -466,24 +478,29 @@ Il sistema supporta due canali di notifica paralleli:
 - Subscription salvate in Redis sotto `push:subs_by_endpoint`
 - Compatibile con Chrome, Firefox, Safari (WebKit), Edge
 
-### APNs — app iOS nativa
+### APNs — app iOS e macOS nativa
 - Gestito da `apns_utils.py`
 - Richiede chiave `.p8` Apple Developer, Key ID e Team ID
 - Subscription salvate in Redis sotto `apns:subs_by_token`
-- JWT firmato con ES256, richieste HTTP/2 ad `api.push.apple.com`
+- JWT firmato con ES256, richieste HTTP/2 ad `api.push.apple.com` (production) o `api.sandbox.push.apple.com` (development/sandbox)
+- Supporto per-subscription `bundle_id`: l'app Mac invia il proprio bundle ID, usato come `apns-topic` header; le subscription iOS senza `bundle_id` usano `APNS_BUNDLE_ID` di default
+- Environment detection automatico: `development` per build Xcode, `production` per App Store/TestFlight
 - Token non validi (410 / `BadDeviceToken`) rimossi automaticamente
+- Retry con backoff esponenziale (1s, 2s, 4s) per la registrazione del token dal client Mac
 
 Le notifiche vengono inviate da `history_worker.py` alle transizioni di stato, con dettaglio delle risorse coinvolte:
 
 - 🔴 `GREEN → RED` — "Servizi DOWN" + elenco risorse DOWN con sonde specifiche e orario
+- 🔴 `RED → RED` (nuove risorse) — "Nuova risorsa DOWN" + solo le risorse appena entrate in stato DOWN
 - 🟡 `* → YELLOW` — "Incongruenza tra sonde" + elenco risorse in mismatch con sonde DOWN e orario
+- 🟡 `YELLOW → YELLOW` (nuove risorse) — "Nuova incongruenza" + solo le risorse appena entrate in mismatch
 - 🟢 `RED/YELLOW → GREEN` — "Tutto OK" + conferma ripristino con orario
 
 Esempio notifica mismatch:
 ```
 🟡 Incongruenza tra sonde
 INVA - www.regione.vda.it — DOWN su NodePing
-Ore 14:32:15
+Ore 14:32
 ```
 
 ---

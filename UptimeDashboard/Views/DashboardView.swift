@@ -199,7 +199,7 @@ private struct MonitorRowView: View {
         guard let seg = selectedSegment, let ts = seg.timestamp else { return nil }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "it-IT")
-        formatter.dateFormat = "HH:mm:ss"
+        formatter.dateFormat = "HH:mm"
         let time = formatter.string(from: ts)
         let status: String
         switch seg.severity {

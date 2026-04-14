@@ -4,5 +4,7 @@
 <dict>
 	<key>CFBundleGetInfoString</key>
 	<string></string>
+	<key>WATCH_API_TOKEN</key>
+	<string>$(WATCH_API_TOKEN)</string>
 </dict>
 </plist>

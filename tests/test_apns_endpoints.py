@@ -115,6 +115,7 @@ def test_apns_subscribe_valid_payload(client):
     mock_add.assert_called_once_with(
         VALID_TOKEN,
         "550e8400-e29b-41d4-a716-446655440000",
+        "production",
     )
 
 

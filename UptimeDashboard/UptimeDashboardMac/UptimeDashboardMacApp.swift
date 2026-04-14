@@ -1,3 +1,4 @@
+import os
 import SwiftUI
 import UserNotifications
 
@@ -28,6 +29,8 @@ struct UptimeDashboardMacApp: App {
 
 // MARK: - AppDelegate
 
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "UptimeDashboardMac", category: "APNs")
+
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNotificationCenterDelegate {
     weak var viewModel: MacAppViewModel?
 
@@ -51,25 +54,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
     // MARK: - Push Notifications
 
     private func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            if let error = error {
+                logger.error("[Mac] Notification authorization error: \(error.localizedDescription, privacy: .public)")
+            }
             if granted {
+                logger.info("[Mac] Notification permission granted — registering for remote notifications")
                 DispatchQueue.main.async {
                     NSApplication.shared.registerForRemoteNotifications()
                 }
+            } else {
+                logger.warning("[Mac] Notification permission denied by user")
             }
         }
     }
 
     func application(_ application: NSApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
-        print("[Mac] APNs token: \(token.prefix(16))...")
+        logger.info("[Mac] APNs device token received: \(token.prefix(16), privacy: .public)...")
         Task {
             await registerTokenWithBackend(token: token)
         }
     }
 
     func application(_ application: NSApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("[Mac] APNs registration failed: \(error.localizedDescription)")
+        logger.error("[Mac] APNs registration failed: \(error.localizedDescription, privacy: .public)")
     }
 
     // Mostra notifiche anche quando l'app è in primo piano
@@ -95,8 +104,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
 
         // Usa il WATCH_API_TOKEN per autenticarsi (endpoint protetto da login)
         // Per macOS, usiamo un endpoint dedicato che accetta il token API
-        guard let apiURL = URL(string: "\(baseURL)/api/mac/apns/subscribe"),
-              let apiToken = Bundle.main.object(forInfoDictionaryKey: "WATCH_API_TOKEN") as? String else { return }
+        guard let apiURL = URL(string: "\(baseURL)/api/mac/apns/subscribe") else {
+            logger.error("[Mac] Failed to construct API URL from base: \(baseURL, privacy: .public)")
+            return
+        }
+
+        guard let apiToken = Bundle.main.object(forInfoDictionaryKey: "WATCH_API_TOKEN") as? String else {
+            logger.warning("[Mac] WATCH_API_TOKEN not configured in Info.plist — APNs registration skipped")
+            return
+        }
 
         var request = URLRequest(url: apiURL)
         request.httpMethod = "POST"
@@ -104,20 +120,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
         request.setValue(apiToken, forHTTPHeaderField: "X-Watch-Token")
 
         let deviceId = Host.current().localizedName ?? "Mac"
+
+        #if DEBUG
+        let apnsEnvironment = "development"
+        #else
+        let apnsEnvironment = "production"
+        #endif
+
         let payload: [String: String] = [
             "device_token": token,
             "device_id": deviceId,
-            "environment": "production",
+            "environment": apnsEnvironment,
+            "bundle_id": Bundle.main.bundleIdentifier ?? "",
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
 
-        do {
-            let (_, response) = try await URLSession.shared.data(for: request)
-            if let http = response as? HTTPURLResponse {
-                print("[Mac] APNs subscribe status: \(http.statusCode)")
+        let maxRetries = 3
+        let retryDelays: [UInt64] = [1, 2, 4]
+
+        for attempt in 1...maxRetries {
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse {
+                    if (200...299).contains(http.statusCode) {
+                        logger.info("[Mac] APNs subscribe succeeded (attempt \(attempt)) — status: \(http.statusCode)")
+                        return
+                    }
+                    logger.warning("[Mac] APNs subscribe non-2xx status: \(http.statusCode) (attempt \(attempt)/\(maxRetries))")
+                }
+            } catch {
+                logger.error("[Mac] APNs subscribe error (attempt \(attempt)/\(maxRetries)): \(error.localizedDescription, privacy: .public)")
             }
-        } catch {
-            print("[Mac] APNs subscribe error: \(error.localizedDescription)")
+
+            if attempt < maxRetries {
+                let delay = retryDelays[attempt - 1]
+                logger.info("[Mac] Retrying APNs subscribe in \(delay)s (attempt \(attempt + 1)/\(maxRetries))")
+                try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
+            }
         }
+
+        logger.error("[Mac] APNs subscribe failed after \(maxRetries) attempts")
     }
 }

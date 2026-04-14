@@ -220,7 +220,7 @@ function buildHistorySvg(history) {
         const secsAgo = (history.length - 1 - idx) * interval;
         const pointDate = new Date(Date.now() - secsAgo * 1000);
         const dateStr = pointDate.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
-        const timeStr = pointDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        const timeStr = pointDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
 
         const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
         let tooltipText = labels[sev] + " — " + dateStr + " " + timeStr;

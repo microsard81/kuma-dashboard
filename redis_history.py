@@ -82,3 +82,29 @@ def set_global_state(state: str):
     if state not in ("GREEN", "YELLOW", "RED"):
         return
     r.set(_GLOBAL_STATE_KEY, state)
+
+
+# ------------------ RISORSE ANOMALE PER SAME-STATE PUSH ------------------ #
+
+_ANOMALOUS_RESOURCES_KEY = "anomalous_resources"
+
+
+def get_anomalous_resources() -> set[str]:
+    """
+    Ritorna il set di nomi delle risorse anomale salvato in Redis.
+    Restituisce un set vuoto se la chiave non esiste.
+    """
+    return r.smembers(_ANOMALOUS_RESOURCES_KEY)
+
+
+def set_anomalous_resources(resources: set[str]):
+    """
+    Sovrascrive il set di risorse anomale in Redis.
+    Usa una pipeline (DELETE + SADD) per atomicità.
+    Se il set è vuoto, cancella solo la chiave.
+    """
+    pipe = r.pipeline()
+    pipe.delete(_ANOMALOUS_RESOURCES_KEY)
+    if resources:
+        pipe.sadd(_ANOMALOUS_RESOURCES_KEY, *resources)
+    pipe.execute()

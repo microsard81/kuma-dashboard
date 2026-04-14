@@ -335,7 +335,7 @@ private struct MacSparklineView: View {
                         hoveredSegment = seg
                         let formatter = DateFormatter()
                         formatter.locale = Locale(identifier: "it-IT")
-                        formatter.dateFormat = "HH:mm:ss"
+                        formatter.dateFormat = "HH:mm"
                         let time = formatter.string(from: seg.timestamp)
                         let status: String
                         switch seg.severity {
