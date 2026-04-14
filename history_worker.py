@@ -194,6 +194,26 @@ def maybe_send_global_push(new_state, monitor_details=None):
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato GREEN")
 
+    # 🟢 Risorse tornate UP durante same-state (YELLOW→YELLOW o RED→RED)
+    if (
+        PUSH_NOTIFY_ON.get("back_to_green", False)
+        and previous == new_state
+        and new_state in ("YELLOW", "RED")
+    ):
+        recovered = previous_anomalous - current_anomalous
+        if recovered:
+            now_str = datetime.now().strftime("%H:%M")
+            names = ", ".join(sorted(recovered))
+            title = "🟢 Risorsa ripristinata"
+            body = f"{names} — tornata UP\nOre {now_str}"
+            data = {"state": new_state}
+
+            send_push_to_all(title, body, data)
+            try:
+                send_apns_to_all(title, body, data)
+            except Exception:
+                logging.exception("Errore nell'invio notifica APNs per risorsa ripristinata")
+
     # Persisti il set anomalo corrente per il prossimo ciclo
     set_anomalous_resources(current_anomalous)
 
