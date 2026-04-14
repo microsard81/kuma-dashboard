@@ -150,6 +150,11 @@ struct MacDashboardView: View {
         }
         .background(dashboardBackground)
         .preferredColorScheme(.dark)
+        .onChange(of: problemCount) { newCount in
+            if newCount == 0 {
+                showOnlyProblems = false
+            }
+        }
     }
 
     private var ledColor: Color {

@@ -120,6 +120,11 @@ struct DashboardView: View {
             }
         }
         .navigationViewStyle(.stack)
+        .onChange(of: viewModel.downCount) { newCount in
+            if newCount == 0 {
+                viewModel.isOnlyDownFilter = false
+            }
+        }
         .sheet(isPresented: $showSettings) {
             SettingsView()
                 .environmentObject(settingsVM)
