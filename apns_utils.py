@@ -110,6 +110,8 @@ def send_apns_to_all(title: str, body: str, data: dict) -> None:
         logger.error("Errore nella generazione del JWT APNs: %s", exc)
         return
 
+    badge_count = data.get("badge", 0 if data.get("state") == "GREEN" else 1) if data else 1
+
     payload = json.dumps({
         "aps": {
             "alert": {"title": title, "body": body},
@@ -118,7 +120,7 @@ def send_apns_to_all(title: str, body: str, data: dict) -> None:
                 "name": "default",
                 "volume": 1.0
             },
-            "badge": 1,
+            "badge": badge_count,
         },
         "state": data.get("state", "") if data else "",
     })
