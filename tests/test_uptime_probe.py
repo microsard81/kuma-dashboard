@@ -238,10 +238,10 @@ def test_severity_compat_additional_up_probe(concordant_value):
     """
     Property 5: Compatibilità severity con sonda UP aggiuntiva.
 
-    For any combination of 4 concordant binary values (bg, tim, iliad, nodeping)
-    — all 0 or all 1 — calling compute_severity with uptime=1 must:
-      - return 0 when all 4 are UP  (all 5 probes UP → verde)
-      - return 1 when all 4 are DOWN (mismatch: 4 DOWN + 1 UP → giallo, not rosso)
+    When uptime=1 (UP or not configured), severity is based only on the
+    4 core probes. So:
+      - 4×UP + uptime=1 → severity 0 (verde, all core UP)
+      - 4×DOWN + uptime=1 → severity 2 (rosso, all core DOWN — uptime ignored)
 
     **Validates: Requirements 2.5**
     """
@@ -288,11 +288,8 @@ def test_final_state_5_probes(bg, tim, iliad, nodeping, uptime):
     """
     Property 6: Stato finale con 5 sonde.
 
-    For any combination of 5 binary values, process_monitor must return
-    final=0 (DOWN) if and only if all 5 values are 0.
-
-    We mock load_status to return a single monitor with the given probe
-    states, and load_history to return an empty list.
+    process_monitor must return final=0 (DOWN) when all 4 core probes
+    (bg, tim, iliad, nodeping) are DOWN, regardless of uptime state.
 
     **Validates: Requirements 5.2, 5.3**
     """
@@ -324,6 +321,7 @@ def test_final_state_5_probes(bg, tim, iliad, nodeping, uptime):
     with patch("status_client.load_history", return_value=[]):
         result = process_monitor(monitor_name, status_dict, name_norm)
 
+    # final is DOWN when all 5 probes are DOWN
     all_down = bg == 0 and tim == 0 and iliad == 0 and nodeping == 0 and uptime == 0
     expected_final = 0 if all_down else 1
 
