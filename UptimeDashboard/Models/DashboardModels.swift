@@ -37,13 +37,15 @@ struct HistoryPoint: Decodable, Equatable {
     let k2: Int?
     let k3: Int?
     let n1: Int?
+    let u1: Int?
 
-    init(severity: Int, k1: Int? = nil, k2: Int? = nil, k3: Int? = nil, n1: Int? = nil) {
+    init(severity: Int, k1: Int? = nil, k2: Int? = nil, k3: Int? = nil, n1: Int? = nil, u1: Int? = nil) {
         self.severity = severity
         self.k1 = k1
         self.k2 = k2
         self.k3 = k3
         self.n1 = n1
+        self.u1 = u1
     }
 
     init(from decoder: Decoder) throws {
@@ -55,6 +57,7 @@ struct HistoryPoint: Decodable, Equatable {
             self.k2 = nil
             self.k3 = nil
             self.n1 = nil
+            self.u1 = nil
             return
         }
         // Altrimenti come oggetto (formato nuovo)
@@ -64,10 +67,11 @@ struct HistoryPoint: Decodable, Equatable {
         self.k2 = try container.decodeIfPresent(Int.self, forKey: .k2)
         self.k3 = try container.decodeIfPresent(Int.self, forKey: .k3)
         self.n1 = try container.decodeIfPresent(Int.self, forKey: .n1)
+        self.u1 = try container.decodeIfPresent(Int.self, forKey: .u1)
     }
 
     private enum HistoryPointKeys: String, CodingKey {
-        case s, k1, k2, k3, n1
+        case s, k1, k2, k3, n1, u1
     }
 }
 
@@ -79,6 +83,7 @@ struct MonitorItem: Decodable, Identifiable, Equatable {
     let k2: ProbeStatus
     let k3: ProbeStatus
     let n1: ProbeStatus
+    let u1: ProbeStatus
     let final: ProbeStatus
     let severity: Int
     let history: [HistoryPoint]
@@ -92,6 +97,7 @@ struct MonitorItem: Decodable, Identifiable, Equatable {
         self.k2 = try container.decode(ProbeStatus.self, forKey: .k2)
         self.k3 = try container.decode(ProbeStatus.self, forKey: .k3)
         self.n1 = try container.decode(ProbeStatus.self, forKey: .n1)
+        self.u1 = try container.decode(ProbeStatus.self, forKey: .u1)
         self.final = try container.decode(ProbeStatus.self, forKey: .final)
         self.severity = try container.decode(Int.self, forKey: .severity)
         self.history = try container.decode([HistoryPoint].self, forKey: .history)
@@ -100,7 +106,7 @@ struct MonitorItem: Decodable, Identifiable, Equatable {
 
     var rowColor: RowColor {
         if final == .down { return .red }
-        let probes: Set<ProbeStatus> = [k1, k2, k3, n1]
+        let probes: Set<ProbeStatus> = [k1, k2, k3, n1, u1]
         if probes.count > 1 { return .yellow }
         return .green
     }
@@ -114,7 +120,7 @@ struct MonitorItem: Decodable, Identifiable, Equatable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case name, k1, k2, k3, n1
+        case name, k1, k2, k3, n1, u1
         case final = "final"
         case severity, history, link
     }
@@ -143,8 +149,9 @@ struct SparklineSegment: Identifiable, Equatable {
     let k2: Int?
     let k3: Int?
     let n1: Int?
+    let u1: Int?
 
-    init(id: Int, severity: Int, timestamp: Date?, k1: Int? = nil, k2: Int? = nil, k3: Int? = nil, n1: Int? = nil) {
+    init(id: Int, severity: Int, timestamp: Date?, k1: Int? = nil, k2: Int? = nil, k3: Int? = nil, n1: Int? = nil, u1: Int? = nil) {
         self.id = id
         self.severity = severity
         self.timestamp = timestamp
@@ -152,6 +159,7 @@ struct SparklineSegment: Identifiable, Equatable {
         self.k2 = k2
         self.k3 = k3
         self.n1 = n1
+        self.u1 = u1
     }
 
     var color: Color {

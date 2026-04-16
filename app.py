@@ -252,6 +252,7 @@ def build_dashboard_data():
                 "k2": map_status(p["tim"]),
                 "k3": map_status(p["iliad"]),
                 "n1": map_status(p["nodeping"]),
+                "u1": map_status(p["uptime"]),
                 "final": map_status(p["final"]),
                 "severity": p["severity"],
                 "history": p["history"],

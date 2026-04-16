@@ -1,6 +1,6 @@
 # IN.VA Uptime Dashboard
 
-Sistema di monitoraggio uptime multi-sonda con dashboard web (PWA) e app iOS nativa. Monitora lo stato dei servizi tramite quattro sonde indipendenti (Aruba Bergamo, TIM Sestu, ILIAD Sinnai, NodePing Europe) e invia notifiche push al cambio di stato globale.
+Sistema di monitoraggio uptime multi-sonda con dashboard web (PWA) e app iOS nativa. Monitora lo stato dei servizi tramite cinque sonde indipendenti (Aruba Bergamo, TIM Sestu, ILIAD Sinnai, NodePing Europe, Uptime INVA) e invia notifiche push al cambio di stato globale.
 
 ## Architettura
 
@@ -27,6 +27,7 @@ Sistema di monitoraggio uptime multi-sonda con dashboard web (PWA) e app iOS nat
 - `k2` — TIM Sestu
 - `k3` — ILIAD Sinnai
 - `n1` — NodePing Europe
+- `u1` — Uptime INVA
 
 **Stato globale:** `GREEN` (tutto UP) / `YELLOW` (mismatch tra sonde) / `RED` (DOWN su tutte le sonde)
 
@@ -188,12 +189,13 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
       "k2": "DOWN",
       "k3": "UP",
       "n1": "UP",
+      "u1": "UP",
       "final": "UP",
       "severity": 1,
       "history": [
-        {"s": 0, "k1": 1, "k2": 1, "k3": 1, "n1": 1},
-        {"s": 1, "k1": 1, "k2": 0, "k3": 1, "n1": 1},
-        {"s": 0, "k1": 1, "k2": 1, "k3": 1, "n1": 1}
+        {"s": 0, "k1": 1, "k2": 1, "k3": 1, "n1": 1, "u1": 1},
+        {"s": 1, "k1": 1, "k2": 0, "k3": 1, "n1": 1, "u1": 1},
+        {"s": 0, "k1": 1, "k2": 1, "k3": 1, "n1": 1, "u1": 1}
       ],
       "link": "https://example.com"
     }
@@ -203,13 +205,13 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 }
 ```
 
-> Lo storico usa la convenzione `0 = DOWN, 1 = UP` per ogni sonda. I punti vecchi (pre-migrazione) possono apparire come semplici interi.
+> Lo storico usa la convenzione `0 = DOWN, 1 = UP` per ogni sonda. I punti vecchi (pre-migrazione) possono apparire come semplici interi. I punti nel formato a 5 campi (pre-sonda Uptime) avranno `u1: null`.
 
 ### Redis — schema chiavi
 
 | Chiave | Tipo | Descrizione |
 |---|---|---|
-| `history:<nome_monitor>` | List | Storico severity (max 60 punti) |
+| `history:<nome_monitor>` | List | Storico severity (max 60 punti, formato `severity:k1:k2:k3:n1:u1`) |
 | `global_state` | String | Stato globale corrente (`GREEN`/`YELLOW`/`RED`) |
 | `push:subs_by_endpoint` | Hash | Subscription Web Push VAPID |
 | `apns:subs_by_token` | Hash | Device token APNs iOS/Mac (con `bundle_id` opzionale per Mac) |
@@ -281,6 +283,15 @@ Bugfix Mac push notifications:
 Bugfix same-state notifications:
 - **Bug Condition** — YELLOW→YELLOW e RED→RED con nuove risorse anomale inviano notifica
 - **Preservation** — Transizioni GREEN↔YELLOW↔RED, primo avvio, push disabilitate, GREEN→GREEN invariati
+
+Sonda Uptime (u1) — 7 proprietà di correttezza:
+- **P1** — Round-trip storico 6 campi (save_point → load_history)
+- **P2** — Retrocompatibilità formato 5 campi (u1 = None)
+- **P3** — Retrocompatibilità formato 1 campo (tutte le sonde = None)
+- **P4** — Severity mismatch con 5 sonde
+- **P5** — Compatibilità severity con sonda UP aggiuntiva
+- **P6** — Stato finale con 5 sonde (DOWN solo se tutte DOWN)
+- **P7** — Notifiche push includono sonda Uptime
 
 ---
 
@@ -448,7 +459,7 @@ App companion watchOS che mostra lo stato dei servizi con card compatte. Funzion
 
 ### Funzionalità
 
-- Lista servizi con stato finale e sonde (Aruba, TIM, ILIAD, NodePing)
+- Lista servizi con stato finale e sonde (Aruba, TIM, ILIAD, NodePing, Uptime)
 - Raggruppamento per stato (DOWN / Mismatch / UP)
 - Colore sonde verde/rosso per identificare subito i problemi
 - LED globale nella toolbar

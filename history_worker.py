@@ -17,6 +17,7 @@ from config import (
     PROBE_TIM,
     PROBE_ILIAD,
     PROBE_NODEPING,
+    PROBE_UPTIME,
     SLEEP,
 )
 from kuma_client import load_monitors
@@ -43,6 +44,7 @@ PROBE_NAMES = {
     "tim": "TIM",
     "iliad": "ILIAD",
     "nodeping": "NodePing",
+    "uptime": "Uptime",
 }
 
 
@@ -64,7 +66,7 @@ def _build_detail_body(monitor_details, new_state):
             lines.append(f"{m['name']} — DOWN su tutte le sonde")
 
         for m in mismatch_resources:
-            down_probes = [PROBE_NAMES[k] for k in ("bg", "tim", "iliad", "nodeping") if m[k] == 0]
+            down_probes = [PROBE_NAMES[k] for k in ("bg", "tim", "iliad", "nodeping", "uptime") if m[k] == 0]
             if down_probes:
                 lines.append(f"⚠ {m['name']} — DOWN su {', '.join(down_probes)}")
 
@@ -72,7 +74,7 @@ def _build_detail_body(monitor_details, new_state):
         # Solo mismatch
         mismatch_resources = [m for m in monitor_details if m["severity"] == 1]
         for m in mismatch_resources:
-            down_probes = [PROBE_NAMES[k] for k in ("bg", "tim", "iliad", "nodeping") if m[k] == 0]
+            down_probes = [PROBE_NAMES[k] for k in ("bg", "tim", "iliad", "nodeping", "uptime") if m[k] == 0]
             if down_probes:
                 lines.append(f"{m['name']} — DOWN su {', '.join(down_probes)}")
 
@@ -237,10 +239,10 @@ def loop_once():
         logging.info("Status vuoto → tutti UP.")
 
         for name_norm in common:
-            save_point(name_norm, 0, k1=0, k2=0, k3=0, n1=0)
+            save_point(name_norm, 0, k1=0, k2=0, k3=0, n1=0, u1=0)
             severities.append(0)
             monitor_details.append({
-                "name": m1[name_norm], "bg": 1, "tim": 1, "iliad": 1, "nodeping": 1, "severity": 0
+                "name": m1[name_norm], "bg": 1, "tim": 1, "iliad": 1, "nodeping": 1, "uptime": 1, "severity": 0
             })
             logging.info(f"[ALL-UP] {m1[name_norm]} → sev=0")
 
@@ -263,14 +265,16 @@ def loop_once():
             tim = 1
             iliad = 1
             nodeping = 1
+            uptime = 1
         else:
             probes = info.get("probes", [])
             bg = 0 if PROBE_BG  in probes else 1
             tim = 0 if PROBE_TIM in probes else 1
             iliad = 0 if PROBE_ILIAD in probes else 1
             nodeping = 0 if PROBE_NODEPING in probes else 1
+            uptime = 0 if PROBE_UPTIME in probes else 1
 
-        severity = compute_severity(bg, tim, iliad, nodeping)
+        severity = compute_severity(bg, tim, iliad, nodeping, uptime)
         severities.append(severity)
         monitor_details.append({
             "name": display_name,
@@ -278,10 +282,11 @@ def loop_once():
             "tim": tim,
             "iliad": iliad,
             "nodeping": nodeping,
+            "uptime": uptime,
             "severity": severity,
         })
 
-        save_point(name_norm, severity, k1=bg, k2=tim, k3=iliad, n1=nodeping)
+        save_point(name_norm, severity, k1=bg, k2=tim, k3=iliad, n1=nodeping, u1=uptime)
         logging.info(f"[OK] {display_name} → sev={severity}")
 
     # Calcola stato globale

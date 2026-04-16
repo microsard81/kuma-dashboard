@@ -35,11 +35,11 @@ PUSH_NOTIFY_ON_ALL = {
 def _make_monitor_detail(name: str, severity: int) -> dict:
     """Build a monitor_details entry with the given name and severity."""
     if severity == 2:
-        return {"name": name, "bg": 0, "tim": 0, "iliad": 0, "nodeping": 0, "severity": 2}
+        return {"name": name, "bg": 0, "tim": 0, "iliad": 0, "nodeping": 0, "uptime": 0, "severity": 2}
     elif severity == 1:
-        return {"name": name, "bg": 0, "tim": 1, "iliad": 1, "nodeping": 1, "severity": 1}
+        return {"name": name, "bg": 0, "tim": 1, "iliad": 1, "nodeping": 1, "uptime": 1, "severity": 1}
     else:
-        return {"name": name, "bg": 1, "tim": 1, "iliad": 1, "nodeping": 1, "severity": 0}
+        return {"name": name, "bg": 1, "tim": 1, "iliad": 1, "nodeping": 1, "uptime": 1, "severity": 0}
 
 
 # Strategies for monitor_details lists

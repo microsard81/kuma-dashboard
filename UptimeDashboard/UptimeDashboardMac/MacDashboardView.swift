@@ -218,6 +218,7 @@ private struct MacMonitorRow: View {
         case "k2": val = seg.k2
         case "k3": val = seg.k3
         case "n1": val = seg.n1
+        case "u1": val = seg.u1
         default: val = nil
         }
         guard let v = val else { return nil }
@@ -250,6 +251,7 @@ private struct MacMonitorRow: View {
                 ProbeIndicator(label: "TIM", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "k2") ?? monitor.k2)
                 ProbeIndicator(label: "ILIAD", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "k3") ?? monitor.k3)
                 ProbeIndicator(label: "NodePing", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "n1") ?? monitor.n1)
+                ProbeIndicator(label: "Uptime", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "u1") ?? monitor.u1)
                 Spacer()
                 if let label = selectionLabel {
                     Text(label)
@@ -311,7 +313,7 @@ private struct MacSparklineView: View {
             let secsAgo = TimeInterval(pts.count - 1 - offset) * samplingInterval
             let timestamp = now.addingTimeInterval(-secsAgo)
             return MacSparklineSegment(id: offset, severity: point.severity,
-                                        k1: point.k1, k2: point.k2, k3: point.k3, n1: point.n1,
+                                        k1: point.k1, k2: point.k2, k3: point.k3, n1: point.n1, u1: point.u1,
                                         timestamp: timestamp)
         }
     }
@@ -366,6 +368,7 @@ private struct MacSparklineView: View {
         let k2: Int?
         let k3: Int?
         let n1: Int?
+        let u1: Int?
     }
 
     private var points: [HistoryPoint] {
@@ -375,7 +378,8 @@ private struct MacSparklineView: View {
                                     k1: dict["k1"] as? Int,
                                     k2: dict["k2"] as? Int,
                                     k3: dict["k3"] as? Int,
-                                    n1: dict["n1"] as? Int)
+                                    n1: dict["n1"] as? Int,
+                                    u1: dict["u1"] as? Int)
             }
             return nil
         }
@@ -404,5 +408,6 @@ private struct MacSparklineSegment: Identifiable {
     let k2: Int?
     let k3: Int?
     let n1: Int?
+    let u1: Int?
     let timestamp: Date
 }

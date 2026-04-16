@@ -5,7 +5,7 @@ import logging
 import requests
 from requests.exceptions import Timeout, ConnectionError, HTTPError
 
-from config import STATUS_URL, STATUS_TOKEN, PROBE_BG, PROBE_TIM, PROBE_ILIAD, PROBE_NODEPING
+from config import STATUS_URL, STATUS_TOKEN, PROBE_BG, PROBE_TIM, PROBE_ILIAD, PROBE_NODEPING, PROBE_UPTIME
 from redis_history import load_history
 from severity import compute_severity
 
@@ -41,6 +41,7 @@ def process_monitor(monitor_name, status_dict, name_norm):
             "tim": 1,
             "iliad": 1,
             "nodeping": 1,
+            "uptime": 1,
             "final": 1,
             "severity": 0,
             "history": history,
@@ -58,6 +59,7 @@ def process_monitor(monitor_name, status_dict, name_norm):
             "tim": 1,
             "iliad": 1,
             "nodeping": 1,
+            "uptime": 1,
             "final": 1,
             "severity": 0,
             "history": history,
@@ -69,16 +71,19 @@ def process_monitor(monitor_name, status_dict, name_norm):
     tim_state = 0 if PROBE_TIM in probes else 1
     iliad_state = 0 if PROBE_ILIAD in probes else 1
     nodeping_state = 0 if PROBE_NODEPING in probes else 1
+    uptime_state = 0 if PROBE_UPTIME in probes else 1
 
-    final_state = 0 if (bg_state == 0 and tim_state == 0 and iliad_state == 0 and nodeping_state == 0) else 1
+    final_state = 0 if (bg_state == 0 and tim_state == 0 and iliad_state == 0
+                        and nodeping_state == 0 and uptime_state == 0) else 1
 
-    severity = compute_severity(bg_state, tim_state, iliad_state, nodeping_state)
+    severity = compute_severity(bg_state, tim_state, iliad_state, nodeping_state, uptime_state)
 
     return {
         "bg": bg_state,
         "tim": tim_state,
         "iliad": iliad_state,
         "nodeping": nodeping_state,
+        "uptime": uptime_state,
         "final": final_state,
         "severity": severity,
         "history": history,

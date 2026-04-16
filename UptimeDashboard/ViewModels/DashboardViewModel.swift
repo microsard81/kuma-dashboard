@@ -159,6 +159,7 @@ final class DashboardViewModel: ObservableObject {
                 "k2": item.k2.rawValue,
                 "k3": item.k3.rawValue,
                 "n1": item.n1.rawValue,
+                "u1": item.u1.rawValue,
                 "final": item.final.rawValue,
             ]
         }

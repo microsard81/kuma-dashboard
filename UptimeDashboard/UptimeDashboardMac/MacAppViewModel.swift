@@ -21,17 +21,19 @@ struct MacMonitor: Identifiable, Equatable {
     let k2: String
     let k3: String
     let n1: String
+    let u1: String
     let finalStatus: String
     let severity: Int
     let link: String?
     let history: [[String: Any]]
 
     var isDown: Bool { finalStatus == "DOWN" }
-    var isMismatch: Bool { !isDown && Set([k1, k2, k3, n1]).count > 1 }
+    var isMismatch: Bool { !isDown && Set([k1, k2, k3, n1, u1]).count > 1 }
 
     static func == (lhs: MacMonitor, rhs: MacMonitor) -> Bool {
         lhs.id == rhs.id && lhs.name == rhs.name && lhs.finalStatus == rhs.finalStatus
             && lhs.k1 == rhs.k1 && lhs.k2 == rhs.k2 && lhs.k3 == rhs.k3 && lhs.n1 == rhs.n1
+            && lhs.u1 == rhs.u1
     }
 }
 
@@ -290,8 +292,9 @@ final class MacAppViewModel: ObservableObject {
                       let n1 = dict["n1"] as? String,
                       let final_ = dict["final"] as? String,
                       let severity = dict["severity"] as? Int else { return nil }
+                let u1 = dict["u1"] as? String ?? "UP"
                 let history = dict["history"] as? [[String: Any]] ?? []
-                return MacMonitor(name: name, k1: k1, k2: k2, k3: k3, n1: n1,
+                return MacMonitor(name: name, k1: k1, k2: k2, k3: k3, n1: n1, u1: u1,
                                   finalStatus: final_, severity: severity,
                                   link: dict["link"] as? String,
                                   history: history)

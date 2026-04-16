@@ -41,7 +41,8 @@ struct SparklineView: View {
                 k1: point.k1,
                 k2: point.k2,
                 k3: point.k3,
-                n1: point.n1
+                n1: point.n1,
+                u1: point.u1
             )
         }
     }

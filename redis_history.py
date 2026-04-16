@@ -12,15 +12,19 @@ r = redis.Redis(
 
 # ------------------ STORICO PER MONITOR ------------------ #
 
-def save_point(name_norm, severity, k1=None, k2=None, k3=None, n1=None):
+def save_point(name_norm, severity, k1=None, k2=None, k3=None, n1=None, u1=None):
     """
     Salva un punto nello storico di un monitor.
-    Formato: "severity:k1:k2:k3:n1" (es. "1:0:0:1:0")
+    Formato a 6 campi: "severity:k1:k2:k3:n1:u1" (es. "1:0:0:1:0:1")
+    Formato a 5 campi (legacy): "severity:k1:k2:k3:n1"
     Se gli stati per-sonda non sono forniti, salva solo severity (retrocompatibile).
     """
     key = f"history:{name_norm}"
     if k1 is not None and k2 is not None and k3 is not None and n1 is not None:
-        value = f"{severity}:{k1}:{k2}:{k3}:{n1}"
+        if u1 is not None:
+            value = f"{severity}:{k1}:{k2}:{k3}:{n1}:{u1}"
+        else:
+            value = f"{severity}:{k1}:{k2}:{k3}:{n1}"
     else:
         value = str(severity)
     r.rpush(key, value)
@@ -30,21 +34,32 @@ def save_point(name_norm, severity, k1=None, k2=None, k3=None, n1=None):
 def load_history(name_norm):
     """
     Carica lo storico dal Redis. Restituisce una lista di dict:
-    [{"s": severity, "k1": stato, "k2": stato, "k3": stato, "n1": stato}, ...]
-    Per i punti vecchi (solo intero), k1/k2/k3/n1 saranno None.
+    [{"s": severity, "k1": stato, "k2": stato, "k3": stato, "n1": stato, "u1": stato}, ...]
+    Per i punti a 5 campi (legacy), u1 sarà None.
+    Per i punti a 1 campo (legacy minimo), k1/k2/k3/n1/u1 saranno None.
     """
     key = f"history:{name_norm}"
     data = r.lrange(key, 0, -1)
     result = []
     for raw in (data or []):
         parts = raw.split(":")
-        if len(parts) == 5:
+        if len(parts) == 6:
             result.append({
                 "s": int(parts[0]),
                 "k1": int(parts[1]),
                 "k2": int(parts[2]),
                 "k3": int(parts[3]),
                 "n1": int(parts[4]),
+                "u1": int(parts[5]),
+            })
+        elif len(parts) == 5:
+            result.append({
+                "s": int(parts[0]),
+                "k1": int(parts[1]),
+                "k2": int(parts[2]),
+                "k3": int(parts[3]),
+                "n1": int(parts[4]),
+                "u1": None,
             })
         else:
             result.append({
@@ -53,6 +68,7 @@ def load_history(name_norm):
                 "k2": None,
                 "k3": None,
                 "n1": None,
+                "u1": None,
             })
     return result
 

@@ -226,8 +226,8 @@ function buildHistorySvg(history) {
         let tooltipText = labels[sev] + " — " + dateStr + " " + timeStr;
         // Se mismatch e abbiamo dati per-sonda, mostra quali sono DOWN
         if (sev === 1 && typeof point === "object" && point.k1 != null) {
-            const probeNames = { k1: "Aruba", k2: "TIM", k3: "ILIAD", n1: "NodePing" };
-            const down = ["k1","k2","k3","n1"].filter(k => point[k] === 0).map(k => probeNames[k]);
+            const probeNames = { k1: "Aruba", k2: "TIM", k3: "ILIAD", n1: "NodePing", u1: "Uptime" };
+            const down = ["k1","k2","k3","n1","u1"].filter(k => point[k] === 0).map(k => probeNames[k]);
             if (down.length > 0) tooltipText += " (DOWN: " + down.join(", ") + ")";
         }
         title.textContent = tooltipText;
@@ -251,7 +251,7 @@ function renderTable(items) {
 
     items.forEach(item => {
         const tr = document.createElement("tr");
-        const CHECK_KEYS = ["k1", "k2", "k3", "n1"];
+        const CHECK_KEYS = ["k1", "k2", "k3", "n1", "u1"];
         const states = new Set(CHECK_KEYS.map(k => item[k]));
 
         if (item.final === "DOWN") tr.classList.add("row-down");
@@ -275,6 +275,7 @@ function renderTable(items) {
         tr.appendChild(createStatusCell(item.k2));
         tr.appendChild(createStatusCell(item.k3));
         tr.appendChild(createStatusCell(item.n1));
+        tr.appendChild(createStatusCell(item.u1));
         tr.appendChild(createStatusCell(item.final));
 
         const hist = document.createElement("td");
@@ -318,12 +319,12 @@ function renderDesktopCards(items) {
 
     // Ordina: DOWN prima, poi mismatch, poi UP
     const sorted = [...items].sort((a, b) => {
-        const sev = s => s.final === "DOWN" ? 0 : new Set(["k1","k2","k3","n1"].map(k => s[k])).size > 1 ? 1 : 2;
+        const sev = s => s.final === "DOWN" ? 0 : new Set(["k1","k2","k3","n1","u1"].map(k => s[k])).size > 1 ? 1 : 2;
         return sev(a) - sev(b);
     });
 
     sorted.forEach(item => {
-        const CHECK_KEYS = ["k1", "k2", "k3", "n1"];
+        const CHECK_KEYS = ["k1", "k2", "k3", "n1", "u1"];
         const states = new Set(CHECK_KEYS.map(k => item[k]));
         let severity = "up";
         if (item.final === "DOWN") severity = "down";
@@ -360,7 +361,7 @@ function renderDesktopCards(items) {
         const probes = document.createElement("div");
         probes.classList.add("dcard-probes");
 
-        const probeLabels = { k1: "Aruba Bergamo", k2: "TIM Sestu", k3: "ILIAD Sinnai", n1: "NodePing Europe" };
+        const probeLabels = { k1: "Aruba Bergamo", k2: "TIM Sestu", k3: "ILIAD Sinnai", n1: "NodePing Europe", u1: "Uptime" };
         CHECK_KEYS.forEach(k => {
             const p = document.createElement("span");
             p.classList.add("dcard-probe", item[k] === "DOWN" ? "dcard-probe-down" : "dcard-probe-up");
@@ -396,7 +397,7 @@ function renderMobileCards(items) {
         const card = document.createElement("div");
         card.classList.add("mobile-card");
 
-        const CHECK_KEYS = ["k1", "k2", "k3", "n1"];
+        const CHECK_KEYS = ["k1", "k2", "k3", "n1", "u1"];
         const states = new Set(CHECK_KEYS.map(k => item[k]));
 
         if (item.final === "DOWN") card.classList.add("down");
@@ -431,6 +432,7 @@ function renderMobileCards(items) {
         add("TIM Sestu:", item.k2);
         add("ILIAD Sinnai:", item.k3);
         add("NodePing Europe:", item.n1);
+        add("Uptime:", item.u1);
         add("Finale:", item.final);
 
         const l = document.createElement("div");

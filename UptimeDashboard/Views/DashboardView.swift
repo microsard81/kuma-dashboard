@@ -250,6 +250,7 @@ private struct MonitorRowView: View {
                 ProbeIndicator(label: "TIM", status: probeOverride(for: \.k2) ?? item.k2)
                 ProbeIndicator(label: "ILIAD", status: probeOverride(for: \.k3) ?? item.k3)
                 ProbeIndicator(label: "NodePing", status: probeOverride(for: \.n1) ?? item.n1)
+                ProbeIndicator(label: "Uptime", status: probeOverride(for: \.u1) ?? item.u1)
                 Spacer()
                 if let label = selectionLabel {
                     Text(label)

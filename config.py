@@ -44,6 +44,7 @@ PROBE_BG       = "Bergamo Aruba"
 PROBE_TIM      = "Sestu TIM"
 PROBE_ILIAD    = "Sinnai ILIAD"
 PROBE_NODEPING = "Europe NodePing"
+PROBE_UPTIME   = "Uptime INVA"
 
 KUMA1 = {
     "name": "Kuma Aruba Bergamo",
