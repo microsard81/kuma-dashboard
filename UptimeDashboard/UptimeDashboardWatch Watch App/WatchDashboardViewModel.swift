@@ -143,9 +143,10 @@ extension WatchDashboardViewModel: WCSessionDelegate {
                   let k3 = dict["k3"] as? String,
                   let n1 = dict["n1"] as? String,
                   let final_ = dict["final"] as? String else { return nil }
+            let u1 = dict["u1"] as? String ?? "UP"
             return WatchMonitor(
                 name: name,
-                k1: k1, k2: k2, k3: k3, n1: n1,
+                k1: k1, k2: k2, k3: k3, n1: n1, u1: u1,
                 finalStatus: final_
             )
         }

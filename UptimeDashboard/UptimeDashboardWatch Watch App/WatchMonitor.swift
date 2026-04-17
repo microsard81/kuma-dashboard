@@ -8,10 +8,11 @@ struct WatchMonitor: Identifiable {
     let k2: String
     let k3: String
     let n1: String
+    let u1: String
     let finalStatus: String
 
     var isDown: Bool { finalStatus == "DOWN" }
     var isMismatch: Bool {
-        !isDown && Set([k1, k2, k3, n1]).count > 1
+        !isDown && Set([k1, k2, k3, n1, u1]).count > 1
     }
 }

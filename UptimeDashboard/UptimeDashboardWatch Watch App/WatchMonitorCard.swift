@@ -26,6 +26,7 @@ struct WatchMonitorCard: View {
                 ProbeRow(label: "TIM", status: monitor.k2)
                 ProbeRow(label: "ILIAD", status: monitor.k3)
                 ProbeRow(label: "NodePing", status: monitor.n1)
+                ProbeRow(label: "Uptime", status: monitor.u1)
             }
         }
         .padding(.vertical, 4)

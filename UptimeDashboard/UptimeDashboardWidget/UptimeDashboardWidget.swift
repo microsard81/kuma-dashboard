@@ -10,10 +10,11 @@ struct WidgetMonitor: Identifiable {
     let k2: String
     let k3: String
     let n1: String
+    let u1: String
     let finalStatus: String
 
     var isDown: Bool { finalStatus == "DOWN" }
-    var isMismatch: Bool { !isDown && Set([k1, k2, k3, n1]).count > 1 }
+    var isMismatch: Bool { !isDown && Set([k1, k2, k3, n1, u1]).count > 1 }
     var isUp: Bool { !isDown && !isMismatch }
 }
 
@@ -67,7 +68,8 @@ struct WidgetAPIClient {
                       let k3 = dict["k3"] as? String,
                       let n1 = dict["n1"] as? String,
                       let final_ = dict["final"] as? String else { return nil }
-                return WidgetMonitor(name: name, k1: k1, k2: k2, k3: k3, n1: n1, finalStatus: final_)
+                let u1 = dict["u1"] as? String ?? "UP"
+                return WidgetMonitor(name: name, k1: k1, k2: k2, k3: k3, n1: n1, u1: u1, finalStatus: final_)
             }
 
             return DashboardEntry(

@@ -281,6 +281,7 @@ private struct ProbeDotsView: View {
             Circle().fill(monitor.k2 == "UP" ? Color.green : Color.red).frame(width: 5, height: 5)
             Circle().fill(monitor.k3 == "UP" ? Color.green : Color.red).frame(width: 5, height: 5)
             Circle().fill(monitor.n1 == "UP" ? Color.green : Color.red).frame(width: 5, height: 5)
+            Circle().fill(monitor.u1 == "UP" ? Color.green : Color.red).frame(width: 5, height: 5)
         }
     }
 }
@@ -331,7 +332,7 @@ extension Color {
     UptimeDashboardWidget()
 } timeline: {
     DashboardEntry(date: Date(), globalState: "YELLOW", monitors: [
-        WidgetMonitor(name: "INVA - www.regione.vda.it", k1: "UP", k2: "UP", k3: "UP", n1: "DOWN", finalStatus: "UP"),
+        WidgetMonitor(name: "INVA - www.regione.vda.it", k1: "UP", k2: "UP", k3: "UP", n1: "DOWN", u1: "UP", finalStatus: "UP"),
     ], downCount: 0, mismatchCount: 1, isPlaceholder: false)
 }
 #endif
