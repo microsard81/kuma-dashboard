@@ -12,6 +12,5 @@ import SwiftUI
 struct UptimeDashboardMacWidgetBundle: WidgetBundle {
     var body: some Widget {
         UptimeDashboardMacWidget()
-        UptimeDashboardMacWidgetControl()
     }
 }
