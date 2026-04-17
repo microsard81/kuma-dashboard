@@ -151,6 +151,7 @@ apns_utils.py           # APNs push (app iOS nativa)
 redis_history.py        # Lettura/scrittura storico e stato globale su Redis
 severity.py             # Calcolo severità e stato globale
 manage_users.py         # CLI gestione utenti (add, remove, list, reset)
+manage_push.py          # CLI gestione e test notifiche push (list, test, remove)
 wsgi.py                 # Entry point WSGI per produzione
 keys/                   # Chiavi .p8 APNs (non committare, solo deploy)
 static/                 # Asset PWA (CSS, JS, immagini, manifest.json)
@@ -256,6 +257,38 @@ python manage_users.py remove <username>
 > Requisiti password: almeno 8 caratteri, una maiuscola, una minuscola, un numero e un carattere speciale. Le ultime 5 password non possono essere riutilizzate (il reset da CLI azzera lo storico).
 
 > Al primo avvio, se le variabili `AUTH_PASSWORD_HASH` e `AUTH_TOTP_SECRET` sono presenti in `.env`, l'utente legacy viene migrato automaticamente in Redis come già enrolled.
+
+### Gestione notifiche push
+
+Usa `manage_push.py` per ispezionare le subscription registrate e inviare notifiche di test:
+
+```bash
+source /home/venvs/kuma-dashboard/bin/activate
+
+# Lista tutti i dispositivi registrati (VAPID + APNs)
+python manage_push.py list
+
+# Solo VAPID (browser/PWA) — mostra tipo dispositivo (Android, Safari, Firefox, Edge)
+python manage_push.py list vapid
+
+# Solo APNs (iOS/Mac) — mostra token, environment, bundle ID
+python manage_push.py list apns
+
+# Invia push di test a tutti i dispositivi
+python manage_push.py test
+
+# Solo a browser/PWA
+python manage_push.py test vapid
+
+# Solo a iOS/Mac
+python manage_push.py test apns
+
+# Rimuovi una subscription VAPID per endpoint (parziale)
+python manage_push.py remove "cntZoPZq4oA"
+
+# Rimuovi una subscription APNs per token (parziale)
+python manage_push.py remove-apns "a70b5d1f"
+```
 
 ### Test backend
 
