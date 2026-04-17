@@ -420,6 +420,10 @@ xcodebuild test \
   -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
+### Deploy iOS
+
+L'Archive del target iOS include automaticamente l'app Watch e il Widget iOS (configurati come embedded). Un singolo Archive → Upload to App Store Connect distribuisce tutte e tre le app.
+
 I test coprono 18 proprietà di correttezza (100 iterazioni ciascuna):
 
 | Proprietà | File | Requisiti |
@@ -484,6 +488,10 @@ UptimeDashboardMac/
 ├── MacSettingsView.swift           # Impostazioni (Cmd+,)
 └── TextScaleModifier.swift         # Font scalati custom
 ```
+
+### Deploy macOS
+
+L'Archive del target macOS include automaticamente il Mac Widget (configurato come embedded extension). Un singolo Archive → Upload/Export distribuisce app + widget.
 
 ---
 
