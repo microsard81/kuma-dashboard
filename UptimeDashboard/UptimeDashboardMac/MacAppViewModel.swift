@@ -54,6 +54,8 @@ final class MacAppViewModel: ObservableObject {
     @Published var refreshInterval: Int  // secondi, 0 = disabilitato
     @Published var sortOrder: String     // "severity", "alphabetical", "globalState"
     @Published var badgeEnabled: Bool
+    @Published var notificationsEnabled: Bool
+    @Published var notificationThreshold: Int
 
     func setTheme(_ mode: String) {
         themeMode = mode
@@ -84,6 +86,95 @@ final class MacAppViewModel: ObservableObject {
         }
     }
 
+    func setNotificationsEnabled(_ enabled: Bool) {
+        notificationsEnabled = enabled
+        defaults.set(enabled, forKey: "mac_notifications_enabled")
+
+        if enabled {
+            // Re-register for remote notifications
+            NSApplication.shared.registerForRemoteNotifications()
+        } else {
+            // Unsubscribe from backend
+            guard let deviceToken = defaults.string(forKey: "mac_apnsDeviceToken"),
+                  let apiToken = Bundle.main.object(forInfoDictionaryKey: "WATCH_API_TOKEN") as? String else { return }
+
+            Task {
+                do {
+                    guard let url = URL(string: "\(baseURL)/api/mac/apns/unsubscribe") else { return }
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "POST"
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    request.setValue(apiToken, forHTTPHeaderField: "X-Watch-Token")
+
+                    let payload: [String: Any] = ["device_token": deviceToken]
+                    request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+                    let (_, response) = try await URLSession.shared.data(for: request)
+                    if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                        await MainActor.run {
+                            self.errorMessage = "Errore disattivazione notifiche"
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.errorMessage = "Errore disattivazione notifiche"
+                    }
+                }
+            }
+
+            // Unregister from APNs
+            NSApplication.shared.unregisterForRemoteNotifications()
+        }
+    }
+
+    func setNotificationThreshold(_ value: Int) {
+        guard (1...5).contains(value) else { return }
+        let previousValue = notificationThreshold
+        notificationThreshold = value
+        defaults.set(value, forKey: "mac_notification_threshold")
+
+        // Read the stored APNs device token
+        guard let deviceToken = defaults.string(forKey: "mac_apnsDeviceToken") else { return }
+
+        // Read the API token for X-Watch-Token authentication
+        guard let apiToken = Bundle.main.object(forInfoDictionaryKey: "WATCH_API_TOKEN") as? String else { return }
+
+        Task {
+            do {
+                guard let url = URL(string: "\(baseURL)/api/mac/apns/threshold") else { return }
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue(apiToken, forHTTPHeaderField: "X-Watch-Token")
+
+                let payload: [String: Any] = [
+                    "device_token": deviceToken,
+                    "threshold": value
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+                let (_, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      (200...299).contains(http.statusCode) else {
+                    // Restore previous value on error
+                    await MainActor.run {
+                        self.notificationThreshold = previousValue
+                        self.defaults.set(previousValue, forKey: "mac_notification_threshold")
+                        self.errorMessage = "Errore aggiornamento soglia notifica"
+                    }
+                    return
+                }
+            } catch {
+                // Restore previous value on network error
+                await MainActor.run {
+                    self.notificationThreshold = previousValue
+                    self.defaults.set(previousValue, forKey: "mac_notification_threshold")
+                    self.errorMessage = "Errore aggiornamento soglia notifica"
+                }
+            }
+        }
+    }
+
     private var refreshTimer: Timer?
     private let baseURL: String
     private let defaults = UserDefaults.standard
@@ -98,6 +189,11 @@ final class MacAppViewModel: ObservableObject {
         self.refreshInterval = defaults.object(forKey: "mac_refresh_interval") as? Int ?? 60
         self.sortOrder = defaults.string(forKey: "mac_sort_order") ?? "severity"
         self.badgeEnabled = defaults.object(forKey: "mac_badge_enabled") as? Bool ?? true
+        self.notificationsEnabled = defaults.object(forKey: "mac_notifications_enabled") as? Bool ?? true
+
+        // Read notificationThreshold with safe fallback (default: 1)
+        let storedThreshold = defaults.object(forKey: "mac_notification_threshold") as? Int ?? 1
+        self.notificationThreshold = (1...5).contains(storedThreshold) ? storedThreshold : 1
 
         // Ripristina sessione se "Ricordami" era attivo
         if defaults.bool(forKey: "mac_remember_me"),

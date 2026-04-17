@@ -471,14 +471,41 @@ async function refreshDashboard() {
 /************************************************************
  * PUSH DESKTOP (UNICA VERSIONE)
  ************************************************************/
-function updatePushButton(enabled) {
+function updatePushUI(enabled) {
+    // Icona navbar
     const icon = document.getElementById("push-icon");
-    if (!icon) return;
+    if (icon) {
+        icon.classList.remove("bi-bell", "bi-bell-fill", "text-success");
+        if (enabled) icon.classList.add("bi-bell-fill", "text-success");
+        else icon.classList.add("bi-bell");
+    }
 
-    icon.classList.remove("bi-bell", "bi-bell-fill", "text-success");
+    // Desktop popover
+    const badge = document.getElementById("push-status-badge");
+    const btn = document.getElementById("push-toggle-btn");
+    const thresholdSection = document.getElementById("threshold-section");
+    if (badge) {
+        badge.textContent = enabled ? "ON" : "OFF";
+        badge.className = "badge " + (enabled ? "bg-success" : "bg-secondary");
+    }
+    if (btn) btn.textContent = enabled ? "Disabilita" : "Abilita";
+    if (thresholdSection) thresholdSection.style.display = enabled ? "" : "none";
 
-    if (enabled) icon.classList.add("bi-bell-fill", "text-success");
-    else icon.classList.add("bi-bell");
+    // Mobile
+    const badgeMobile = document.getElementById("push-status-badge-mobile");
+    const btnMobile = document.getElementById("push-toggle-btn-mobile");
+    const mobileWrapper = document.getElementById("threshold-mobile-wrapper");
+    if (badgeMobile) {
+        badgeMobile.textContent = enabled ? "ON" : "OFF";
+        badgeMobile.className = "badge " + (enabled ? "bg-success" : "bg-secondary");
+    }
+    if (btnMobile) btnMobile.textContent = enabled ? "Disabilita" : "Abilita";
+    if (mobileWrapper) mobileWrapper.style.display = enabled ? "" : "none";
+}
+
+// Alias per retrocompatibilità interna
+function updatePushButton(enabled) {
+    updatePushUI(enabled);
 }
 
 async function getSubscription() {
@@ -488,6 +515,8 @@ async function getSubscription() {
 }
 
 async function subscribeDesktop() {
+    // IMPORTANTE: requestPermission DEVE essere la prima chiamata async
+    // dopo il gesto utente, altrimenti iOS Safari la blocca.
     const perm = await Notification.requestPermission();
     if (perm !== "granted") {
         alert("Notifiche disattivate dal browser.");
@@ -496,9 +525,17 @@ async function subscribeDesktop() {
 
     const reg = await navigator.serviceWorker.getRegistration("/sw.js");
     if (!reg) {
-        alert("Service Worker non disponibile.");
-        return;
+        // Prova a registrare il SW se non è ancora pronto
+        try {
+            await navigator.serviceWorker.register("/sw.js");
+            await navigator.serviceWorker.ready;
+        } catch (e) {
+            alert("Service Worker non disponibile.");
+            return;
+        }
     }
+
+    const swReg = await navigator.serviceWorker.ready;
 
     const toUint8 = (b64) => {
         const pad = "=".repeat((4 - b64.length % 4) % 4);
@@ -506,44 +543,67 @@ async function subscribeDesktop() {
         return Uint8Array.from(atob(safe), c => c.charCodeAt(0));
     };
 
-    const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: toUint8(VAPID_PUBLIC_KEY),
-    });
+    try {
+        const sub = await swReg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: toUint8(VAPID_PUBLIC_KEY),
+        });
 
-    await fetch("/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sub),
-    });
+        await fetch("/push/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sub),
+        });
 
-    updatePushButton(true);
+        updatePushUI(true);
+    } catch (e) {
+        console.error("Errore subscribe push:", e);
+        alert("Errore nell'attivazione delle notifiche.");
+    }
 }
 
 async function unsubscribeDesktop() {
     const sub = await getSubscription();
     if (!sub) return;
 
-    await sub.unsubscribe();
+    try {
+        await sub.unsubscribe();
+        await fetch("/push/unsubscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+        });
+    } catch (e) {
+        console.error("Errore unsubscribe push:", e);
+    }
 
-    await fetch("/push/unsubscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint: sub.endpoint }),
-    });
+    updatePushUI(false);
+}
 
-    updatePushButton(false);
+async function togglePushFromPopover() {
+    // Controlla prima se c'è già una subscription SENZA await lunghi
+    // per mantenere il contesto del gesto utente su iOS Safari
+    try {
+        const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+        const sub = reg ? await reg.pushManager.getSubscription() : null;
+        if (sub) {
+            await unsubscribeDesktop();
+        } else {
+            await subscribeDesktop();
+        }
+    } catch (e) {
+        // Fallback: prova a subscribere direttamente
+        await subscribeDesktop();
+    }
 }
 
 async function togglePush() {
-    const sub = await getSubscription();
-    if (sub) await unsubscribeDesktop();
-    else await subscribeDesktop();
+    await togglePushFromPopover();
 }
 
 async function initPushButton() {
     const sub = await getSubscription();
-    updatePushButton(!!sub);
+    updatePushUI(!!sub);
 }
 
 async function enablePush() {
@@ -551,7 +611,59 @@ async function enablePush() {
 }
 
 window.togglePush = togglePush;
+window.togglePushFromPopover = togglePushFromPopover;
 window.enablePush = enablePush;
+
+/************************************************************
+ * SOGLIA NOTIFICA
+ ************************************************************/
+function initThresholdSelector() {
+    const saved = parseInt(localStorage.getItem("push_threshold"), 10) || 1;
+    const desktop = document.getElementById("threshold-select");
+    const mobile = document.getElementById("threshold-select-mobile");
+    if (desktop) desktop.value = saved;
+    if (mobile) mobile.value = saved;
+}
+
+async function updateThreshold(value) {
+    const threshold = parseInt(value, 10);
+    if (isNaN(threshold) || threshold < 1 || threshold > 5) return;
+
+    // Sync both selectors
+    const desktop = document.getElementById("threshold-select");
+    const mobile = document.getElementById("threshold-select-mobile");
+    if (desktop) desktop.value = threshold;
+    if (mobile) mobile.value = threshold;
+
+    // Save to localStorage
+    localStorage.setItem("push_threshold", threshold);
+
+    // Send to backend
+    const sub = await getSubscription();
+    if (!sub) return;
+
+    try {
+        const res = await fetch("/push/threshold", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: sub.endpoint, threshold: threshold }),
+        });
+        if (res.ok) {
+            const sel = desktop || mobile;
+            if (sel) {
+                sel.style.borderColor = "#34d399";
+                setTimeout(() => { sel.style.borderColor = ""; }, 1500);
+            }
+        } else {
+            alert("Errore nell'aggiornamento della soglia.");
+        }
+    } catch (e) {
+        console.error("Errore aggiornamento soglia:", e);
+        alert("Errore di rete nell'aggiornamento della soglia.");
+    }
+}
+
+window.updateThreshold = updateThreshold;
 
 /************************************************************
  * INIT
@@ -567,6 +679,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     initPushButton();
+    initThresholdSelector();
 
     const initial = document.body.getAttribute("data-global-state") || "GREEN";
     updateGlobalStatus(initial);

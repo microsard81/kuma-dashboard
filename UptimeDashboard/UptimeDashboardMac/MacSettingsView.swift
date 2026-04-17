@@ -63,6 +63,24 @@ struct MacSettingsView: View {
                 set: { viewModel.setBadgeEnabled($0) }
             ))
 
+            // Notifiche push
+            Toggle("Notifiche push", isOn: Binding(
+                get: { viewModel.notificationsEnabled },
+                set: { viewModel.setNotificationsEnabled($0) }
+            ))
+
+            // Soglia notifica (visibile solo se notifiche abilitate)
+            if viewModel.notificationsEnabled {
+                Picker("Soglia notifica", selection: Binding(
+                    get: { viewModel.notificationThreshold },
+                    set: { viewModel.setNotificationThreshold($0) }
+                )) {
+                    ForEach(1...5, id: \.self) { value in
+                        Text(thresholdLabel(value)).tag(value)
+                    }
+                }
+            }
+
             // Reset
             Button("Ripristina valori predefiniti") {
                 viewModel.setTheme("dark")
@@ -74,11 +92,22 @@ struct MacSettingsView: View {
             .foregroundColor(.secondary)
         }
         .formStyle(.grouped)
-        .frame(width: 400, height: 380)
+        .frame(width: 400, height: 420)
         .padding()
     }
 
     private var textScaleLabel: String {
         "\(Int(viewModel.textScale * 100))%"
+    }
+
+    private func thresholdLabel(_ value: Int) -> String {
+        switch value {
+        case 1: return "1 sonda DOWN"
+        case 2: return "2 sonde DOWN"
+        case 3: return "3 sonde DOWN"
+        case 4: return "4 sonde DOWN"
+        case 5: return "5 sonde DOWN (tutte)"
+        default: return "\(value) sonde DOWN"
+        }
     }
 }

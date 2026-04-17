@@ -73,6 +73,17 @@ struct SettingsView: View {
                             }
                         ))
                     }
+
+                    if settingsVM.notificationsEnabled {
+                        Picker("Soglia notifica", selection: $settingsVM.notificationThreshold) {
+                            ForEach(1...5, id: \.self) { value in
+                                Text(thresholdLabel(value)).tag(value)
+                            }
+                        }
+                        .onChange(of: settingsVM.notificationThreshold) { newValue in
+                            settingsVM.setNotificationThreshold(newValue)
+                        }
+                    }
                 }
 
                 // MARK: - Sezione Esperienza
@@ -165,5 +176,18 @@ struct SettingsView: View {
             }
         }
         .navigationViewStyle(.stack)
+    }
+
+    // MARK: - Threshold label helper
+
+    private func thresholdLabel(_ value: Int) -> String {
+        switch value {
+        case 1: return "1 sonda DOWN"
+        case 2: return "2 sonde DOWN"
+        case 3: return "3 sonde DOWN"
+        case 4: return "4 sonde DOWN"
+        case 5: return "5 sonde DOWN (tutte)"
+        default: return "\(value) sonde DOWN"
+        }
     }
 }

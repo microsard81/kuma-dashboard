@@ -41,13 +41,14 @@ _redis = redis.Redis(
 APNS_SUBS_HASH_KEY = "apns:subs_by_token"
 
 
-def add_apns_subscription(device_token: str, device_id: str, environment: str = "production", bundle_id: str | None = None) -> None:
+def add_apns_subscription(device_token: str, device_id: str, environment: str = "production", bundle_id: str | None = None, threshold: int = 1) -> None:
     """Registra un device token APNs in Redis.
 
     Usa HSET con chiave apns:subs_by_token per mantenere il namespace
     separato dal namespace VAPID (push:).
     environment: 'sandbox' per app Xcode/debug, 'production' per TestFlight/AppStore
     bundle_id: bundle ID dell'app (opzionale, usato per Mac con bundle ID diverso da iOS)
+    threshold: soglia di notifica (1-5), default 1
     """
     if not device_token or not device_id:
         logger.warning("add_apns_subscription: device_token o device_id mancante, ignorato")
@@ -61,6 +62,7 @@ def add_apns_subscription(device_token: str, device_id: str, environment: str = 
     }
     if bundle_id:
         record["bundle_id"] = bundle_id
+    record["threshold"] = threshold
     _redis.hset(APNS_SUBS_HASH_KEY, device_token, json.dumps(record))
     logger.info("APNs subscription aggiunta (%s): %s...", environment, device_token[:16])
 
@@ -96,13 +98,16 @@ def _generate_apns_jwt() -> str:
     return token
 
 
-def send_apns_to_all(title: str, body: str, data: dict) -> None:
+def send_apns_to_all(title: str, body: str, data: dict,
+                     max_down_probes: int | None = None) -> None:
     """Invia una notifica APNs a tutti i device token registrati in Redis.
 
     - Genera un JWT APNs con ES256 (scadenza 60 min)
     - Invia richieste HTTP/2 ad APNs tramite httpx
     - Rimuove automaticamente i token non validi (410 / BadDeviceToken)
     - Se APNS_KEY_PATH non è configurato, logga WARNING e ritorna
+    - Se max_down_probes è fornito, invia solo alle subscription con threshold <= max_down_probes
+    - Se max_down_probes è None, invia a tutte le subscription (bypass per GREEN/ripristino)
     """
     if APNS_KEY_PATH is None:
         logger.warning("APNS_KEY_PATH non configurato — invio APNs saltato")
@@ -147,6 +152,10 @@ def send_apns_to_all(title: str, body: str, data: dict) -> None:
     try:
         with httpx.Client(http2=True) as client:
             for sub in subscriptions:
+                threshold = sub.get("threshold", 1)
+                if max_down_probes is not None and threshold > max_down_probes:
+                    continue
+
                 headers = {
                     "authorization": f"bearer {apns_jwt}",
                     "apns-topic": sub.get("bundle_id", APNS_BUNDLE_ID),

@@ -68,10 +68,13 @@ def test_ios_subscription_roundtrip_preservation(token: str, device_id: str, env
             f"Record unexpectedly contains 'bundle_id': {record}"
         )
 
-        # Must have exactly 4 keys
+        # Must have exactly 5 keys (threshold added by notification-threshold feature)
         assert set(record.keys()) == {
-            "device_token", "device_id", "environment", "registered_at"
+            "device_token", "device_id", "environment", "registered_at", "threshold"
         }, f"Unexpected keys in record: {set(record.keys())}"
+        assert record["threshold"] == 1, (
+            f"Default threshold should be 1, got {record['threshold']}"
+        )
 
 
 # ---------------------------------------------------------------------------

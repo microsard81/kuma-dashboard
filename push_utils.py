@@ -57,6 +57,9 @@ def add_subscription(sub: Dict[str, Any]) -> None:
         logger.info("Subscription già presente: %s", endpoint[:50])
         return
 
+    if "threshold" not in sub:
+        sub["threshold"] = 1  # Soglia_Default
+
     logger.info("Aggiunta subscription: %s...", endpoint[:50])
     _redis.hset(SUBS_HASH_KEY, endpoint, json.dumps(sub))
 
@@ -105,8 +108,9 @@ def _build_payload(title: str, body: str, data: Dict[str, Any]) -> str:
 #  INVIO PUSH
 # ----------------------------------------------------------------------
 
-def send_push_to_all(title: str, body: str, data: Dict[str, Any] | None = None) -> None:
-    """Invia una push a TUTTE le subscription valide."""
+def send_push_to_all(title: str, body: str, data: Dict[str, Any] | None = None,
+                     max_down_probes: int | None = None) -> None:
+    """Invia una push alle subscription valide, filtrando per soglia se richiesto."""
     if not PUSH_ENABLED:
         logger.info("PUSH disabilitate in config")
         return
@@ -123,6 +127,11 @@ def send_push_to_all(title: str, body: str, data: Dict[str, Any] | None = None) 
         endpoint = sub.get("endpoint", "")
         if not endpoint:
             continue
+
+        # Filtraggio per soglia di notifica
+        threshold = sub.get("threshold", 1)  # fallback retrocompatibile
+        if max_down_probes is not None and threshold > max_down_probes:
+            continue  # soglia non raggiunta, skip
 
         if "permanently-removed.invalid" in endpoint:
             logger.warning("Rimossa subscription Edge Android finta.")

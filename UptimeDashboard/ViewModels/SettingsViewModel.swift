@@ -92,6 +92,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var badgeEnabled: Bool
     @Published var notificationsEnabled: Bool = false
     @Published var notificationPermissionDenied: Bool = false
+    @Published var notificationThreshold: Int
     @Published var connectionStatus: ConnectionStatus = .checking
 
     // MARK: - Computed properties
@@ -115,6 +116,7 @@ final class SettingsViewModel: ObservableObject {
     private let biometricEnabledKey = "biometricEnabled"
     private let hapticEnabledKey = "hapticEnabled"
     private let badgeEnabledKey = "badgeEnabled"
+    private let notificationThresholdKey = "notificationThreshold"
 
     // MARK: - Init
     init(defaults: UserDefaults = .standard,
@@ -156,6 +158,10 @@ final class SettingsViewModel: ObservableObject {
 
         // Read badgeEnabled with safe fallback (default: true)
         self.badgeEnabled = defaults.object(forKey: "badgeEnabled") as? Bool ?? true
+
+        // Read notificationThreshold with safe fallback (default: 1)
+        let storedThreshold = defaults.object(forKey: "notificationThreshold") as? Int ?? 1
+        self.notificationThreshold = (1...5).contains(storedThreshold) ? storedThreshold : 1
     }
 
     // MARK: - Theme actions
@@ -201,6 +207,56 @@ final class SettingsViewModel: ObservableObject {
         defaults.set(enabled, forKey: badgeEnabledKey)
         if !enabled {
             UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+        }
+    }
+
+    // MARK: - Notification threshold actions
+
+    func setNotificationThreshold(_ value: Int) {
+        guard (1...5).contains(value) else { return }
+        let previousValue = notificationThreshold
+        notificationThreshold = value
+        defaults.set(value, forKey: notificationThresholdKey)
+
+        // Read the stored APNs device token
+        guard let deviceToken = defaults.string(forKey: "apnsDeviceToken") else { return }
+
+        Task {
+            do {
+                let url = AppConfig.baseURL.appendingPathComponent("push/apns/threshold")
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+                let payload: [String: Any] = [
+                    "device_token": deviceToken,
+                    "threshold": value
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+                let config = URLSessionConfiguration.default
+                config.httpCookieStorage = HTTPCookieStorage.shared
+                config.httpShouldSetCookies = true
+                config.httpCookieAcceptPolicy = .always
+                let session = URLSession(configuration: config)
+
+                let (_, response) = try await session.data(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      (200...299).contains(http.statusCode) else {
+                    // Restore previous value on error
+                    await MainActor.run {
+                        self.notificationThreshold = previousValue
+                        self.defaults.set(previousValue, forKey: self.notificationThresholdKey)
+                    }
+                    return
+                }
+            } catch {
+                // Restore previous value on network error
+                await MainActor.run {
+                    self.notificationThreshold = previousValue
+                    self.defaults.set(previousValue, forKey: self.notificationThresholdKey)
+                }
+            }
         }
     }
 

@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 from kuma_client import load_monitors
 from status_client import load_status, process_monitor
 from auth import verify_user, verify_totp, is_totp_enrolled, get_totp_secret, enroll_totp, must_change_password, change_password, validate_password_complexity, PasswordValidationError
-from severity import compute_global_state
+from severity import compute_global_state, validate_threshold
 from config import (
     FLASK_SECRET_KEY,
     KUMA1,
@@ -32,6 +32,9 @@ from config import (
     PUSH_VAPID_PUBLIC_KEY,
     BIOMETRIC_SECRET,
     WATCH_API_TOKEN,
+    REDIS_HOST,
+    REDIS_PORT,
+    REDIS_DB,
 )
 from push_utils import (
     add_subscription,
@@ -41,7 +44,9 @@ from apns_utils import (
     add_apns_subscription,
     remove_apns_subscription,
 )
+import json
 import os, random, secrets, hmac, hashlib, time
+import redis as redis_lib
 
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET_KEY
@@ -53,6 +58,8 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # Remember me durata 30 giorni
 app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=30)
+
+_redis = redis_lib.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -287,6 +294,11 @@ def push_subscribe():
     if "endpoint" not in data:
         return {"ok": False, "error": "no endpoint"}, 400
 
+    threshold = data.get("threshold")
+    if threshold is not None:
+        if not validate_threshold(threshold):
+            return {"ok": False, "error": "threshold must be an integer between 1 and 5"}, 400
+
     sub = {
         "endpoint": data["endpoint"],
         "keys": {
@@ -294,6 +306,8 @@ def push_subscribe():
             "auth": data.get("keys", {}).get("auth", ""),
         },
     }
+    if threshold is not None:
+        sub["threshold"] = threshold
     add_subscription(sub)
     return {"ok": True}, 201
 
@@ -312,6 +326,31 @@ def push_unsubscribe():
     return {"ok": True, "removed": True}
 
 
+# ============================================================================
+# PUSH THRESHOLD — aggiornamento soglia notifica
+# ============================================================================
+@app.route("/push/threshold", methods=["POST"])
+@login_required
+def push_threshold():
+    data = request.get_json(silent=True) or {}
+    endpoint = data.get("endpoint")
+    threshold = data.get("threshold")
+
+    if not endpoint:
+        return {"ok": False, "error": "missing endpoint"}, 400
+    if not validate_threshold(threshold):
+        return {"ok": False, "error": "threshold must be an integer between 1 and 5"}, 400
+
+    raw = _redis.hget("push:subs_by_endpoint", endpoint)
+    if not raw:
+        return {"ok": False, "error": "subscription not found"}, 404
+
+    record = json.loads(raw)
+    record["threshold"] = threshold
+    _redis.hset("push:subs_by_endpoint", endpoint, json.dumps(record))
+    return {"ok": True}, 200
+
+
 @app.route("/push/apns/subscribe", methods=["POST"])
 @login_required
 def apns_subscribe():
@@ -321,9 +360,13 @@ def apns_subscribe():
     if not device_token:
         return {"ok": False, "error": "missing device_token"}, 400
 
+    threshold = data.get("threshold", 1)
+    if not validate_threshold(threshold):
+        return {"ok": False, "error": "threshold must be an integer between 1 and 5"}, 400
+
     device_id = data.get("device_id", "")
     environment = data.get("environment", "production")
-    add_apns_subscription(device_token, device_id, environment)
+    add_apns_subscription(device_token, device_id, environment, threshold=threshold)
     return {"ok": True}, 201
 
 
@@ -337,6 +380,57 @@ def apns_unsubscribe():
         return {"ok": False, "error": "missing device_token"}, 400
 
     remove_apns_subscription(device_token)
+    return {"ok": True}, 200
+
+
+# ============================================================================
+# APNS THRESHOLD — aggiornamento soglia notifica APNs
+# ============================================================================
+@app.route("/push/apns/threshold", methods=["POST"])
+@login_required
+def apns_threshold():
+    data = request.get_json(silent=True) or {}
+    device_token = data.get("device_token")
+    threshold = data.get("threshold")
+
+    if not device_token:
+        return {"ok": False, "error": "missing device_token"}, 400
+    if not validate_threshold(threshold):
+        return {"ok": False, "error": "threshold must be an integer between 1 and 5"}, 400
+
+    raw = _redis.hget("apns:subs_by_token", device_token)
+    if not raw:
+        return {"ok": False, "error": "subscription not found"}, 404
+
+    record = json.loads(raw)
+    record["threshold"] = threshold
+    _redis.hset("apns:subs_by_token", device_token, json.dumps(record))
+    return {"ok": True}, 200
+
+
+@app.route("/api/mac/apns/threshold", methods=["POST"])
+def api_mac_apns_threshold():
+    """Aggiorna soglia notifica APNs dal Mac. Autenticato con token API."""
+    token = request.headers.get("X-Watch-Token", "")
+    if not WATCH_API_TOKEN or not hmac.compare_digest(token, WATCH_API_TOKEN):
+        return {"ok": False, "error": "unauthorized"}, 401
+
+    data = request.get_json(silent=True) or {}
+    device_token = data.get("device_token")
+    threshold = data.get("threshold")
+
+    if not device_token:
+        return {"ok": False, "error": "missing device_token"}, 400
+    if not validate_threshold(threshold):
+        return {"ok": False, "error": "threshold must be an integer between 1 and 5"}, 400
+
+    raw = _redis.hget("apns:subs_by_token", device_token)
+    if not raw:
+        return {"ok": False, "error": "subscription not found"}, 404
+
+    record = json.loads(raw)
+    record["threshold"] = threshold
+    _redis.hset("apns:subs_by_token", device_token, json.dumps(record))
     return {"ok": True}, 200
 
 
@@ -601,8 +695,28 @@ def api_mac_apns_subscribe():
     if not device_token:
         return {"ok": False, "error": "missing device_token"}, 400
 
+    threshold = data.get("threshold", 1)
+    if not validate_threshold(threshold):
+        return {"ok": False, "error": "threshold must be an integer between 1 and 5"}, 400
+
     device_id = data.get("device_id", "")
     environment = data.get("environment", "production")
     bundle_id = data.get("bundle_id")
-    add_apns_subscription(device_token, device_id, environment, bundle_id=bundle_id)
+    add_apns_subscription(device_token, device_id, environment, bundle_id=bundle_id, threshold=threshold)
     return {"ok": True}, 201
+
+
+@app.route("/api/mac/apns/unsubscribe", methods=["POST"])
+def api_mac_apns_unsubscribe():
+    """Rimuove device token APNs dal Mac. Autenticato con token API."""
+    token = request.headers.get("X-Watch-Token", "")
+    if not WATCH_API_TOKEN or not hmac.compare_digest(token, WATCH_API_TOKEN):
+        return {"ok": False, "error": "unauthorized"}, 401
+
+    data = request.get_json(silent=True) or {}
+    device_token = data.get("device_token")
+    if not device_token:
+        return {"ok": False, "error": "missing device_token"}, 400
+
+    remove_apns_subscription(device_token)
+    return {"ok": True}, 200

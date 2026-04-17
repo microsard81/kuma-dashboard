@@ -16,6 +16,10 @@ struct UptimeDashboardMacApp: App {
                     NSApp.windows.first?.delegate = appDelegate
                     appDelegate.viewModel = viewModel
                 }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                    // Azzera il badge APNs quando l'app torna in primo piano
+                    UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+                }
         }
         .windowStyle(.titleBar)
         .defaultSize(width: 900, height: 650)
@@ -72,6 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
     func application(_ application: NSApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
         logger.info("[Mac] APNs device token received: \(token.prefix(16), privacy: .public)...")
+        UserDefaults.standard.set(token, forKey: "mac_apnsDeviceToken")
         Task {
             await registerTokenWithBackend(token: token)
         }

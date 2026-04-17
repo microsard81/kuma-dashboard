@@ -240,10 +240,12 @@ class TestWorkerApnsIntegration:
             push_notify_on={"final_down": True, "probe_mismatch": False, "back_to_green": False},
         )
 
+        from unittest.mock import ANY
         mock_apns.assert_called_once_with(
             "🔴 Servizi DOWN",
             "Una o più risorse risultano DOWN.",
             {"state": "RED"},
+            max_down_probes=ANY,
         )
         mock_push.assert_called_once()
 
@@ -268,10 +270,12 @@ class TestWorkerApnsIntegration:
             push_notify_on={"final_down": False, "probe_mismatch": True, "back_to_green": False},
         )
 
+        from unittest.mock import ANY
         mock_apns.assert_called_once_with(
             "🟡 Incongruenza tra sonde",
             "Una o più risorse hanno stato diverso tra le sonde.",
             {"state": "YELLOW"},
+            max_down_probes=ANY,
         )
         mock_push.assert_called_once()
 
@@ -301,6 +305,7 @@ class TestWorkerApnsIntegration:
             "🟢 Tutto OK",
             ANY,
             {"state": "GREEN"},
+            max_down_probes=None,
         )
         mock_push.assert_called_once()
 
@@ -317,6 +322,7 @@ class TestWorkerApnsIntegration:
             "🟢 Tutto OK",
             ANY,
             {"state": "GREEN"},
+            max_down_probes=None,
         )
         mock_push.assert_called_once()
 

@@ -31,7 +31,7 @@ from redis_history import (
 )
 from push_utils import send_push_to_all
 from apns_utils import send_apns_to_all
-from severity import compute_severity, compute_global_state
+from severity import compute_severity, compute_global_state, count_down_probes
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,6 +46,16 @@ PROBE_NAMES = {
     "nodeping": "NodePing",
     "uptime": "Uptime",
 }
+
+
+def _compute_max_down_probes(monitor_details: list[dict]) -> int:
+    """Calcola il massimo numero di sonde DOWN tra i monitor anomali."""
+    max_down = 0
+    for m in monitor_details:
+        if m["severity"] > 0:
+            down = count_down_probes(m["bg"], m["tim"], m["iliad"], m["nodeping"], m["uptime"])
+            max_down = max(max_down, down)
+    return max_down
 
 
 def _build_detail_body(monitor_details, new_state):
@@ -118,10 +128,11 @@ def maybe_send_global_push(new_state, monitor_details=None):
         title = "🔴 Servizi DOWN"
         body = _build_detail_body(details, "RED") or "Una o più risorse risultano DOWN."
         data = {"state": "RED"}
+        max_down = _compute_max_down_probes(details)
 
-        send_push_to_all(title, body, data)
+        send_push_to_all(title, body, data, max_down_probes=max_down)
         try:
-            send_apns_to_all(title, body, data)
+            send_apns_to_all(title, body, data, max_down_probes=max_down)
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato RED")
 
@@ -137,10 +148,11 @@ def maybe_send_global_push(new_state, monitor_details=None):
             title = "🔴 Nuova risorsa DOWN"
             body = _build_detail_body(new_details, "RED") or "Nuove risorse risultano DOWN."
             data = {"state": "RED"}
+            max_down = _compute_max_down_probes(new_details)
 
-            send_push_to_all(title, body, data)
+            send_push_to_all(title, body, data, max_down_probes=max_down)
             try:
-                send_apns_to_all(title, body, data)
+                send_apns_to_all(title, body, data, max_down_probes=max_down)
             except Exception:
                 logging.exception("Errore nell'invio notifica APNs per same-state RED")
 
@@ -153,10 +165,11 @@ def maybe_send_global_push(new_state, monitor_details=None):
         title = "🟡 Incongruenza tra sonde"
         body = _build_detail_body(details, "YELLOW") or "Una o più risorse hanno stato diverso tra le sonde."
         data = {"state": "YELLOW"}
+        max_down = _compute_max_down_probes(details)
 
-        send_push_to_all(title, body, data)
+        send_push_to_all(title, body, data, max_down_probes=max_down)
         try:
-            send_apns_to_all(title, body, data)
+            send_apns_to_all(title, body, data, max_down_probes=max_down)
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato YELLOW")
 
@@ -172,10 +185,11 @@ def maybe_send_global_push(new_state, monitor_details=None):
             title = "🟡 Nuova incongruenza"
             body = _build_detail_body(new_details, "YELLOW") or "Nuove risorse con incongruenza tra sonde."
             data = {"state": "YELLOW"}
+            max_down = _compute_max_down_probes(new_details)
 
-            send_push_to_all(title, body, data)
+            send_push_to_all(title, body, data, max_down_probes=max_down)
             try:
-                send_apns_to_all(title, body, data)
+                send_apns_to_all(title, body, data, max_down_probes=max_down)
             except Exception:
                 logging.exception("Errore nell'invio notifica APNs per same-state YELLOW")
 
@@ -190,9 +204,9 @@ def maybe_send_global_push(new_state, monitor_details=None):
         body = f"Tutte le risorse risultano UP su tutte le sonde.\nOre {now_str}"
         data = {"state": "GREEN"}
 
-        send_push_to_all(title, body, data)
+        send_push_to_all(title, body, data, max_down_probes=None)
         try:
-            send_apns_to_all(title, body, data)
+            send_apns_to_all(title, body, data, max_down_probes=None)
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato GREEN")
 
@@ -210,9 +224,9 @@ def maybe_send_global_push(new_state, monitor_details=None):
             body = f"{names} — tornata UP\nOre {now_str}"
             data = {"state": new_state}
 
-            send_push_to_all(title, body, data)
+            send_push_to_all(title, body, data, max_down_probes=None)
             try:
-                send_apns_to_all(title, body, data)
+                send_apns_to_all(title, body, data, max_down_probes=None)
             except Exception:
                 logging.exception("Errore nell'invio notifica APNs per risorsa ripristinata")
 

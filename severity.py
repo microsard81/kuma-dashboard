@@ -25,3 +25,20 @@ def compute_global_state(severities: list) -> str:
     if any(s == 1 for s in severities):
         return "YELLOW"
     return "GREEN"
+
+
+def count_down_probes(bg: int, tim: int, iliad: int, nodeping: int, uptime: int) -> int:
+    """
+    Conta il numero di sonde con valore 0 (DOWN). Restituisce un intero 0-5.
+    Ogni parametro: 0 = DOWN, 1 = UP.
+    Proprietà metamorfica: count_down_probes(a,b,c,d,e) == 5 - (a+b+c+d+e).
+    """
+    return 5 - (bg + tim + iliad + nodeping + uptime)
+
+
+def validate_threshold(value) -> bool:
+    """
+    Restituisce True se value è un intero (non booleano) in {1, 2, 3, 4, 5}.
+    Esclude esplicitamente bool perché in Python bool è sottoclasse di int.
+    """
+    return isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= 5

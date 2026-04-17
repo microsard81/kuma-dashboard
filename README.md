@@ -149,7 +149,7 @@ status_client.py        # Parsing degli stati dai webhook
 push_utils.py           # Web Push VAPID (browser/PWA)
 apns_utils.py           # APNs push (app iOS nativa)
 redis_history.py        # Lettura/scrittura storico e stato globale su Redis
-severity.py             # Calcolo severità e stato globale
+severity.py             # Calcolo severità, stato globale, conteggio sonde DOWN, validazione soglia
 manage_users.py         # CLI gestione utenti (add, remove, list, reset)
 manage_push.py          # CLI gestione e test notifiche push (list, test, remove)
 wsgi.py                 # Entry point WSGI per produzione
@@ -175,9 +175,13 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 | `POST` | `/api/totp/enroll` | — | Enrollment TOTP JSON (app iOS) |
 | `POST` | `/push/subscribe` | ✅ | Registra subscription Web Push (VAPID) |
 | `POST` | `/push/unsubscribe` | ✅ | Rimuove subscription Web Push |
+| `POST` | `/push/threshold` | ✅ | Aggiorna soglia notifica per subscription VAPID |
 | `POST` | `/api/mac/apns/subscribe` | Token | Registra device token APNs dal Mac (header `X-Watch-Token`, supporta `bundle_id`) |
+| `POST` | `/api/mac/apns/unsubscribe` | Token | Rimuove device token APNs dal Mac (header `X-Watch-Token`) |
+| `POST` | `/api/mac/apns/threshold` | Token | Aggiorna soglia notifica APNs dal Mac (header `X-Watch-Token`) |
 | `POST` | `/push/apns/subscribe` | ✅ | Registra device token APNs (iOS) |
 | `POST` | `/push/apns/unsubscribe` | ✅ | Rimuove device token APNs (iOS) |
+| `POST` | `/push/apns/threshold` | ✅ | Aggiorna soglia notifica APNs (iOS) |
 | `POST` | `/auth/biometric/login` | — | Login con token biometrico (Face ID / Touch ID) |
 | `GET` | `/api/watch-data` | Token | Dati dashboard per Apple Watch (header `X-Watch-Token`) |
 
@@ -215,8 +219,8 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 |---|---|---|
 | `history:<nome_monitor>` | List | Storico severity (max 60 punti, formato `severity:k1:k2:k3:n1:u1`) |
 | `global_state` | String | Stato globale corrente (`GREEN`/`YELLOW`/`RED`) |
-| `push:subs_by_endpoint` | Hash | Subscription Web Push VAPID |
-| `apns:subs_by_token` | Hash | Device token APNs iOS/Mac (con `bundle_id` opzionale per Mac) |
+| `push:subs_by_endpoint` | Hash | Subscription Web Push VAPID (con campo `threshold` opzionale, default 1) |
+| `apns:subs_by_token` | Hash | Device token APNs iOS/Mac (con `bundle_id` opzionale per Mac, `threshold` opzionale, default 1) |
 | `anomalous_resources` | Set | Nomi risorse anomale del ciclo corrente (per notifiche same-state) |
 | `user:<username>` | Hash | Credenziali utente (`password_hash`, `totp_secret`, `totp_enrolled`, `must_change_password`, `password_history`) |
 | `biometric:<username>:<token>` | String | Token biometrico con TTL 90 giorni |
@@ -309,6 +313,14 @@ I test coprono 5 proprietà di correttezza verificate con Hypothesis (property-b
 - **P15** — `send_apns_to_all` chiama esattamente N volte per N token registrati
 - **P16** — Rimozione automatica token non validi (status 410 / `BadDeviceToken`)
 - **P17** — Separazione namespace Redis `apns:` vs `push:`
+
+Soglia di notifica — 6 proprietà di correttezza:
+- **NT-P1** — Validazione soglia: `validate_threshold(v)` è True iff v è int in {1,2,3,4,5}
+- **NT-P2** — Conteggio sonde DOWN: proprietà metamorfica `count_down_probes == 5 - somma`
+- **NT-P3** — Filtraggio per soglia: notifica inviata iff `threshold <= max_down_probes`
+- **NT-P4** — Bypass soglia: con `max_down_probes=None` tutte le subscription ricevono la notifica
+- **NT-P5** — Preservazione campi subscription VAPID dopo aggiornamento threshold
+- **NT-P6** — Preservazione campi subscription APNs dopo aggiornamento threshold
 
 Bugfix Mac push notifications:
 - **Bug Condition** — `send_apns_to_all()` usa il `bundle_id` per-subscription come `apns-topic`; `add_apns_subscription()` accetta `bundle_id`
@@ -459,6 +471,8 @@ App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
 - Ordinamento: per gravità, alfabetico, per stato globale
 - Badge Dock con contatore risorse DOWN/mismatch (disattivabile)
 - Notifiche push APNs native
+- Toggle notifiche push nelle impostazioni (abilita/disabilita con unsubscribe dal backend)
+- Soglia notifica personalizzabile (1–5 sonde DOWN) nelle impostazioni
 - Tema: Auto/Chiaro/Scuro (default Scuro con sfondo #141c2b)
 - Dimensione testo regolabile (80%-160%)
 - La X minimizza nel Dock invece di chiudere l'app
@@ -509,6 +523,22 @@ App companion watchOS che mostra lo stato dei servizi con card compatte. Funzion
 - Aggiornamento immediato quando l'app torna in primo piano
 - Dati cached tra i riavvii via WatchConnectivity
 - Notifiche push APNs (arrivano sul watch quando l'iPhone è bloccato)
+
+### Complicazione watchOS
+
+Widget WidgetKit per il quadrante dell'orologio. Mostra lo stato dei servizi a colpo d'occhio.
+
+**Famiglie supportate:**
+- **Circular** — arco colorato (verde/giallo/rosso), numero anomalie (DOWN + mismatch) al centro, totale risorse in basso a sinistra, risorse completamente DOWN in basso a destra
+- **Corner** — numero DOWN grande con label "DOWN su N"
+- **Inline** — testo compatto "INVA: 2 DOWN / 12"
+
+**Setup:**
+1. In Xcode: File → New → Target → watchOS → Widget Extension → "UptimeDashboardWatchWidget"
+2. Sostituisci i file generati con quelli in `UptimeDashboardWatchWidget/`
+3. Aggiungi `BACKEND_BASE_URL` e `WATCH_API_TOKEN` nell'Info.plist del target widget
+4. Aggiungi `NSExtension` → `NSExtensionPointIdentifier` = `com.apple.widgetkit-extension` nell'Info.plist
+5. Si aggiorna ogni 15 minuti (minimo WidgetKit) tramite fetch diretto all'API `/api/watch-data`
 
 ### Setup
 
@@ -562,6 +592,21 @@ Le notifiche vengono inviate da `history_worker.py` alle transizioni di stato, c
 - 🟡 `* → YELLOW` — "Incongruenza tra sonde" + elenco risorse in mismatch con sonde DOWN e orario
 - 🟡 `YELLOW → YELLOW` (nuove risorse) — "Nuova incongruenza" + solo le risorse appena entrate in mismatch
 - 🟢 `RED/YELLOW → GREEN` — "Tutto OK" + conferma ripristino con orario
+- 🟢 `RED → RED` / `YELLOW → YELLOW` (risorse ripristinate) — "Risorsa ripristinata" + nomi risorse tornate UP
+
+### Soglia di notifica personalizzabile
+
+Ogni dispositivo/subscription può configurare una soglia (1–5) che indica quante sonde devono risultare DOWN prima di ricevere la notifica. La soglia è per-dispositivo, non globale.
+
+- **Valori:** 1 (default, notifica al primo DOWN) → 5 (notifica solo se tutte le sonde sono DOWN)
+- **Retrocompatibilità:** le subscription senza campo `threshold` in Redis vengono trattate come soglia 1 (nessuna migrazione necessaria)
+- **Bypass:** le notifiche di ripristino (GREEN, risorse tornate UP) raggiungono tutti i dispositivi indipendentemente dalla soglia
+- **Validazione:** la funzione `validate_threshold()` in `severity.py` accetta solo interi 1–5 (esclude bool, float, stringhe, None)
+- **Conteggio:** la funzione `count_down_probes()` in `severity.py` calcola il numero di sonde DOWN per monitor
+- **Filtraggio:** avviene in `send_push_to_all()` e `send_apns_to_all()` tramite il parametro `max_down_probes`
+- **UI PWA:** popover nella navbar con toggle abilita/disabilita e selettore soglia (desktop e mobile)
+- **UI iOS:** Picker nella sezione "Notifiche" di SettingsView (visibile solo con notifiche abilitate)
+- **UI macOS:** Toggle notifiche + Picker soglia in MacSettingsView
 
 > La notifica GREEN non include il campo `badge` nel payload APNs: questo evita che iOS cancelli automaticamente le notifiche precedenti dal centro notifiche. Il badge viene azzerato dall'app quando l'utente la apre e vede che è tutto verde.
 
