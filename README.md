@@ -114,6 +114,7 @@ Copia `.env.example` in `.env` e compila tutti i campi:
 | `APNS_KEY_PATH` | ⚠️ | Percorso assoluto al file `.p8` APNs |
 | `WATCH_API_TOKEN` | — | Token statico per l'endpoint `/api/watch-data` (Apple Watch) |
 | `BIOMETRIC_SECRET` | — | Segreto per firmare i token biometrici (default: `FLASK_SECRET_KEY`) |
+| `PUSH_LOG_FILE` | — | Percorso file di log per le notifiche push VAPID e APNs (vuoto = disabilitato) |
 | `REDIS_HOST` | — | Host Redis (default: `127.0.0.1`) |
 | `REDIS_PORT` | — | Porta Redis (default: `6379`) |
 | `REDIS_DB` | — | Database Redis (default: `0`) |
@@ -424,7 +425,7 @@ App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
 - Tema: Auto/Chiaro/Scuro (default Scuro con sfondo #141c2b)
 - Dimensione testo regolabile (80%-160%)
 - La X minimizza nel Dock invece di chiudere l'app
-- Widget macOS (small/medium/large) con stato servizi
+- Widget macOS (small/medium/large) con stato servizi, LED globale, 5 pallini sonde per monitor
 
 ### Setup
 
@@ -499,6 +500,20 @@ Il sistema supporta due canali di notifica paralleli:
 - Token non validi (410 / `BadDeviceToken`) rimossi automaticamente
 - Retry con backoff esponenziale (1s, 2s, 4s) per la registrazione del token dal client Mac
 
+### Log notifiche push
+
+Se `PUSH_LOG_FILE` è impostato nel `.env`, ogni notifica inviata (VAPID e APNs) viene loggata su file con timestamp, destinatario, titolo, corpo e esito:
+
+```
+PUSH_LOG_FILE=/var/log/kuma-dashboard/push.log
+```
+
+Formato:
+```
+[2026-04-17 09:39:25,755] APNs OK → a70b5d1f30defa45... | env=sandbox | title=🟡 Incongruenza tra sonde | body=INVA - www.regione.vda.it — DOWN su TIM
+[2026-04-17 09:39:24,691] VAPID OK → https://fcm.googleapis.com/fcm/send/... | title=🟡 Incongruenza tra sonde
+```
+
 Le notifiche vengono inviate da `history_worker.py` alle transizioni di stato, con dettaglio delle risorse coinvolte:
 
 - 🔴 `GREEN → RED` — "Servizi DOWN" + elenco risorse DOWN con sonde specifiche e orario
@@ -506,6 +521,8 @@ Le notifiche vengono inviate da `history_worker.py` alle transizioni di stato, c
 - 🟡 `* → YELLOW` — "Incongruenza tra sonde" + elenco risorse in mismatch con sonde DOWN e orario
 - 🟡 `YELLOW → YELLOW` (nuove risorse) — "Nuova incongruenza" + solo le risorse appena entrate in mismatch
 - 🟢 `RED/YELLOW → GREEN` — "Tutto OK" + conferma ripristino con orario
+
+> La notifica GREEN non include il campo `badge` nel payload APNs: questo evita che iOS cancelli automaticamente le notifiche precedenti dal centro notifiche. Il badge viene azzerato dall'app quando l'utente la apre e vede che è tutto verde.
 
 Esempio notifica mismatch:
 ```
