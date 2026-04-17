@@ -121,16 +121,24 @@ def send_apns_to_all(title: str, body: str, data: dict) -> None:
 
     badge_count = data.get("badge", 0 if data.get("state") == "GREEN" else 1) if data else 1
 
-    payload = json.dumps({
-        "aps": {
-            "alert": {"title": title, "body": body},
-            "sound": {
-                "critical": 1,
-                "name": "default",
-                "volume": 1.0
-            },
-            "badge": badge_count,
+    # Costruisci il payload APNs.
+    # Per lo stato GREEN: non includere "badge" nel payload, così iOS non
+    # cancella le notifiche precedenti dal centro notifiche. Il badge viene
+    # azzerato dall'app quando l'utente la apre e vede che è tutto verde.
+    aps: dict[str, Any] = {
+        "alert": {"title": title, "body": body},
+        "sound": {
+            "critical": 1,
+            "name": "default",
+            "volume": 1.0,
         },
+    }
+    is_green = data.get("state") == "GREEN" if data else False
+    if not is_green:
+        aps["badge"] = badge_count
+
+    payload = json.dumps({
+        "aps": aps,
         "state": data.get("state", "") if data else "",
     })
 
