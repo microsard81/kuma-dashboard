@@ -11,6 +11,7 @@ import redis
 from config import (
     REDIS_HOST, REDIS_PORT, REDIS_DB,
     APNS_KEY_PATH, APNS_KEY_ID, APNS_TEAM_ID, APNS_BUNDLE_ID,
+    PUSH_LOG_FILE,
 )
 import os
 
@@ -20,6 +21,14 @@ APNS_SANDBOX = os.environ.get("APNS_SANDBOX", "false").lower() == "true"
 APNS_HOST = "api.sandbox.push.apple.com" if APNS_SANDBOX else "api.push.apple.com"
 
 logger = logging.getLogger(__name__)
+
+# Logger dedicato per il log delle push inviate
+_push_logger = logging.getLogger("push_log")
+if not _push_logger.handlers and PUSH_LOG_FILE:
+    _push_handler = logging.FileHandler(PUSH_LOG_FILE, encoding="utf-8")
+    _push_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s"))
+    _push_logger.addHandler(_push_handler)
+    _push_logger.setLevel(logging.INFO)
 
 _redis = redis.Redis(
     host=REDIS_HOST,
@@ -168,6 +177,8 @@ def send_apns_to_all(title: str, body: str, data: dict) -> None:
                             response.text,
                             device_token[:16],
                         )
+                        if PUSH_LOG_FILE:
+                            _push_logger.info("APNs INVALID → %s... | status=%s | title=%s", device_token[:16], response.status_code, title)
                         invalid_tokens.append(device_token)
                     elif response.status_code != 200:
                         logger.error(
@@ -176,12 +187,16 @@ def send_apns_to_all(title: str, body: str, data: dict) -> None:
                             response.text,
                             device_token[:16],
                         )
+                        if PUSH_LOG_FILE:
+                            _push_logger.info("APNs FAIL → %s... | status=%s | title=%s", device_token[:16], response.status_code, title)
                     else:
                         logger.info(
                             "APNs inviato a %s... (status=%s)",
                             device_token[:16],
                             response.status_code,
                         )
+                        if PUSH_LOG_FILE:
+                            _push_logger.info("APNs OK → %s... | env=%s | title=%s | body=%s", device_token[:16], env, title, body)
 
                 except httpx.ConnectError as exc:
                     logger.error(

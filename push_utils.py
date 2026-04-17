@@ -9,12 +9,22 @@ from config import (
     PUSH_ENABLED,
     PUSH_VAPID_PRIVATE_KEY,
     PUSH_VAPID_CLAIMS,
+    PUSH_LOG_FILE,
     REDIS_HOST,
     REDIS_PORT,
     REDIS_DB,
 )
 
 logger = logging.getLogger(__name__)
+
+# Logger dedicato per il log delle push inviate
+_push_logger = logging.getLogger("push_log")
+_push_logger.propagate = False
+if PUSH_LOG_FILE:
+    _push_handler = logging.FileHandler(PUSH_LOG_FILE, encoding="utf-8")
+    _push_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s"))
+    _push_logger.addHandler(_push_handler)
+    _push_logger.setLevel(logging.INFO)
 
 _redis = redis.Redis(
     host=REDIS_HOST,
@@ -130,10 +140,14 @@ def send_push_to_all(title: str, body: str, data: Dict[str, Any] | None = None) 
                 vapid_claims=vapid_claims,
             )
             logger.info("   OK")
+            if PUSH_LOG_FILE:
+                _push_logger.info("VAPID OK → %s... | title=%s", endpoint[:50], title)
 
         except WebPushException as e:
             status = getattr(e.response, "status_code", None)
             logger.error("   Errore WebPush: %s (status=%s)", e, status)
+            if PUSH_LOG_FILE:
+                _push_logger.info("VAPID FAIL → %s... | status=%s | title=%s", endpoint[:50], status, title)
             if status in (404, 410):
                 dead_endpoints.append(endpoint)
 

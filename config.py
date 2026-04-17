@@ -99,3 +99,6 @@ PUSH_NOTIFY_ON = {
     "probe_mismatch": True,  # giallo: mismatch tra sonde
     "back_to_green": True   # verde: tutto OK (puoi abilitarlo se vuoi)
 }
+
+# Log file per le notifiche push (VAPID + APNs). Se vuoto, il log push è disabilitato.
+PUSH_LOG_FILE = os.environ.get("PUSH_LOG_FILE", "")
