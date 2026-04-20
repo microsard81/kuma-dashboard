@@ -28,6 +28,9 @@ from redis_history import (
     set_global_state,
     get_anomalous_resources,
     set_anomalous_resources,
+    get_last_max_down_probes,
+    set_last_max_down_probes,
+    clear_last_max_down_probes,
 )
 from push_utils import send_push_to_all
 from apns_utils import send_apns_to_all
@@ -135,6 +138,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
             send_apns_to_all(title, body, data, max_down_probes=max_down)
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato RED")
+        set_last_max_down_probes(max_down)
 
     # 🔴 RED → RED – nuove risorse DOWN
     if (
@@ -155,6 +159,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
                 send_apns_to_all(title, body, data, max_down_probes=max_down)
             except Exception:
                 logging.exception("Errore nell'invio notifica APNs per same-state RED")
+            set_last_max_down_probes(max_down)
 
     # 🟡 YELLOW – mismatch (transizione da non-YELLOW)
     if (
@@ -172,6 +177,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
             send_apns_to_all(title, body, data, max_down_probes=max_down)
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato YELLOW")
+        set_last_max_down_probes(max_down)
 
     # 🟡 YELLOW → YELLOW – nuove risorse con mismatch
     if (
@@ -192,6 +198,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
                 send_apns_to_all(title, body, data, max_down_probes=max_down)
             except Exception:
                 logging.exception("Errore nell'invio notifica APNs per same-state YELLOW")
+            set_last_max_down_probes(max_down)
 
     # 🟢 GREEN – ritorno alla normalità
     if (
@@ -204,11 +211,15 @@ def maybe_send_global_push(new_state, monitor_details=None):
         body = f"Tutte le risorse risultano UP su tutte le sonde.\nOre {now_str}"
         data = {"state": "GREEN"}
 
-        send_push_to_all(title, body, data, max_down_probes=None)
+        # Usa lo stesso max_down dell'ultima notifica anomala:
+        # chi non ha ricevuto la notifica DOWN non riceve la GREEN
+        last_max_down = get_last_max_down_probes()
+        send_push_to_all(title, body, data, max_down_probes=last_max_down)
         try:
-            send_apns_to_all(title, body, data, max_down_probes=None)
+            send_apns_to_all(title, body, data, max_down_probes=last_max_down)
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato GREEN")
+        clear_last_max_down_probes()
 
     # 🟢 Risorse tornate UP durante same-state (YELLOW→YELLOW o RED→RED)
     if (
@@ -224,9 +235,11 @@ def maybe_send_global_push(new_state, monitor_details=None):
             body = f"{names} — tornata UP\nOre {now_str}"
             data = {"state": new_state}
 
-            send_push_to_all(title, body, data, max_down_probes=None)
+            # Usa lo stesso max_down dell'ultima notifica anomala
+            last_max_down = get_last_max_down_probes()
+            send_push_to_all(title, body, data, max_down_probes=last_max_down)
             try:
-                send_apns_to_all(title, body, data, max_down_probes=None)
+                send_apns_to_all(title, body, data, max_down_probes=last_max_down)
             except Exception:
                 logging.exception("Errore nell'invio notifica APNs per risorsa ripristinata")
 

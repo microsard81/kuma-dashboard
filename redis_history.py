@@ -124,3 +124,36 @@ def set_anomalous_resources(resources: set[str]):
     if resources:
         pipe.sadd(_ANOMALOUS_RESOURCES_KEY, *resources)
     pipe.execute()
+
+
+# ------------------ MAX DOWN PROBES PER SOGLIA NOTIFICA ------------------ #
+
+_LAST_MAX_DOWN_KEY = "last_max_down_probes"
+
+
+def get_last_max_down_probes() -> int | None:
+    """
+    Ritorna l'ultimo valore di max_down_probes usato per una notifica anomala.
+    Restituisce None se la chiave non esiste (nessuna notifica anomala precedente).
+    """
+    val = r.get(_LAST_MAX_DOWN_KEY)
+    if val is None:
+        return None
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return None
+
+
+def set_last_max_down_probes(value: int):
+    """
+    Salva il max_down_probes dell'ultima notifica anomala in Redis.
+    Usato per le notifiche GREEN/recovery: chi non ha ricevuto la notifica
+    DOWN (soglia troppo alta) non deve ricevere nemmeno la GREEN.
+    """
+    r.set(_LAST_MAX_DOWN_KEY, str(value))
+
+
+def clear_last_max_down_probes():
+    """Cancella il valore dopo l'invio della notifica GREEN."""
+    r.delete(_LAST_MAX_DOWN_KEY)
