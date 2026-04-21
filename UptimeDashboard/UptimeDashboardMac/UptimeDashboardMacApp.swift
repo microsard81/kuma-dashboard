@@ -132,11 +132,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
         let apnsEnvironment = "production"
         #endif
 
-        let payload: [String: String] = [
+        // Includi la soglia notifica corrente (salvata in UserDefaults)
+        let threshold = UserDefaults.standard.object(forKey: "mac_notification_threshold") as? Int ?? 1
+
+        let payload: [String: Any] = [
             "device_token": token,
             "device_id": deviceId,
             "environment": apnsEnvironment,
             "bundle_id": Bundle.main.bundleIdentifier ?? "",
+            "threshold": threshold,
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
 

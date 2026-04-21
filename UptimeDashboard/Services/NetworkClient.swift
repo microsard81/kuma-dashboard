@@ -304,12 +304,16 @@ final class NetworkClient: NetworkClientProtocol {
         let environment = "production"
         #endif
 
-        let payload: [String: String] = [
+        // Includi la soglia notifica corrente (salvata in UserDefaults)
+        let threshold = UserDefaults.standard.object(forKey: "notificationThreshold") as? Int ?? 1
+
+        let payload: [String: Any] = [
             "device_token": deviceToken,
             "device_id": deviceId,
-            "environment": environment
+            "environment": environment,
+            "threshold": threshold
         ]
-        request.httpBody = try JSONEncoder().encode(payload)
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
         let (_, response) = try await performRequest(request, session: session)
         guard let http = response as? HTTPURLResponse else {
