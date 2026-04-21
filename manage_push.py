@@ -42,9 +42,10 @@ def cmd_list(filter_type: str = "all"):
         for i, sub in enumerate(subs, 1):
             endpoint = sub.get("endpoint", "?")
             device_type = _classify_endpoint(endpoint)
+            threshold = sub.get("threshold", 1)
             # Mostra i primi 60 caratteri dell'endpoint
             short_ep = endpoint[:60] + "..." if len(endpoint) > 60 else endpoint
-            print(f"  {i}. [{device_type}] {short_ep}")
+            print(f"  {i}. [{device_type}] soglia={threshold}  {short_ep}")
 
     if filter_type in ("all", "apns"):
         apns_subs = load_apns_subscriptions()
@@ -55,7 +56,8 @@ def cmd_list(filter_type: str = "all"):
             device_id = sub.get("device_id", "?")
             bundle_id = sub.get("bundle_id", "—")
             registered = sub.get("registered_at", "?")
-            print(f"  {i}. token={token[:16]}...  env={env}  bundle={bundle_id}  device={device_id[:8]}...  registered={registered}")
+            threshold = sub.get("threshold", 1)
+            print(f"  {i}. token={token[:16]}...  soglia={threshold}  env={env}  bundle={bundle_id}  device={device_id[:8]}...  registered={registered}")
 
     print()
 

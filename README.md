@@ -272,10 +272,10 @@ source /home/venvs/kuma-dashboard/bin/activate
 # Lista tutti i dispositivi registrati (VAPID + APNs)
 python manage_push.py list
 
-# Solo VAPID (browser/PWA) — mostra tipo dispositivo (Android, Safari, Firefox, Edge)
+# Solo VAPID (browser/PWA) — mostra tipo dispositivo (Android, Safari, Firefox, Edge) e soglia notifica
 python manage_push.py list vapid
 
-# Solo APNs (iOS/Mac) — mostra token, environment, bundle ID
+# Solo APNs (iOS/Mac) — mostra token, soglia, environment, bundle ID
 python manage_push.py list apns
 
 # Invia push di test a tutti i dispositivi
