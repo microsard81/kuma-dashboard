@@ -132,7 +132,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
         body = _build_detail_body(details, "RED") or "Una o più risorse risultano DOWN."
         data = {"state": "RED"}
         max_down = _compute_max_down_probes(details)
-
+        logging.info("Notifica RED: max_down_probes=%d", max_down)
         send_push_to_all(title, body, data, max_down_probes=max_down)
         try:
             send_apns_to_all(title, body, data, max_down_probes=max_down)
@@ -171,7 +171,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
         body = _build_detail_body(details, "YELLOW") or "Una o più risorse hanno stato diverso tra le sonde."
         data = {"state": "YELLOW"}
         max_down = _compute_max_down_probes(details)
-
+        logging.info("Notifica YELLOW: max_down_probes=%d", max_down)
         send_push_to_all(title, body, data, max_down_probes=max_down)
         try:
             send_apns_to_all(title, body, data, max_down_probes=max_down)
@@ -212,8 +212,13 @@ def maybe_send_global_push(new_state, monitor_details=None):
         data = {"state": "GREEN"}
 
         # Usa lo stesso max_down dell'ultima notifica anomala:
-        # chi non ha ricevuto la notifica DOWN non riceve la GREEN
+        # chi non ha ricevuto la notifica DOWN non riceve la GREEN.
+        # Se last_max_down è None (nessuna notifica anomala salvata), usa 5
+        # per raggiungere tutti (retrocompatibilità con subscription senza soglia).
         last_max_down = get_last_max_down_probes()
+        if last_max_down is None:
+            last_max_down = 5
+        logging.info("Notifica GREEN: last_max_down_probes=%s", last_max_down)
         send_push_to_all(title, body, data, max_down_probes=last_max_down)
         try:
             send_apns_to_all(title, body, data, max_down_probes=last_max_down)
@@ -237,6 +242,8 @@ def maybe_send_global_push(new_state, monitor_details=None):
 
             # Usa lo stesso max_down dell'ultima notifica anomala
             last_max_down = get_last_max_down_probes()
+            if last_max_down is None:
+                last_max_down = 5
             send_push_to_all(title, body, data, max_down_probes=last_max_down)
             try:
                 send_apns_to_all(title, body, data, max_down_probes=last_max_down)
