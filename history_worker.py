@@ -200,6 +200,34 @@ def maybe_send_global_push(new_state, monitor_details=None):
                 logging.exception("Errore nell'invio notifica APNs per same-state YELLOW")
             set_last_max_down_probes(max_down)
 
+    # 🟡🔴 ESCALATION — stesso stato ma più sonde DOWN rispetto all'ultimo invio
+    # Permette a chi ha soglia alta di ricevere la notifica quando le sonde
+    # peggiorano progressivamente (es. da 2 DOWN a 4 DOWN restando YELLOW)
+    if (
+        new_state in ("YELLOW", "RED")
+        and previous == new_state
+    ):
+        max_down = _compute_max_down_probes(details)
+        last_max_down = get_last_max_down_probes()
+
+        if last_max_down is not None and max_down > last_max_down:
+            if new_state == "RED":
+                title = "🔴 Peggioramento — più sonde DOWN"
+                body = _build_detail_body(details, "RED") or "Più sonde rilevano DOWN."
+                data = {"state": "RED"}
+            else:
+                title = "🟡 Peggioramento — più sonde DOWN"
+                body = _build_detail_body(details, "YELLOW") or "Più sonde rilevano incongruenze."
+                data = {"state": "YELLOW"}
+
+            logging.info("Notifica ESCALATION %s: max_down_probes=%d (precedente=%d)", new_state, max_down, last_max_down)
+            send_push_to_all(title, body, data, max_down_probes=max_down)
+            try:
+                send_apns_to_all(title, body, data, max_down_probes=max_down)
+            except Exception:
+                logging.exception("Errore nell'invio notifica APNs per escalation %s", new_state)
+            set_last_max_down_probes(max_down)
+
     # 🟢 GREEN – ritorno alla normalità
     if (
         PUSH_NOTIFY_ON.get("back_to_green", False)
