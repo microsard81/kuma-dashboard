@@ -294,6 +294,34 @@ python manage_push.py remove "cntZoPZq4oA"
 python manage_push.py remove-apns "a70b5d1f"
 ```
 
+### Test soglia notifica
+
+Usa `test_push_threshold_manual.py` per testare il filtraggio per soglia. Invia 6 notifiche in sequenza (1→5 sonde DOWN + Tutto OK) con 10 secondi di pausa tra ogni invio:
+
+```bash
+source /home/venvs/kuma-dashboard/bin/activate
+
+# Invia a tutti i dispositivi
+python3 test_push_threshold_manual.py
+
+# Solo a un dispositivo APNs specifico (token parziale)
+python3 test_push_threshold_manual.py 5ce1bf64
+
+# Solo a un dispositivo VAPID specifico (endpoint parziale)
+python3 test_push_threshold_manual.py dMl_gaCvp0A
+
+# Solo a tutti i dispositivi APNs
+python3 test_push_threshold_manual.py apns
+
+# Solo a tutti i dispositivi VAPID
+python3 test_push_threshold_manual.py vapid
+
+# Help
+python3 test_push_threshold_manual.py --help
+```
+
+Con soglia 3, il dispositivo riceverà solo gli step 3, 4, 5 e 6 (non 1 e 2).
+
 ### Test backend
 
 ```bash

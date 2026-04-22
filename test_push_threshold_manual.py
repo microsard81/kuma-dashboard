@@ -154,6 +154,11 @@ STEPS = [
 
 def main():
     filter_str = sys.argv[1] if len(sys.argv) > 1 else None
+
+    if filter_str in ("-h", "--help", "help"):
+        print(__doc__)
+        sys.exit(0)
+
     send_vapid = True
     send_apns = True
 
