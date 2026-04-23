@@ -240,16 +240,18 @@ def extract_monitor_url(name, statuses):
 # COSTRUZIONE DATI DASHBOARD
 # ============================================================================
 def build_dashboard_data():
-    m1 = load_monitors(KUMA1["host"], KUMA1["slug"])
     m2 = load_monitors(KUMA2["host"], KUMA2["slug"])
-    m3 = load_monitors(KUMA3["host"], KUMA3["slug"])
-    common = sorted(set(m1.keys()) & set(m2.keys()) & set(m3.keys()))
+    # TIM (KUMA2) è la sorgente primaria per la lista monitor.
+    # Le altre sonde sono opzionali: se non rispondono, la dashboard funziona lo stesso.
+    m1 = load_monitors(KUMA1["host"], KUMA1["slug"]) or {}
+    m3 = load_monitors(KUMA3["host"], KUMA3["slug"]) or {}
+    common = sorted(m2.keys())
 
     statuses = load_status()
 
     rows = []
     for name_norm in common:
-        display = m1[name_norm]
+        display = m2[name_norm]
         p = process_monitor(display, statuses, name_norm)
 
         rows.append(

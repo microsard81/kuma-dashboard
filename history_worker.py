@@ -288,11 +288,13 @@ def maybe_send_global_push(new_state, monitor_details=None):
 def loop_once():
     statuses = load_status()
 
-    m1 = load_monitors(KUMA1["host"], KUMA1["slug"])
     m2 = load_monitors(KUMA2["host"], KUMA2["slug"])
-    m3 = load_monitors(KUMA3["host"], KUMA3["slug"])
+    # TIM (KUMA2) è la sorgente primaria per la lista monitor.
+    # Le altre sonde sono opzionali: se non rispondono, il worker funziona lo stesso.
+    m1 = load_monitors(KUMA1["host"], KUMA1["slug"]) or {}
+    m3 = load_monitors(KUMA3["host"], KUMA3["slug"]) or {}
 
-    common = sorted(set(m1.keys()) & set(m2.keys()) & set(m3.keys()))
+    common = sorted(m2.keys())
     severities = []
     monitor_details = []
 
@@ -304,9 +306,9 @@ def loop_once():
             save_point(name_norm, 0, k1=0, k2=0, k3=0, n1=0, u1=0)
             severities.append(0)
             monitor_details.append({
-                "name": m1[name_norm], "bg": 1, "tim": 1, "iliad": 1, "nodeping": 1, "uptime": 1, "severity": 0
+                "name": m2[name_norm], "bg": 1, "tim": 1, "iliad": 1, "nodeping": 1, "uptime": 1, "severity": 0
             })
-            logging.info(f"[ALL-UP] {m1[name_norm]} → sev=0")
+            logging.info(f"[ALL-UP] {m2[name_norm]} → sev=0")
 
         new_state = compute_global_state(severities)
         maybe_send_global_push(new_state, monitor_details)
@@ -314,7 +316,7 @@ def loop_once():
 
     # Processa monitor
     for name_norm in common:
-        display_name = m1[name_norm]
+        display_name = m2[name_norm]
 
         info = None
         for url, data in statuses.items():

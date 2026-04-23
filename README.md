@@ -24,7 +24,7 @@ Sistema di monitoraggio uptime multi-sonda con dashboard web (PWA) e app iOS nat
 
 **Sonde:**
 - `k1` — Aruba Bergamo
-- `k2` — TIM Sestu
+- `k2` — TIM Sestu *(sorgente primaria per la lista monitor)*
 - `k3` — ILIAD Sinnai
 - `n1` — NodePing Europe
 - `u1` — Uptime INVA
