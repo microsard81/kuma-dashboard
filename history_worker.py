@@ -228,6 +228,26 @@ def maybe_send_global_push(new_state, monitor_details=None):
                 logging.exception("Errore nell'invio notifica APNs per escalation %s", new_state)
             set_last_max_down_probes(max_down)
 
+        elif max_down < last_max_down and last_max_down > 0:
+            # DE-ESCALATION — meno sonde DOWN rispetto all'ultimo invio
+            if new_state == "RED":
+                title = "🔴 Miglioramento — meno sonde DOWN"
+                body = _build_detail_body(details, "RED") or "Alcune sonde si sono riprese."
+                data = {"state": "RED"}
+            else:
+                title = "🟡 Miglioramento — meno sonde DOWN"
+                body = _build_detail_body(details, "YELLOW") or "Alcune sonde si sono riprese."
+                data = {"state": "YELLOW"}
+
+            logging.info("Notifica DE-ESCALATION %s: max_down_probes=%d (precedente=%d)", new_state, max_down, last_max_down)
+            # Invia a chi aveva ricevuto la notifica precedente (last_max_down)
+            send_push_to_all(title, body, data, max_down_probes=last_max_down)
+            try:
+                send_apns_to_all(title, body, data, max_down_probes=last_max_down)
+            except Exception:
+                logging.exception("Errore nell'invio notifica APNs per de-escalation %s", new_state)
+            set_last_max_down_probes(max_down)
+
     # 🟢 GREEN – ritorno alla normalità
     if (
         PUSH_NOTIFY_ON.get("back_to_green", False)

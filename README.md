@@ -620,6 +620,7 @@ Le notifiche vengono inviate da `history_worker.py` alle transizioni di stato, c
 - 🟡 `* → YELLOW` — "Incongruenza tra sonde" + elenco risorse in mismatch con sonde DOWN e orario
 - 🟡 `YELLOW → YELLOW` (nuove risorse) — "Nuova incongruenza" + solo le risorse appena entrate in mismatch
 - 🟡🔴 `YELLOW → YELLOW` / `RED → RED` (più sonde DOWN) — "Peggioramento — più sonde DOWN" quando il numero di sonde DOWN aumenta sulla stessa risorsa restando nello stesso stato
+- 🟡🔴 `YELLOW → YELLOW` / `RED → RED` (meno sonde DOWN) — "Miglioramento — meno sonde DOWN" quando alcune sonde si riprendono restando nello stesso stato
 - 🟢 `RED/YELLOW → GREEN` — "Tutto OK" + conferma ripristino con orario
 - 🟢 `RED → RED` / `YELLOW → YELLOW` (risorse ripristinate) — "Risorsa ripristinata" + nomi risorse tornate UP
 
