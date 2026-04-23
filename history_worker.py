@@ -208,9 +208,9 @@ def maybe_send_global_push(new_state, monitor_details=None):
         and previous == new_state
     ):
         max_down = _compute_max_down_probes(details)
-        last_max_down = get_last_max_down_probes()
+        last_max_down = get_last_max_down_probes() or 0
 
-        if last_max_down is not None and max_down > last_max_down:
+        if max_down > last_max_down:
             if new_state == "RED":
                 title = "🔴 Peggioramento — più sonde DOWN"
                 body = _build_detail_body(details, "RED") or "Più sonde rilevano DOWN."
