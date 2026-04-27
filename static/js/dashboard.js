@@ -366,7 +366,7 @@ function renderDesktopCards(items) {
             const p = document.createElement("span");
             p.classList.add("dcard-probe", item[k] === "DOWN" ? "dcard-probe-down" : "dcard-probe-up");
             p.textContent = probeLabels[k];
-            p.title = (k === "k1" ? "Aruba Bergamo" : k === "k2" ? "TIM Sestu" : k === "k3" ? "ILIAD Sinnai" : "NodePing Europe") + ": " + item[k];
+            p.title = probeLabels[k] + ": " + item[k];
             probes.appendChild(p);
         });
 
