@@ -505,6 +505,8 @@ App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
 - Dimensione testo regolabile (80%-160%)
 - La X minimizza nel Dock invece di chiudere l'app
 - Widget macOS (small/medium/large) con stato servizi, LED globale, 5 pallini sonde per monitor
+- Icona nella barra dei menu con pallino stato globale e menu a tendina (risorse anomale, azioni rapide)
+- Help macOS nativo (menu Help → Aiuto Dashboard INVA MAC)
 
 ### Setup
 

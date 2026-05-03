@@ -28,6 +28,28 @@ struct UptimeDashboardMacApp: App {
             MacSettingsView()
                 .environmentObject(viewModel)
         }
+
+        // Menu bar icon con stato globale
+        MenuBarExtra {
+            MenuBarView()
+                .environmentObject(viewModel)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                Circle()
+                    .fill(menuBarLedColor)
+                    .frame(width: 8, height: 8)
+            }
+        }
+        .menuBarExtraStyle(.menu)
+    }
+
+    private var menuBarLedColor: Color {
+        switch viewModel.globalState {
+        case "RED": return .red
+        case "YELLOW": return .yellow
+        default: return .green
+        }
     }
 }
 
