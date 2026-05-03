@@ -35,7 +35,8 @@ struct UptimeDashboardMacApp: App {
                 .environmentObject(viewModel)
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: "antenna.radiowaves.left.and.right")
+                Image("MenuBarIcon")
+                    .renderingMode(.template)
                 Circle()
                     .fill(menuBarLedColor)
                     .frame(width: 8, height: 8)
