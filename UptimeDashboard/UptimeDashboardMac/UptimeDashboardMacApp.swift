@@ -30,6 +30,13 @@ struct UptimeDashboardMacApp: App {
                 }
                 .keyboardShortcut("r", modifiers: .command)
             }
+
+            // Sostituisci il menu Help con la nostra documentazione
+            CommandGroup(replacing: .help) {
+                Button("Aiuto Dashboard INVA MAC") {
+                    showHelpWindow()
+                }
+            }
         }
 
         Settings {
@@ -60,6 +67,26 @@ struct UptimeDashboardMacApp: App {
         default: return .green
         }
     }
+
+    private func showHelpWindow() {
+        let windowId = "help-window"
+        // Cerca se la finestra help è già aperta
+        if let existing = NSApp.windows.first(where: { $0.identifier?.rawValue == windowId }) {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let helpView = NSHostingController(rootView: MacHelpView())
+        let window = NSWindow(contentViewController: helpView)
+        window.identifier = NSUserInterfaceItemIdentifier(windowId)
+        window.title = "Aiuto Dashboard INVA MAC"
+        window.setContentSize(NSSize(width: 650, height: 700))
+        window.styleMask = [.titled, .closable, .resizable]
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
 }
 
 // MARK: - AppDelegate
@@ -75,11 +102,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        sender.miniaturize(nil)
+        // Nasconde la finestra invece di chiuderla — l'app resta nella menu bar
+        sender.orderOut(nil)
+        NSApp.setActivationPolicy(.accessory)  // Rimuove l'icona dal Dock
         return false
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // ⌘Q nasconde la finestra invece di chiudere l'app
+        for window in NSApp.windows {
+            if window.isVisible && window.identifier?.rawValue != "help-window" {
+                window.orderOut(nil)
+            }
+        }
+        NSApp.setActivationPolicy(.accessory)
+        return .terminateCancel
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // Riporta l'icona nel Dock e mostra la finestra
+        NSApp.setActivationPolicy(.regular)
         if !flag {
             sender.windows.first?.makeKeyAndOrderFront(nil)
         }

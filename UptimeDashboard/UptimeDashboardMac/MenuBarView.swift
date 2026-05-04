@@ -62,6 +62,7 @@ struct MenuBarView: View {
         .keyboardShortcut("r")
 
         Button("Apri Dashboard") {
+            NSApp.setActivationPolicy(.regular)
             NSApp.activate(ignoringOtherApps: true)
             if let window = NSApp.windows.first(where: { $0.title.contains("Dashboard") || $0.title.contains("INVA") }) {
                 window.makeKeyAndOrderFront(nil)
@@ -79,10 +80,12 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("Esci") {
-            NSApplication.shared.terminate(nil)
+        Button("Esci definitivamente") {
+            // Forza la chiusura reale dell'app
+            NSApp.reply(toApplicationShouldTerminate: true)
+            exit(0)
         }
-        .keyboardShortcut("q")
+        .keyboardShortcut("q", modifiers: [.command, .option])
     }
 
     private var ledColor: Color {
