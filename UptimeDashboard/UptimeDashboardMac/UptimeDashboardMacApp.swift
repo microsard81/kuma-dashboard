@@ -23,6 +23,14 @@ struct UptimeDashboardMacApp: App {
         }
         .windowStyle(.titleBar)
         .defaultSize(width: 900, height: 650)
+        .commands {
+            CommandGroup(after: .toolbar) {
+                Button("Aggiorna Dashboard") {
+                    Task { await viewModel.fetchDashboard() }
+                }
+                .keyboardShortcut("r", modifiers: .command)
+            }
+        }
 
         Settings {
             MacSettingsView()
