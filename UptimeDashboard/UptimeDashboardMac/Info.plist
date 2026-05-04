@@ -6,5 +6,9 @@
 	<string></string>
 	<key>WATCH_API_TOKEN</key>
 	<string>$(WATCH_API_TOKEN)</string>
+	<key>CFBundleHelpBookFolder</key>
+	<string>UptimeDashboardMac.help</string>
+	<key>CFBundleHelpBookName</key>
+	<string>Aiuto Dashboard INVA MAC</string>
 </dict>
 </plist>
