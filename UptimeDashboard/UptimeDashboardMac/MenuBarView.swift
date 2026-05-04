@@ -43,7 +43,6 @@ struct MenuBarView: View {
         } else {
             Text("Tutte le \(totalCount) risorse sono UP")
                 .font(.subheadline)
-                .foregroundColor(.green)
         }
 
         Divider()
