@@ -185,8 +185,9 @@ struct DashboardView: View {
                     .fixedSize()
             }
         }
-        .frame(minWidth: 44, minHeight: 32)
-        .padding(.horizontal, 10)
+        .padding(.horizontal, viewModel.downCount > 0 ? 10 : 6)
+        .padding(.vertical, 6)
+        .background(.ultraThinMaterial, in: Capsule())
     }
 
     private func rowBackground(for color: RowColor) -> Color {
