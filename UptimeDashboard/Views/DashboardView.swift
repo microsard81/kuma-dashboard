@@ -165,7 +165,7 @@ struct DashboardView: View {
     }
 
     private var ledBadgeView: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 5) {
             Circle()
                 .fill(viewModel.ledColor)
                 .frame(width: 10, height: 10)
@@ -173,16 +173,12 @@ struct DashboardView: View {
 
             if viewModel.downCount > 0 {
                 Text("\(viewModel.downCount)")
-                    .font(.caption.bold())
+                    .font(.subheadline.bold())
                     .foregroundColor(.red)
-            } else {
-                Text("\(viewModel.items.count)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .background(.ultraThinMaterial, in: Capsule())
     }
 
