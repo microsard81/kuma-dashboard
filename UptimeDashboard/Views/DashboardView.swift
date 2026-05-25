@@ -165,21 +165,19 @@ struct DashboardView: View {
     }
 
     private var ledBadgeView: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 6) {
             Circle()
                 .fill(viewModel.ledColor)
-                .frame(width: 10, height: 10)
+                .frame(width: 12, height: 12)
                 .shadow(color: viewModel.ledColor.opacity(0.6), radius: 3)
 
-            if viewModel.downCount > 0 {
-                Text("\(viewModel.downCount)")
-                    .font(.subheadline.bold())
-                    .foregroundColor(.red)
-            }
+            Text("\(viewModel.downCount)")
+                .font(.body.bold().monospacedDigit())
+                .foregroundColor(viewModel.downCount > 0 ? .red : .secondary)
+                .fixedSize()
         }
+        .frame(minWidth: 44, minHeight: 32)
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(.ultraThinMaterial, in: Capsule())
     }
 
     private func rowBackground(for color: RowColor) -> Color {
