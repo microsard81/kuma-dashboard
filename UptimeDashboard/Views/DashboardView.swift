@@ -81,7 +81,7 @@ struct DashboardView: View {
                 .refreshable { await viewModel.refresh() }
             }
             .background(dashboardBackground.ignoresSafeArea())
-            .navigationTitle("")
+            .navigationTitle("INVA")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
