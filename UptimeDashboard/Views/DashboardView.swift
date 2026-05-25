@@ -81,7 +81,7 @@ struct DashboardView: View {
                 .refreshable { await viewModel.refresh() }
             }
             .background(dashboardBackground.ignoresSafeArea())
-            .navigationTitle("Dashboard")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -165,21 +165,25 @@ struct DashboardView: View {
     }
 
     private var ledBadgeView: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             Circle()
                 .fill(viewModel.ledColor)
-                .frame(width: 14, height: 14)
-                .shadow(color: viewModel.ledColor.opacity(0.6), radius: 4)
+                .frame(width: 10, height: 10)
+                .shadow(color: viewModel.ledColor.opacity(0.6), radius: 3)
 
             if viewModel.downCount > 0 {
                 Text("\(viewModel.downCount)")
                     .font(.caption.bold())
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(Color.red)
-                    .clipShape(Capsule())
+                    .foregroundColor(.red)
+            } else {
+                Text("\(viewModel.items.count)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.ultraThinMaterial, in: Capsule())
     }
 
     private func rowBackground(for color: RowColor) -> Color {
