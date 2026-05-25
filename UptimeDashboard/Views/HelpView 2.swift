@@ -7,7 +7,7 @@ struct HelpView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 20) {
 
                     // Panoramica
                     section("Panoramica") {
@@ -16,11 +16,11 @@ struct HelpView: View {
 
                     // Sonde
                     section("Le 5 sonde") {
-                        probeRow("Aruba", location: "Bergamo")
-                        probeRow("TIM", location: "Sestu (CA)")
-                        probeRow("ILIAD", location: "Sinnai (CA)")
-                        probeRow("NodePing", location: "Europa")
-                        probeRow("Uptime", location: "Globale")
+                        probeRow("k1 — Aruba", location: "Bergamo")
+                        probeRow("k2 — TIM", location: "Sestu (CA)")
+                        probeRow("k3 — ILIAD", location: "Sinnai (CA)")
+                        probeRow("n1 — NodePing", location: "Europa")
+                        probeRow("u1 — Uptime", location: "Globale")
                     }
 
                     // Stato
@@ -111,12 +111,12 @@ struct HelpView: View {
     // MARK: - Helpers
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.headline)
             content()
         }
-        .padding(16)
+        .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(12)
