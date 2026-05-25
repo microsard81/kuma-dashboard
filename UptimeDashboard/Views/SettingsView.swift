@@ -4,6 +4,7 @@ import LocalAuthentication
 struct SettingsView: View {
     @EnvironmentObject var settingsVM: SettingsViewModel
     @Environment(\.dismiss) var dismiss
+    @State private var showHelp = false
 
     // MARK: - Biometric helpers
 
@@ -160,6 +161,21 @@ struct SettingsView: View {
                         }
                     }
                 }
+
+                // MARK: - Sezione Aiuto
+                Section {
+                    Button {
+                        showHelp = true
+                    } label: {
+                        HStack {
+                            Label("Aiuto", systemImage: "questionmark.circle")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
             }
             .onAppear {
                 Task {
@@ -176,6 +192,9 @@ struct SettingsView: View {
             }
         }
         .navigationViewStyle(.stack)
+        .sheet(isPresented: $showHelp) {
+            HelpView()
+        }
     }
 
     // MARK: - Threshold label helper
