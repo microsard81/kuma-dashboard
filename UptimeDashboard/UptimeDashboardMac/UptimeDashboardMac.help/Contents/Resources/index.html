@@ -36,69 +36,19 @@
 </table>
 
 <h2>Stato globale</h2>
-<p>Lo stato globale è determinato dalla combinazione degli stati di tutte le sonde:</p>
 <ul>
     <li><span class="led led-green"></span> <strong>GREEN</strong> — Tutte le risorse sono UP su tutte le sonde</li>
-    <li><span class="led led-yellow"></span> <strong>YELLOW</strong> — Almeno una risorsa ha stato diverso tra le sonde (mismatch)</li>
+    <li><span class="led led-yellow"></span> <strong>YELLOW</strong> — Almeno una risorsa ha stato diverso tra le sonde</li>
     <li><span class="led led-red"></span> <strong>RED</strong> — Almeno una risorsa è DOWN su tutte le sonde</li>
-</ul>
-<p>Una risorsa è considerata <strong>DOWN</strong> solo se <em>tutte</em> le sonde la vedono DOWN.</p>
-
-<h2>Icona nella barra dei menu</h2>
-<p>L'icona nella barra dei menu mostra un pallino colorato che riflette lo stato globale corrente. Cliccando sull'icona si apre un menu con:</p>
-<ul>
-    <li>Stato globale corrente</li>
-    <li>Conteggio risorse DOWN e mismatch</li>
-    <li>Lista delle risorse anomale</li>
-    <li>Azioni rapide: aggiorna, apri dashboard, impostazioni</li>
 </ul>
 
 <h2>Notifiche push</h2>
-<p>L'app riceve notifiche push native (APNs) quando lo stato dei servizi cambia:</p>
-<ul>
-    <li>🔴 Transizione verso RED — servizi completamente DOWN</li>
-    <li>🟡 Transizione verso YELLOW — incongruenza tra sonde</li>
-    <li>🟡🔴 Peggioramento — più sonde DOWN rispetto alla notifica precedente</li>
-    <li>🟡🔴 Miglioramento — meno sonde DOWN rispetto alla notifica precedente</li>
-    <li>🟢 Ritorno a GREEN — tutti i servizi ripristinati</li>
-    <li>🟢 Risorsa ripristinata — una risorsa torna UP durante uno stato anomalo</li>
-</ul>
+<p>L'app riceve notifiche push native quando lo stato cambia. Puoi configurare una soglia (1–5) nelle Impostazioni per ricevere notifiche solo quando un certo numero di sonde è DOWN.</p>
 
-<h3>Soglia di notifica</h3>
-<p>Puoi configurare una soglia (1–5) nelle Impostazioni. La soglia indica quante sonde devono risultare DOWN prima di ricevere la notifica:</p>
-<ul>
-    <li><strong>1 sonda DOWN</strong> (default) — notifica al primo DOWN</li>
-    <li><strong>3 sonde DOWN</strong> — notifica solo quando 3+ sonde vedono DOWN</li>
-    <li><strong>5 sonde DOWN (tutte)</strong> — notifica solo quando tutte le sonde sono DOWN</li>
-</ul>
-<p>Le notifiche di ripristino (GREEN) vengono inviate solo a chi ha ricevuto la notifica di DOWN corrispondente.</p>
-
-<h2>Impostazioni</h2>
-<p>Accessibili dal menu <strong>Dashboard INVA MAC → Impostazioni</strong> (⌘,):</p>
-<ul>
-    <li><strong>Tema</strong> — Auto, Chiaro, Scuro</li>
-    <li><strong>Ordinamento</strong> — Per gravità, Alfabetico, Per stato globale</li>
-    <li><strong>Auto-refresh</strong> — 10s, 30s, 60s, Disabilitato</li>
-    <li><strong>Dimensione testo</strong> — 80% – 160%</li>
-    <li><strong>Badge Dock</strong> — Mostra/nascondi il contatore risorse anomale sull'icona nel Dock</li>
-    <li><strong>Notifiche push</strong> — Abilita/disabilita le notifiche APNs</li>
-    <li><strong>Soglia notifica</strong> — Numero minimo di sonde DOWN per ricevere la notifica (1–5)</li>
-</ul>
-
-<h2>Sparkline</h2>
-<p>Ogni risorsa mostra una barra storica degli ultimi 60 campionamenti (1 ora con intervallo di 60 secondi). I colori indicano:</p>
-<ul>
-    <li><span class="led led-green"></span> Verde — UP su tutte le sonde</li>
-    <li><span class="led led-yellow"></span> Giallo — Mismatch tra sonde</li>
-    <li><span class="led led-red"></span> Rosso — DOWN su tutte le sonde</li>
-</ul>
-<p>Passando il mouse su una barra si vede l'orario e lo stato dettagliato. Sui campioni mismatch vengono evidenziate le sonde DOWN.</p>
-
-<h2>Scorciatoie da tastiera</h2>
+<h2>Scorciatoie</h2>
 <table>
-    <tr><th>Scorciatoia</th><th>Azione</th></tr>
-    <tr><td>⌘R</td><td>Aggiorna (dalla barra dei menu)</td></tr>
-    <tr><td>⌘D</td><td>Apri Dashboard (dalla barra dei menu)</td></tr>
+    <tr><th>Tasto</th><th>Azione</th></tr>
+    <tr><td>⌘R</td><td>Aggiorna Dashboard</td></tr>
     <tr><td>⌘,</td><td>Impostazioni</td></tr>
     <tr><td>⌘Q</td><td>Esci</td></tr>
 </table>
