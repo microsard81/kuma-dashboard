@@ -105,10 +105,11 @@ struct MonitorItem: Decodable, Identifiable, Equatable {
     }
 
     var rowColor: RowColor {
-        if final == .down { return .red }
-        let probes: Set<ProbeStatus> = [k1, k2, k3, n1, u1]
-        if probes.count > 1 { return .yellow }
-        return .green
+        switch severity {
+        case 2: return .red
+        case 1: return .yellow
+        default: return .green
+        }
     }
 
     var severityRank: Int {
