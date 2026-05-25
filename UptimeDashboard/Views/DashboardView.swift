@@ -171,10 +171,19 @@ struct DashboardView: View {
                 .frame(width: 12, height: 12)
                 .shadow(color: viewModel.ledColor.opacity(0.6), radius: 3)
 
-            Text("\(viewModel.downCount)")
-                .font(.body.bold().monospacedDigit())
-                .foregroundColor(viewModel.downCount > 0 ? .red : .secondary)
-                .fixedSize()
+            if viewModel.redCount > 0 {
+                Text("\(viewModel.redCount)")
+                    .font(.body.bold().monospacedDigit())
+                    .foregroundColor(.red)
+                    .fixedSize()
+            }
+
+            if viewModel.mismatchCount > 0 {
+                Text("\(viewModel.mismatchCount)")
+                    .font(.body.bold().monospacedDigit())
+                    .foregroundColor(.yellow)
+                    .fixedSize()
+            }
         }
         .frame(minWidth: 44, minHeight: 32)
         .padding(.horizontal, 10)

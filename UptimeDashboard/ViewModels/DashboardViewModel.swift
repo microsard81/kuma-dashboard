@@ -30,6 +30,16 @@ final class DashboardViewModel: ObservableObject {
         items.filter { $0.rowColor == .red || $0.rowColor == .yellow }.count
     }
 
+    /// Count of monitors completely DOWN (severity 2).
+    var redCount: Int {
+        items.filter { $0.rowColor == .red }.count
+    }
+
+    /// Count of monitors in mismatch state (severity 1).
+    var mismatchCount: Int {
+        items.filter { $0.rowColor == .yellow }.count
+    }
+
     /// LED color reflecting the current global state.
     var ledColor: Color {
         globalState.color
