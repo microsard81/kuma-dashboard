@@ -325,7 +325,7 @@ extension Color {
 #Preview("Small", as: .systemSmall) {
     UptimeDashboardWidget()
 } timeline: {
-    DashboardEntry(date: Date(), globalState: "GREEN", monitors: [], downCount: 0, mismatchCount: 0, isPlaceholder: false)
+    DashboardEntry(date: Date(), globalState: "GREEN", monitors: [], downCount: 0, mismatchCount: 0, sensorAlerts: nil, sensorError: false, isPlaceholder: false)
 }
 
 #Preview("Medium", as: .systemMedium) {
@@ -333,6 +333,6 @@ extension Color {
 } timeline: {
     DashboardEntry(date: Date(), globalState: "YELLOW", monitors: [
         WidgetMonitor(name: "INVA - www.regione.vda.it", k1: "UP", k2: "UP", k3: "UP", n1: "DOWN", u1: "UP", finalStatus: "UP"),
-    ], downCount: 0, mismatchCount: 1, isPlaceholder: false)
+    ], downCount: 0, mismatchCount: 1, sensorAlerts: nil, sensorError: false, isPlaceholder: false)
 }
 #endif

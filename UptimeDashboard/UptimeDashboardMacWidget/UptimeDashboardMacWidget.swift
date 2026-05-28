@@ -24,6 +24,8 @@ struct MacDashboardEntry: TimelineEntry {
     let monitors: [MacWidgetMonitor]
     let downCount: Int
     let mismatchCount: Int
+    let sensorAlerts: MacSensorAlerts?
+    let sensorError: Bool
     let isPlaceholder: Bool
 
     static var placeholder: MacDashboardEntry {
@@ -33,9 +35,27 @@ struct MacDashboardEntry: TimelineEntry {
             monitors: [],
             downCount: 0,
             mismatchCount: 0,
+            sensorAlerts: nil,
+            sensorError: false,
             isPlaceholder: true
         )
     }
+}
+
+// MARK: - Sensor Alerts (Mac Widget-local model matching backend JSON)
+
+struct MacSensorAlerts: Codable, Equatable {
+    let warningCount: Int
+    let criticalCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case warningCount = "warning_count"
+        case criticalCount = "critical_count"
+    }
+
+    var totalCount: Int { warningCount + criticalCount }
+    var hasAlerts: Bool { totalCount > 0 }
+    var hasCritical: Bool { criticalCount > 0 }
 }
 
 // MARK: - API Fetch
@@ -72,12 +92,26 @@ struct MacWidgetAPIClient {
                 return MacWidgetMonitor(name: name, k1: k1, k2: k2, k3: k3, n1: n1, u1: u1, finalStatus: final_)
             }
 
+            // Parse sensor alerts from response
+            let sensorAlerts: MacSensorAlerts?
+            if let alertsDict = json["sensor_alerts"] as? [String: Int] {
+                sensorAlerts = MacSensorAlerts(
+                    warningCount: alertsDict["warning_count"] ?? 0,
+                    criticalCount: alertsDict["critical_count"] ?? 0
+                )
+            } else {
+                sensorAlerts = nil
+            }
+            let sensorError = json["sensor_error"] != nil
+
             return MacDashboardEntry(
                 date: Date(),
                 globalState: globalState,
                 monitors: monitors,
                 downCount: monitors.filter(\.isDown).count,
                 mismatchCount: monitors.filter(\.isMismatch).count,
+                sensorAlerts: sensorAlerts,
+                sensorError: sensorError,
                 isPlaceholder: false
             )
         } catch {
