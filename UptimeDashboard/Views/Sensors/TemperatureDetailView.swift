@@ -14,25 +14,30 @@ struct TemperatureDetailView: View {
 
     private var displaySensors: [SensorReading] {
         if isReordering { return manualOrder }
+
+        // Base order: saved custom order or default
         let saved = loadSavedOrder()
+        var baseOrder: [SensorReading]
         if !saved.isEmpty {
-            // Reorder based on saved IDs, append any new sensors at the end
             var ordered: [SensorReading] = []
             let sensorMap = Dictionary(uniqueKeysWithValues: viewModel.temperatureSensors.map { ($0.id, $0) })
             for id in saved {
                 if let s = sensorMap[id] { ordered.append(s) }
             }
-            // Append sensors not in saved order
             for s in viewModel.temperatureSensors where !saved.contains(s.id) {
                 ordered.append(s)
             }
-            return ordered
+            baseOrder = ordered
+        } else {
+            baseOrder = viewModel.temperatureSensors
         }
-        // Default: sort by severity
-        guard let t = viewModel.sensorThresholds else { return viewModel.temperatureSensors }
-        return viewModel.temperatureSensors.sorted { a, b in
-            severityRank(a.alertStatus(thresholds: t)) > severityRank(b.alertStatus(thresholds: t))
-        }
+
+        // Stable sort: critical first, then warning, then normal — preserving relative order within each group
+        guard let t = viewModel.sensorThresholds else { return baseOrder }
+        let critical = baseOrder.filter { $0.alertStatus(thresholds: t) == .critical }
+        let warning = baseOrder.filter { $0.alertStatus(thresholds: t) == .warning }
+        let normal = baseOrder.filter { $0.alertStatus(thresholds: t) == .normal }
+        return critical + warning + normal
     }
 
     private func severityRank(_ status: AlertStatus) -> Int {
@@ -58,7 +63,7 @@ struct TemperatureDetailView: View {
                             manualOrder = displaySensors
                             withAnimation { isReordering = true }
                         } label: {
-                            Text("Riordina")
+                            Label("Riordina", systemImage: "arrow.up.arrow.down")
                         }
                         .tint(.orange)
                     }

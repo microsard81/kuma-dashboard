@@ -15,19 +15,29 @@ struct PortalsDetailView: View {
 
     private var displayItems: [MonitorItem] {
         if isReordering { return manualOrder }
+
+        // Base order: saved custom order or default from viewModel
         let saved = loadSavedOrder()
+        var baseOrder: [MonitorItem]
         if !saved.isEmpty {
             var ordered: [MonitorItem] = []
-            let itemMap = Dictionary(uniqueKeysWithValues: viewModel.filteredItems.map { ($0.id.uuidString, $0) })
-            for id in saved {
-                if let item = itemMap[id] { ordered.append(item) }
+            let itemMap = Dictionary(uniqueKeysWithValues: viewModel.filteredItems.map { ($0.name, $0) })
+            for name in saved {
+                if let item = itemMap[name] { ordered.append(item) }
             }
-            for item in viewModel.filteredItems where !saved.contains(item.id.uuidString) {
+            for item in viewModel.filteredItems where !saved.contains(item.name) {
                 ordered.append(item)
             }
-            return ordered
+            baseOrder = ordered
+        } else {
+            baseOrder = viewModel.filteredItems
         }
-        return viewModel.filteredItems
+
+        // Stable sort: DOWN first, then mismatch, then UP — preserving relative order within each group
+        let down = baseOrder.filter { $0.rowColor == .red }
+        let mismatch = baseOrder.filter { $0.rowColor == .yellow }
+        let up = baseOrder.filter { $0.rowColor == .green }
+        return down + mismatch + up
     }
 
     var body: some View {
@@ -105,7 +115,7 @@ struct PortalsDetailView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 if isReordering {
                     Button("Termina") {
-                        saveOrder(manualOrder.map(\.id.uuidString))
+                        saveOrder(manualOrder.map(\.name))
                         withAnimation { isReordering = false }
                     }
                     .bold()
@@ -131,7 +141,7 @@ struct PortalsDetailView: View {
                     manualOrder = displayItems
                     withAnimation { isReordering = true }
                 } label: {
-                    Text("Riordina")
+                    Label("Riordina", systemImage: "arrow.up.arrow.down")
                 }
                 .tint(.green)
             }

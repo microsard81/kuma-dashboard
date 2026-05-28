@@ -181,6 +181,10 @@ final class SettingsViewModel: ObservableObject {
     func setSortOrder(_ order: SortOrder) {
         sortOrder = order
         defaults.set(order.rawValue, forKey: sortOrderKey)
+        // Reset custom manual orders when global sort changes
+        defaults.removeObject(forKey: "monitor_order_portals")
+        defaults.removeObject(forKey: "sensor_order_temperature")
+        defaults.removeObject(forKey: "sensor_order_power")
     }
 
     // MARK: - Refresh interval actions

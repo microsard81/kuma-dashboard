@@ -14,7 +14,10 @@ struct PowerDetailView: View {
 
     private var displaySensors: [SensorReading] {
         if isReordering { return manualOrder }
+
+        // Base order: saved custom order or default
         let saved = loadSavedOrder()
+        var baseOrder: [SensorReading]
         if !saved.isEmpty {
             var ordered: [SensorReading] = []
             let sensorMap = Dictionary(uniqueKeysWithValues: viewModel.powerSensors.map { ($0.id, $0) })
@@ -24,12 +27,17 @@ struct PowerDetailView: View {
             for s in viewModel.powerSensors where !saved.contains(s.id) {
                 ordered.append(s)
             }
-            return ordered
+            baseOrder = ordered
+        } else {
+            baseOrder = viewModel.powerSensors
         }
-        guard let t = viewModel.sensorThresholds else { return viewModel.powerSensors }
-        return viewModel.powerSensors.sorted { a, b in
-            severityRank(a.alertStatus(thresholds: t)) > severityRank(b.alertStatus(thresholds: t))
-        }
+
+        // Stable sort: critical first, then warning, then normal — preserving relative order within each group
+        guard let t = viewModel.sensorThresholds else { return baseOrder }
+        let critical = baseOrder.filter { $0.alertStatus(thresholds: t) == .critical }
+        let warning = baseOrder.filter { $0.alertStatus(thresholds: t) == .warning }
+        let normal = baseOrder.filter { $0.alertStatus(thresholds: t) == .normal }
+        return critical + warning + normal
     }
 
     private func severityRank(_ status: AlertStatus) -> Int {
@@ -55,7 +63,7 @@ struct PowerDetailView: View {
                             manualOrder = displaySensors
                             withAnimation { isReordering = true }
                         } label: {
-                            Text("Riordina")
+                            Label("Riordina", systemImage: "arrow.up.arrow.down")
                         }
                         .tint(.blue)
                     }
