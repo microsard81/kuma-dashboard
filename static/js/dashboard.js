@@ -447,6 +447,159 @@ function renderMobileCards(items) {
 }
 
 /************************************************************
+ * INVERTER SENSOR SECTION
+ ************************************************************/
+const INVERTER_MAX_HISTORY = 60;
+const INVERTER_STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minuti
+
+// Cache istanze Chart.js (chiave = sensor id)
+const sparklineCharts = {};
+
+function categoriseSensors(sensors) {
+    return {
+        temperature: sensors.filter(s => s.category === "temperature"),
+        power: sensors.filter(s => s.category === "power"),
+    };
+}
+
+function isSensorStale(sensorTimestamp, responseTimestamp) {
+    if (!sensorTimestamp || !responseTimestamp) return false;
+    const sensorTime = new Date(sensorTimestamp).getTime();
+    const responseTime = new Date(responseTimestamp).getTime();
+    return (responseTime - sensorTime) > INVERTER_STALE_THRESHOLD_MS;
+}
+
+function getSparklineData(history, sensorId) {
+    const entries = (history[sensorId] || []).slice(-INVERTER_MAX_HISTORY);
+    return entries.map(e => e.v);
+}
+
+function renderInverterCards(data) {
+    const { temperature, power } = categoriseSensors(data.sensors || []);
+    const history = data.history || {};
+    const responseTs = data.timestamp;
+
+    _renderCardGroup("inverter-temp-grid", temperature, history, responseTs, "bi-thermometer-half");
+    _renderCardGroup("inverter-power-grid", power, history, responseTs, "bi-lightning-charge");
+}
+
+function _renderCardGroup(containerId, sensors, history, responseTs, iconClass) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = "";
+
+    sensors.forEach(sensor => {
+        const card = document.createElement("div");
+        card.classList.add("inverter-card");
+
+        // Header
+        const header = document.createElement("div");
+        header.classList.add("inverter-card-header");
+
+        const nameEl = document.createElement("span");
+        nameEl.classList.add("inverter-card-name");
+        nameEl.innerHTML = `<i class="bi ${iconClass} me-1"></i>${sensor.name}`;
+
+        const badge = document.createElement("span");
+        badge.classList.add("inverter-card-badge");
+        if (isSensorStale(sensor.timestamp, responseTs)) {
+            badge.classList.add("stale");
+        }
+        badge.textContent = sensor.value != null ? sensor.value + " " + (sensor.unit || "") : "—";
+
+        header.appendChild(nameEl);
+        header.appendChild(badge);
+        card.appendChild(header);
+
+        // Sparkline
+        const sparkDiv = document.createElement("div");
+        sparkDiv.classList.add("inverter-card-sparkline");
+        const canvas = document.createElement("canvas");
+        const canvasId = "spark-" + sensor.id;
+        canvas.id = canvasId;
+        sparkDiv.appendChild(canvas);
+        card.appendChild(sparkDiv);
+
+        container.appendChild(card);
+
+        // Render sparkline chart
+        const values = getSparklineData(history, sensor.id);
+        if (values.length > 0) {
+            createOrUpdateSparkline(canvasId, values);
+        }
+    });
+}
+
+function createOrUpdateSparkline(canvasId, values) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    // Se esiste già un chart, aggiorna i dati
+    if (sparklineCharts[canvasId]) {
+        sparklineCharts[canvasId].data.labels = values.map((_, i) => i);
+        sparklineCharts[canvasId].data.datasets[0].data = values;
+        sparklineCharts[canvasId].update("none");
+        return;
+    }
+
+    // Crea nuovo chart
+    try {
+        sparklineCharts[canvasId] = new Chart(canvas, {
+            type: "line",
+            data: {
+                labels: values.map((_, i) => i),
+                datasets: [{
+                    data: values,
+                    borderColor: "#5eead4",
+                    borderWidth: 1.5,
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.3,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        mode: "index",
+                        intersect: false,
+                    },
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false },
+                },
+                animation: false,
+            },
+        });
+    } catch (e) {
+        console.error("Errore creazione sparkline:", e);
+    }
+}
+
+function updateInverterTimestamp(ts) {
+    const el = document.getElementById("inverter-timestamp");
+    if (!el) return;
+    el.textContent = ts ? "Ultimo aggiornamento: " + ts : "";
+}
+
+function showInverterError(msg) {
+    const el = document.getElementById("inverter-error");
+    if (!el) return;
+    el.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>' + msg;
+    el.classList.remove("d-none");
+}
+
+function clearInverterError() {
+    const el = document.getElementById("inverter-error");
+    if (!el) return;
+    el.classList.add("d-none");
+}
+
+/************************************************************
  * AUTO REFRESH
  ************************************************************/
 async function refreshDashboard() {
@@ -465,6 +618,26 @@ async function refreshDashboard() {
 
     } catch (e) {
         console.error("Errore auto-refresh:", e);
+    }
+
+    // Inverter data refresh (indipendente — errore non blocca dashboard)
+    try {
+        const res = await fetch("/api/inverter-data", { cache: "no-store" });
+        if (!res.ok) {
+            showInverterError("Errore nel caricamento dati sensori");
+            return;
+        }
+        const data = await res.json();
+        if (data.error) {
+            showInverterError(data.error);
+        } else {
+            clearInverterError();
+            renderInverterCards(data);
+            updateInverterTimestamp(data.timestamp);
+        }
+    } catch (e) {
+        console.error("Errore auto-refresh inverter:", e);
+        showInverterError("Errore di rete");
     }
 }
 
@@ -687,4 +860,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     refreshDashboard();
     setInterval(refreshDashboard, 10000);
+
+    // Inverter initial render
+    if (typeof INVERTER_INITIAL_DATA !== "undefined" && INVERTER_INITIAL_DATA && !INVERTER_INITIAL_DATA.error) {
+        renderInverterCards(INVERTER_INITIAL_DATA);
+        updateInverterTimestamp(INVERTER_INITIAL_DATA.timestamp);
+    }
 });

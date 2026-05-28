@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 
 from kuma_client import load_monitors
 from status_client import load_status, process_monitor
+from sensor_client import fetch_inverter_data
 from auth import verify_user, verify_totp, is_totp_enrolled, get_totp_secret, enroll_totp, must_change_password, change_password, validate_password_complexity, PasswordValidationError
 from severity import compute_global_state, validate_threshold
 from config import (
@@ -649,11 +650,13 @@ def biometric_login():
 @login_required
 def dashboard():
     rows, global_state = build_dashboard_data()
+    inverter_data = fetch_inverter_data()
 
     return render_template(
         "dashboard.html",
         items=rows,
         global_state=global_state,
+        inverter=inverter_data,
         current_year=datetime.now().year,
         vapid_public_key=PUSH_VAPID_PUBLIC_KEY if PUSH_ENABLED else "",
         randomize_version=random.randint(159827789,654987987),
@@ -670,6 +673,13 @@ def api_dashboard_data():
     return jsonify(
         {"items": rows, "global_state": global_state, "timestamp": datetime.now().isoformat()}
     )
+
+
+@app.route("/api/inverter-data")
+@login_required
+def api_inverter_data():
+    data = fetch_inverter_data()
+    return jsonify(data)
 
 
 @app.route("/api/watch-data")

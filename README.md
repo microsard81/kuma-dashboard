@@ -115,6 +115,7 @@ Copia `.env.example` in `.env` e compila tutti i campi:
 | `WATCH_API_TOKEN` | — | Token statico per l'endpoint `/api/watch-data` (Apple Watch) |
 | `BIOMETRIC_SECRET` | — | Segreto per firmare i token biometrici (default: `FLASK_SECRET_KEY`) |
 | `PUSH_LOG_FILE` | — | Percorso file di log per le notifiche push VAPID e APNs (vuoto = disabilitato) |
+| `INVERTER_STATUS_URL` | — | URL endpoint invadcstatus (default: `http://127.0.0.1:9000/invadcstatus`) |
 | `REDIS_HOST` | — | Host Redis (default: `127.0.0.1`) |
 | `REDIS_PORT` | — | Porta Redis (default: `6379`) |
 | `REDIS_DB` | — | Database Redis (default: `0`) |
@@ -143,6 +144,7 @@ python history_worker.py
 app.py                  # Flask app — routing, autenticazione, API
 auth.py                 # Autenticazione multi-utente con Redis
 config.py               # Configurazione da variabili d'ambiente
+sensor_client.py        # Client per l'endpoint invadcstatus (dati inverter/sensori)
 history_worker.py       # Worker che aggiorna lo storico Redis e invia push
 kuma_client.py          # Client per le API di Uptime Kuma
 status_client.py        # Parsing degli stati dai webhook
@@ -169,6 +171,7 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 | `GET` | `/logout` | ✅ | Logout |
 | `GET` | `/` | ✅ | Dashboard web |
 | `GET` | `/api/dashboard-data` | ✅ | Dati dashboard in JSON |
+| `GET` | `/api/inverter-data` | ✅ | Dati sensori inverter in JSON |
 | `POST` | `/api/login` | — | Login JSON (app iOS) |
 | `POST` | `/api/2fa` | — | Verifica 2FA JSON (app iOS) |
 | `POST` | `/api/change-password` | — | Cambio password JSON (app iOS) |
@@ -212,6 +215,47 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 ```
 
 > Lo storico usa la convenzione `0 = DOWN, 1 = UP` per ogni sonda. I punti vecchi (pre-migrazione) possono apparire come semplici interi. I punti nel formato a 5 campi (pre-sonda Uptime) avranno `u1: null`.
+
+### Sensori Inverter
+
+La dashboard integra dati in tempo reale da un endpoint locale `invadcstatus` che fornisce letture di temperatura e potenza dall'inverter e dai sensori ambientali.
+
+**Funzionalità:**
+- Sezione "Sensori Inverter" nella pagina principale, sotto le card uptime
+- Card raggruppate per categoria: Temperatura (°C) e Potenza (kW)
+- Sparkline Chart.js (ultimi 60 valori storici) in ogni card
+- Badge verde per valori normali, ambra per letture stale (>5 minuti)
+- Auto-refresh ogni 10 secondi (stesso ciclo della dashboard)
+- Errori inverter non bloccano la sezione uptime (fetch indipendenti)
+- Layout responsive: 1 colonna mobile, 2 tablet, 4 desktop
+
+**Endpoint:** `GET /api/inverter-data` (autenticato)
+
+**Formato risposta:**
+```json
+{
+  "sensors": [
+    {
+      "id": "sensor_temp_brg_tlc",
+      "name": "BRG TLC",
+      "category": "temperature",
+      "value": 23.5,
+      "unit": "°C",
+      "timestamp": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "history": {
+    "sensor_temp_brg_tlc": [
+      {"t": "2024-01-15T10:20:00Z", "v": 23.1},
+      {"t": "2024-01-15T10:21:00Z", "v": 23.3}
+    ]
+  },
+  "timestamp": "2024-01-15T10:30:00Z",
+  "error": null
+}
+```
+
+**Configurazione:** la variabile `INVERTER_STATUS_URL` nel `.env` permette di puntare a un endpoint diverso (default: `http://127.0.0.1:9000/invadcstatus`). Il token di autenticazione è lo stesso `STATUS_TOKEN` già usato per l'uptime.
 
 ### Redis — schema chiavi
 

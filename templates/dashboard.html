@@ -216,6 +216,33 @@
                 <!-- POPOLATO DA JS -->
             </div>
 
+            <!-- INVERTER SENSOR SECTION -->
+            <div id="inverter-section" class="mt-5">
+                <h3 class="mb-3">Sensori Inverter</h3>
+
+                {% if inverter.error %}
+                <div class="alert alert-warning" id="inverter-error">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ inverter.error }}
+                </div>
+                {% else %}
+                <div class="alert alert-warning d-none" id="inverter-error"></div>
+                {% endif %}
+
+                <h5 class="text-muted mb-2"><i class="bi bi-thermometer-half me-1"></i>Temperatura (°C)</h5>
+                <div id="inverter-temp-grid" class="inverter-card-grid mb-4">
+                    <!-- Populated by JS -->
+                </div>
+
+                <h5 class="text-muted mb-2"><i class="bi bi-lightning-charge me-1"></i>Potenza (kW)</h5>
+                <div id="inverter-power-grid" class="inverter-card-grid mb-3">
+                    <!-- Populated by JS -->
+                </div>
+
+                <small class="text-muted" id="inverter-timestamp">
+                    {% if inverter.timestamp %}Ultimo aggiornamento: {{ inverter.timestamp }}{% endif %}
+                </small>
+            </div>
+
         </div>
     </div>
 
@@ -227,9 +254,13 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- Chart.js per sparkline inverter -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
     <!-- PUSH / SERVICE WORKER -->
     <script>
         const VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
+        const INVERTER_INITIAL_DATA = {{ inverter | tojson }};
     </script>
     <script src="/static/js/dashboard.js?v={{ randomize_version }}"></script>
 </body>

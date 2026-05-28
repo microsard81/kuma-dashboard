@@ -495,3 +495,99 @@ body.dark nav.navbar {
         display: none !important;
     }
 }
+
+/* ============================================================
+   INVERTER SENSOR CARDS
+   ============================================================ */
+.inverter-card-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;  /* mobile default: 1 col */
+}
+
+@media (min-width: 768px) {
+    .inverter-card-grid {
+        grid-template-columns: repeat(2, 1fr);  /* tablet: 2 col */
+    }
+}
+
+@media (min-width: 1200px) {
+    .inverter-card-grid {
+        grid-template-columns: repeat(4, 1fr);  /* desktop: 4 col */
+    }
+}
+
+.inverter-card {
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    background: var(--card-bg, #fff);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.inverter-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.inverter-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.inverter-card-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-muted, #64748b);
+}
+
+.inverter-card-badge {
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.25rem 0.6rem;
+    border-radius: 0.375rem;
+    background: #34d399;  /* green — normal */
+    color: #fff;
+}
+
+.inverter-card-badge.stale {
+    background: #fbbf24;  /* amber — stale */
+}
+
+.inverter-card-sparkline {
+    height: 40px;
+    width: 100%;
+}
+
+.inverter-card-sparkline canvas {
+    width: 100% !important;
+    height: 40px !important;
+}
+
+/* Dark theme inverter cards */
+body.dark .inverter-card {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+body.dark .inverter-card:hover {
+    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+}
+
+body.dark .inverter-card-name {
+    color: #94a3b8;
+}
+
+body.dark .inverter-card-badge {
+    background: #059669;
+}
+
+body.dark .inverter-card-badge.stale {
+    background: #d97706;
+}
