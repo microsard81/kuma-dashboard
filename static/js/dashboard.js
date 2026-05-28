@@ -462,6 +462,58 @@ function categoriseSensors(sensors) {
     };
 }
 
+function _sortByUserOrder(sensors, storageKey) {
+    const saved = localStorage.getItem(storageKey);
+    if (!saved) return sensors;
+    try {
+        const order = JSON.parse(saved);
+        return [...sensors].sort((a, b) => {
+            const ia = order.indexOf(a.id);
+            const ib = order.indexOf(b.id);
+            // Non trovati vanno in fondo
+            const pa = ia === -1 ? 9999 : ia;
+            const pb = ib === -1 ? 9999 : ib;
+            return pa - pb;
+        });
+    } catch (e) {
+        return sensors;
+    }
+}
+
+function _saveUserOrder(containerId, storageKey) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const ids = Array.from(container.querySelectorAll(".inverter-card"))
+        .map(card => card.dataset.sensorId);
+    localStorage.setItem(storageKey, JSON.stringify(ids));
+}
+
+// Stato drag & drop (lockato di default)
+let inverterReorderEnabled = false;
+
+function toggleInverterReorder() {
+    inverterReorderEnabled = !inverterReorderEnabled;
+    const btn = document.getElementById("inverter-reorder-btn");
+    if (btn) {
+        if (inverterReorderEnabled) {
+            btn.classList.add("active");
+            btn.innerHTML = '<i class="bi bi-lock"></i>';
+            btn.title = "Blocca posizione";
+        } else {
+            btn.classList.remove("active");
+            btn.innerHTML = '<i class="bi bi-arrows-move"></i>';
+            btn.title = "Riordina sensori";
+        }
+    }
+    // Aggiorna draggable su tutte le card
+    document.querySelectorAll(".inverter-card").forEach(card => {
+        card.draggable = inverterReorderEnabled;
+        card.style.cursor = inverterReorderEnabled ? "grab" : "default";
+    });
+}
+
+window.toggleInverterReorder = toggleInverterReorder;
+
 function isSensorStale(sensorTimestamp, responseTimestamp) {
     if (!sensorTimestamp || !responseTimestamp) return false;
     const sensorTime = new Date(sensorTimestamp).getTime();
@@ -480,11 +532,14 @@ function renderInverterCards(data) {
     const responseTs = data.timestamp;
     const thresholds = data.thresholds || {};
 
-    _renderCardGroup("inverter-temp-grid", temperature, history, responseTs, "bi-thermometer-half", thresholds.temperature);
-    _renderCardGroup("inverter-power-grid", power, history, responseTs, "bi-lightning-charge", thresholds.power);
+    const sortedTemp = _sortByUserOrder(temperature, "inverter_temp_order");
+    const sortedPower = _sortByUserOrder(power, "inverter_power_order");
+
+    _renderCardGroup("inverter-temp-grid", sortedTemp, history, responseTs, "bi-thermometer-half", thresholds.temperature, "inverter_temp_order");
+    _renderCardGroup("inverter-power-grid", sortedPower, history, responseTs, "bi-lightning-charge", thresholds.power, "inverter_power_order");
 }
 
-function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, thresholds) {
+function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, thresholds, orderKey) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -503,6 +558,34 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, 
     sensors.forEach(sensor => {
         const card = document.createElement("div");
         card.classList.add("inverter-card");
+        card.dataset.sensorId = sensor.id;
+        card.draggable = inverterReorderEnabled;
+        card.style.cursor = inverterReorderEnabled ? "grab" : "default";
+
+        // Drag & drop (attivo solo quando sbloccato)
+        card.addEventListener("dragstart", (e) => {
+            if (!inverterReorderEnabled) { e.preventDefault(); return; }
+            e.dataTransfer.setData("text/plain", sensor.id);
+            card.classList.add("dragging");
+        });
+        card.addEventListener("dragend", () => {
+            card.classList.remove("dragging");
+            _saveUserOrder(containerId, orderKey);
+        });
+        card.addEventListener("dragover", (e) => {
+            if (!inverterReorderEnabled) return;
+            e.preventDefault();
+            const dragging = container.querySelector(".dragging");
+            if (dragging && dragging !== card) {
+                const rect = card.getBoundingClientRect();
+                const midX = rect.left + rect.width / 2;
+                if (e.clientX < midX) {
+                    container.insertBefore(dragging, card);
+                } else {
+                    container.insertBefore(dragging, card.nextSibling);
+                }
+            }
+        });
 
         // Header
         const header = document.createElement("div");

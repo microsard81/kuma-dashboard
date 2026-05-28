@@ -218,7 +218,12 @@
 
             <!-- INVERTER SENSOR SECTION -->
             <div id="inverter-section" class="mt-5">
-                <h3 class="mb-3">Sensori Datacenter</h3>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="mb-0">Sensori Datacenter</h3>
+                    <button id="inverter-reorder-btn" class="btn btn-auto btn-sm" onclick="toggleInverterReorder()" title="Riordina sensori">
+                        <i class="bi bi-arrows-move"></i>
+                    </button>
+                </div>
 
                 {% if inverter.error %}
                 <div class="alert alert-warning" id="inverter-error">

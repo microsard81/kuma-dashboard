@@ -231,7 +231,9 @@ La dashboard integra dati in tempo reale da un endpoint locale `invadcstatus` ch
 - Badge verde per valori normali, ambra per letture stale (>5 minuti)
 - Auto-refresh ogni 60 secondi (stesso ciclo della dashboard)
 - Errori inverter non bloccano la sezione uptime (fetch indipendenti)
-- Layout responsive: 1 colonna mobile, 2 tablet, 4 desktop
+- Layout responsive: 1 colonna mobile, 3 colonne tablet/desktop
+- Drag & drop per riordinare le card (bloccato di default, sbloccare con icona 🔀)
+- Ordine personalizzato salvato in localStorage per utente/browser
 
 **Endpoint:** `GET /api/inverter-data` (autenticato)
 

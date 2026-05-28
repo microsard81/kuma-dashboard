@@ -507,13 +507,13 @@ body.dark nav.navbar {
 
 @media (min-width: 768px) {
     .inverter-card-grid {
-        grid-template-columns: repeat(2, 1fr);  /* tablet: 2 col */
+        grid-template-columns: repeat(3, 1fr);  /* tablet+: 3 col */
     }
 }
 
 @media (min-width: 1200px) {
     .inverter-card-grid {
-        grid-template-columns: repeat(4, 1fr);  /* desktop: 4 col */
+        grid-template-columns: repeat(3, 1fr);  /* desktop: 3 col */
     }
 }
 
@@ -527,6 +527,17 @@ body.dark nav.navbar {
     flex-direction: column;
     gap: 0.5rem;
     transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.inverter-card.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+#inverter-reorder-btn.active {
+    background: #dbeafe !important;
+    border-color: #3b82f6 !important;
+    color: #1d4ed8 !important;
 }
 
 .inverter-card:hover {
