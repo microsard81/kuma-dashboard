@@ -559,6 +559,14 @@ body.dark nav.navbar {
     background: #fbbf24;  /* amber — stale */
 }
 
+.inverter-card-badge.warning {
+    background: #f59e0b;  /* amber — warning */
+}
+
+.inverter-card-badge.critical {
+    background: #ef4444;  /* red — critical */
+}
+
 .inverter-card-sparkline {
     height: 40px;
     width: 100%;

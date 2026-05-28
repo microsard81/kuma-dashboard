@@ -34,6 +34,14 @@ PUSH_VAPID_CLAIMS = {"sub": f"mailto:{PUSH_VAPID_EMAIL}"}
 STATUS_URL   = "http://127.0.0.1:9000/status"
 INVERTER_STATUS_URL = os.environ.get("INVERTER_STATUS_URL", "http://127.0.0.1:9000/invadcstatus")
 
+# --- Soglie sensori inverter ---
+# Temperatura: warning/critical se MAGGIORE DI
+INVERTER_TEMP_WARNING = float(os.environ.get("INVERTER_TEMP_WARNING", "35"))
+INVERTER_TEMP_CRITICAL = float(os.environ.get("INVERTER_TEMP_CRITICAL", "45"))
+# Potenza: warning/critical se MINORE DI
+INVERTER_POWER_WARNING = float(os.environ.get("INVERTER_POWER_WARNING", "5"))
+INVERTER_POWER_CRITICAL = float(os.environ.get("INVERTER_POWER_CRITICAL", "2"))
+
 HTTP_TIMEOUT = 10
 
 

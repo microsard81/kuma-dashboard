@@ -6,7 +6,9 @@ import logging
 
 import requests
 
-from config import INVERTER_STATUS_URL, STATUS_TOKEN, HTTP_TIMEOUT
+from config import INVERTER_STATUS_URL, STATUS_TOKEN, HTTP_TIMEOUT, \
+    INVERTER_TEMP_WARNING, INVERTER_TEMP_CRITICAL, \
+    INVERTER_POWER_WARNING, INVERTER_POWER_CRITICAL
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +93,10 @@ def fetch_inverter_data():
         "history": history,
         "timestamp": _epoch_to_iso(data.get("timestamp")) if isinstance(data.get("timestamp"), (int, float)) else data.get("timestamp"),
         "error": None,
+        "thresholds": {
+            "temperature": {"warning": INVERTER_TEMP_WARNING, "critical": INVERTER_TEMP_CRITICAL},
+            "power": {"warning": INVERTER_POWER_WARNING, "critical": INVERTER_POWER_CRITICAL},
+        },
     }
 
 

@@ -478,14 +478,24 @@ function renderInverterCards(data) {
     const { temperature, power } = categoriseSensors(data.sensors || []);
     const history = data.history || {};
     const responseTs = data.timestamp;
+    const thresholds = data.thresholds || {};
 
-    _renderCardGroup("inverter-temp-grid", temperature, history, responseTs, "bi-thermometer-half");
-    _renderCardGroup("inverter-power-grid", power, history, responseTs, "bi-lightning-charge");
+    _renderCardGroup("inverter-temp-grid", temperature, history, responseTs, "bi-thermometer-half", thresholds.temperature);
+    _renderCardGroup("inverter-power-grid", power, history, responseTs, "bi-lightning-charge", thresholds.power);
 }
 
-function _renderCardGroup(containerId, sensors, history, responseTs, iconClass) {
+function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, thresholds) {
     const container = document.getElementById(containerId);
     if (!container) return;
+
+    // Distruggi chart esistenti per questo container
+    container.querySelectorAll("canvas").forEach(c => {
+        if (sparklineCharts[c.id]) {
+            sparklineCharts[c.id].destroy();
+            delete sparklineCharts[c.id];
+        }
+    });
+
     container.innerHTML = "";
 
     const category = iconClass === "bi-thermometer-half" ? "temperature" : "power";
@@ -504,9 +514,19 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass) 
 
         const badge = document.createElement("span");
         badge.classList.add("inverter-card-badge");
-        if (isSensorStale(sensor.timestamp, responseTs)) {
+
+        // Determina stato badge in base alle soglie
+        const badgeState = _getBadgeState(sensor.value, category, thresholds);
+        if (badgeState === "critical") {
+            badge.classList.add("critical");
+        } else if (badgeState === "warning") {
+            badge.classList.add("warning");
+        }
+        // Stale ha priorità visiva solo se non c'è critical/warning
+        if (isSensorStale(sensor.timestamp, responseTs) && badgeState === "normal") {
             badge.classList.add("stale");
         }
+
         badge.textContent = sensor.value != null ? sensor.value + " " + (sensor.unit || "") : "—";
 
         header.appendChild(nameEl);
@@ -519,17 +539,35 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass) 
         const canvas = document.createElement("canvas");
         const canvasId = "spark-" + sensor.id.replace(/[^a-zA-Z0-9]/g, "_");
         canvas.id = canvasId;
+        canvas.width = 200;
+        canvas.height = 40;
         sparkDiv.appendChild(canvas);
         card.appendChild(sparkDiv);
 
         container.appendChild(card);
 
-        // Render sparkline chart
+        // Render sparkline chart dopo che il canvas è nel DOM
         const values = getSparklineData(history, sensor.id);
         if (values.length > 0) {
-            createOrUpdateSparkline(canvasId, values, category);
+            requestAnimationFrame(() => {
+                createOrUpdateSparkline(canvasId, values, category);
+            });
         }
     });
+}
+
+function _getBadgeState(value, category, thresholds) {
+    if (value == null || !thresholds) return "normal";
+    if (category === "temperature") {
+        // Temperatura: warning/critical se MAGGIORE DI
+        if (value > thresholds.critical) return "critical";
+        if (value > thresholds.warning) return "warning";
+    } else {
+        // Potenza: warning/critical se MINORE DI
+        if (value < thresholds.critical) return "critical";
+        if (value < thresholds.warning) return "warning";
+    }
+    return "normal";
 }
 
 function createOrUpdateSparkline(canvasId, values, category) {

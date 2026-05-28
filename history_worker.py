@@ -19,9 +19,14 @@ from config import (
     PROBE_NODEPING,
     PROBE_UPTIME,
     SLEEP,
+    INVERTER_TEMP_WARNING,
+    INVERTER_TEMP_CRITICAL,
+    INVERTER_POWER_WARNING,
+    INVERTER_POWER_CRITICAL,
 )
 from kuma_client import load_monitors
 from status_client import load_status
+from sensor_client import fetch_inverter_data
 from redis_history import (
     save_point,
     get_global_state,
@@ -303,6 +308,103 @@ def maybe_send_global_push(new_state, monitor_details=None):
 
 
 # ------------------------------------------------------
+# INVERTER SENSOR ALERTS
+# ------------------------------------------------------
+# Stato precedente dei sensori salvato in Redis: inverter:alert_state:<sensor_name>
+# Valori: "normal", "warning", "critical"
+
+def _get_sensor_alert_state(sensor_name):
+    """Legge lo stato di alert precedente per un sensore da Redis."""
+    from redis_history import _redis as r
+    return r.get(f"inverter:alert_state:{sensor_name}") or "normal"
+
+
+def _set_sensor_alert_state(sensor_name, state):
+    """Salva lo stato di alert per un sensore in Redis."""
+    from redis_history import _redis as r
+    r.set(f"inverter:alert_state:{sensor_name}", state)
+
+
+def _classify_sensor(value, category):
+    """Classifica il valore di un sensore come normal/warning/critical."""
+    if value is None:
+        return "normal"
+    if category == "temperature":
+        if value > INVERTER_TEMP_CRITICAL:
+            return "critical"
+        if value > INVERTER_TEMP_WARNING:
+            return "warning"
+    else:  # power
+        if value < INVERTER_POWER_CRITICAL:
+            return "critical"
+        if value < INVERTER_POWER_WARNING:
+            return "warning"
+    return "normal"
+
+
+def check_inverter_alerts():
+    """Controlla i sensori inverter e invia push alle transizioni di stato."""
+    if not PUSH_ENABLED:
+        return
+
+    data = fetch_inverter_data()
+    if data.get("error"):
+        logging.warning("Inverter alert check: %s", data["error"])
+        return
+
+    now_str = datetime.now().strftime("%H:%M")
+    sensors = data.get("sensors", [])
+
+    for sensor in sensors:
+        name = sensor.get("name", "")
+        value = sensor.get("value")
+        category = sensor.get("category", "temperature")
+        unit = sensor.get("unit", "")
+
+        new_state = _classify_sensor(value, category)
+        prev_state = _get_sensor_alert_state(name)
+
+        # Invia push solo alle transizioni (non a ogni ciclo)
+        if new_state != prev_state:
+            _set_sensor_alert_state(name, new_state)
+
+            # Transizione verso warning
+            if new_state == "warning" and prev_state == "normal":
+                title = f"⚠️ {name}"
+                if category == "temperature":
+                    body = f"Temperatura {value} {unit} (soglia warning: >{INVERTER_TEMP_WARNING} {unit})\nOre {now_str}"
+                else:
+                    body = f"Potenza {value} {unit} (soglia warning: <{INVERTER_POWER_WARNING} {unit})\nOre {now_str}"
+                _send_inverter_push(title, body)
+
+            # Transizione verso critical
+            elif new_state == "critical":
+                title = f"🔴 {name}"
+                if category == "temperature":
+                    body = f"Temperatura {value} {unit} (soglia critical: >{INVERTER_TEMP_CRITICAL} {unit})\nOre {now_str}"
+                else:
+                    body = f"Potenza {value} {unit} (soglia critical: <{INVERTER_POWER_CRITICAL} {unit})\nOre {now_str}"
+                _send_inverter_push(title, body)
+
+            # Ritorno a normal da warning/critical
+            elif new_state == "normal" and prev_state in ("warning", "critical"):
+                title = f"🟢 {name}"
+                body = f"Valore rientrato nella norma: {value} {unit}\nOre {now_str}"
+                _send_inverter_push(title, body)
+
+
+def _send_inverter_push(title, body):
+    """Invia notifica push inverter a tutti i dispositivi."""
+    data = {"type": "inverter_alert"}
+    logging.info("Notifica inverter: %s — %s", title, body.replace('\n', ' | '))
+    send_push_to_all(title, body, data)
+    try:
+        send_apns_to_all(title, body, data)
+    except Exception:
+        logging.exception("Errore invio APNs per alert inverter")
+
+
+# ------------------------------------------------------
 # Ciclo unico del worker
 # ------------------------------------------------------
 def loop_once():
@@ -376,6 +478,9 @@ def loop_once():
     # Calcola stato globale
     new_state = compute_global_state(severities)
     maybe_send_global_push(new_state, monitor_details)
+
+    # Check soglie sensori inverter
+    check_inverter_alerts()
 
 
 # ------------------------------------------------------
