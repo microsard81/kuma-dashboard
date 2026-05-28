@@ -370,7 +370,7 @@ def check_inverter_alerts():
 
             # Transizione verso warning
             if new_state == "warning" and prev_state == "normal":
-                title = f"⚠️ {name}"
+                title = f"🟡 {name}"
                 if category == "temperature":
                     body = f"Temperatura {value} {unit} (soglia warning: >{INVERTER_TEMP_WARNING} {unit})\nOre {now_str}"
                 else:
@@ -394,12 +394,13 @@ def check_inverter_alerts():
 
 
 def _send_inverter_push(title, body):
-    """Invia notifica push inverter a tutti i dispositivi."""
+    """Invia notifica push inverter a tutti i dispositivi (bypassa soglia sonde)."""
     data = {"type": "inverter_alert"}
     logging.info("Notifica inverter: %s — %s", title, body.replace('\n', ' | '))
-    send_push_to_all(title, body, data)
+    # max_down_probes=None bypassa il filtro soglia: tutti ricevono la notifica
+    send_push_to_all(title, body, data, max_down_probes=None)
     try:
-        send_apns_to_all(title, body, data)
+        send_apns_to_all(title, body, data, max_down_probes=None)
     except Exception:
         logging.exception("Errore invio APNs per alert inverter")
 
