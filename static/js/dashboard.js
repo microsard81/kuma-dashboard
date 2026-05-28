@@ -488,6 +488,8 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass) 
     if (!container) return;
     container.innerHTML = "";
 
+    const category = iconClass === "bi-thermometer-half" ? "temperature" : "power";
+
     sensors.forEach(sensor => {
         const card = document.createElement("div");
         card.classList.add("inverter-card");
@@ -515,7 +517,7 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass) 
         const sparkDiv = document.createElement("div");
         sparkDiv.classList.add("inverter-card-sparkline");
         const canvas = document.createElement("canvas");
-        const canvasId = "spark-" + sensor.id;
+        const canvasId = "spark-" + sensor.id.replace(/[^a-zA-Z0-9]/g, "_");
         canvas.id = canvasId;
         sparkDiv.appendChild(canvas);
         card.appendChild(sparkDiv);
@@ -525,19 +527,25 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass) 
         // Render sparkline chart
         const values = getSparklineData(history, sensor.id);
         if (values.length > 0) {
-            createOrUpdateSparkline(canvasId, values);
+            createOrUpdateSparkline(canvasId, values, category);
         }
     });
 }
 
-function createOrUpdateSparkline(canvasId, values) {
+function createOrUpdateSparkline(canvasId, values, category) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
+
+    // Scale Y fisse per categoria
+    const yMin = category === "power" ? 1 : 10;
+    const yMax = category === "power" ? 100 : 65;
 
     // Se esiste già un chart, aggiorna i dati
     if (sparklineCharts[canvasId]) {
         sparklineCharts[canvasId].data.labels = values.map((_, i) => i);
         sparklineCharts[canvasId].data.datasets[0].data = values;
+        sparklineCharts[canvasId].options.scales.y.min = yMin;
+        sparklineCharts[canvasId].options.scales.y.max = yMax;
         sparklineCharts[canvasId].update("none");
         return;
     }
@@ -552,7 +560,8 @@ function createOrUpdateSparkline(canvasId, values) {
                     data: values,
                     borderColor: "#5eead4",
                     borderWidth: 1.5,
-                    fill: false,
+                    fill: true,
+                    backgroundColor: "rgba(94, 234, 212, 0.1)",
                     pointRadius: 0,
                     tension: 0.3,
                 }],
@@ -570,7 +579,7 @@ function createOrUpdateSparkline(canvasId, values) {
                 },
                 scales: {
                     x: { display: false },
-                    y: { display: false },
+                    y: { display: false, min: yMin, max: yMax },
                 },
                 animation: false,
             },

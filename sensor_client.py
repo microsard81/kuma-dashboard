@@ -33,7 +33,7 @@ def fetch_inverter_data():
     try:
         resp = requests.post(
             INVERTER_STATUS_URL,
-            json={"token": STATUS_TOKEN},
+            headers={"Authorization": f"Bearer {STATUS_TOKEN}"},
             timeout=HTTP_TIMEOUT,
         )
     except requests.exceptions.Timeout:
@@ -62,9 +62,59 @@ def fetch_inverter_data():
         logger.info("Endpoint invadcstatus ha restituito errore: %s", error_msg)
         return _empty_response(error_msg)
 
+    # Normalizza i sensori: l'endpoint non fornisce id, category, unit
+    # Li deriviamo dal nome del sensore
+    raw_sensors = data.get("sensors", [])
+    sensors = []
+    for s in raw_sensors:
+        name = s.get("name", "")
+        sensors.append({
+            "id": name,  # usiamo il nome come ID (corrisponde alle chiavi history)
+            "name": name,
+            "category": _guess_category(name),
+            "value": s.get("value"),
+            "unit": "kW" if _guess_category(name) == "power" else "°C",
+            "timestamp": _epoch_to_iso(s.get("timestamp")),
+        })
+
+    # Normalizza history: timestamps epoch → ISO
+    raw_history = data.get("history", {})
+    history = {}
+    for key, entries in raw_history.items():
+        history[key] = [
+            {"t": _epoch_to_iso(e.get("t")), "v": e.get("v")}
+            for e in entries
+        ]
+
     return {
-        "sensors": data.get("sensors", []),
-        "history": data.get("history", {}),
-        "timestamp": data.get("timestamp"),
+        "sensors": sensors,
+        "history": history,
+        "timestamp": _epoch_to_iso(data.get("timestamp")) if isinstance(data.get("timestamp"), (int, float)) else data.get("timestamp"),
         "error": None,
     }
+
+
+# Nomi sensori di potenza (contengono "Power" o "Consumo")
+_POWER_KEYWORDS = ("power", "consumo")
+
+
+def _guess_category(name):
+    """Determina la categoria dal nome del sensore."""
+    lower = name.lower()
+    for kw in _POWER_KEYWORDS:
+        if kw in lower:
+            return "power"
+    return "temperature"
+
+
+def _epoch_to_iso(ts):
+    """Converte un timestamp epoch (float/int) in stringa ISO 8601."""
+    if ts is None:
+        return None
+    if isinstance(ts, str):
+        return ts  # già stringa
+    try:
+        from datetime import datetime, timezone
+        return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+    except (ValueError, TypeError, OSError):
+        return None
