@@ -315,13 +315,13 @@ def maybe_send_global_push(new_state, monitor_details=None):
 
 def _get_sensor_alert_state(sensor_name):
     """Legge lo stato di alert precedente per un sensore da Redis."""
-    from redis_history import _redis as r
+    from redis_history import r
     return r.get(f"inverter:alert_state:{sensor_name}") or "normal"
 
 
 def _set_sensor_alert_state(sensor_name, state):
     """Salva lo stato di alert per un sensore in Redis."""
-    from redis_history import _redis as r
+    from redis_history import r
     r.set(f"inverter:alert_state:{sensor_name}", state)
 
 
