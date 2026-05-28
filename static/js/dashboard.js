@@ -562,6 +562,18 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, 
         card.draggable = inverterReorderEnabled;
         card.style.cursor = inverterReorderEnabled ? "grab" : "default";
 
+        // Colore card in base a categoria e stato soglia
+        const badgeState = _getBadgeState(sensor.value, category, thresholds);
+        if (badgeState === "critical") {
+            card.classList.add("inverter-card-critical");
+        } else if (badgeState === "warning") {
+            card.classList.add("inverter-card-warning");
+        } else if (category === "power") {
+            card.classList.add("inverter-card-power");
+        } else {
+            card.classList.add("inverter-card-temp");
+        }
+
         // Drag & drop (attivo solo quando sbloccato)
         card.addEventListener("dragstart", (e) => {
             if (!inverterReorderEnabled) { e.preventDefault(); return; }
@@ -598,8 +610,7 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, 
         const badge = document.createElement("span");
         badge.classList.add("inverter-card-badge");
 
-        // Determina stato badge in base alle soglie
-        const badgeState = _getBadgeState(sensor.value, category, thresholds);
+        // Stato badge già calcolato sopra per il colore card
         if (badgeState === "critical") {
             badge.classList.add("critical");
         } else if (badgeState === "warning") {

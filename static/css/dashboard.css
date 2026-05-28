@@ -534,6 +534,26 @@ body.dark nav.navbar {
     transform: scale(0.95);
 }
 
+/* Colori card per categoria */
+.inverter-card-temp {
+    border-left: 4px solid #22c55e;  /* verde */
+}
+
+.inverter-card-power {
+    border-left: 4px solid #3b82f6;  /* blu */
+}
+
+/* Colori card per stato soglia */
+.inverter-card-warning {
+    border-left: 4px solid #eab308;  /* giallo */
+    background: #fffbeb;
+}
+
+.inverter-card-critical {
+    border-left: 4px solid #ef4444;  /* rosso */
+    background: #fef2f2;
+}
+
 #inverter-reorder-btn.active {
     background: #dbeafe !important;
     border-color: #3b82f6 !important;
@@ -562,8 +582,12 @@ body.dark nav.navbar {
     font-weight: 600;
     padding: 0.25rem 0.6rem;
     border-radius: 0.375rem;
-    background: #34d399;  /* green — normal */
+    background: #34d399;  /* green — default temperatura */
     color: #fff;
+}
+
+.inverter-card-power .inverter-card-badge {
+    background: #3b82f6;  /* blue — default potenza */
 }
 
 .inverter-card-badge.stale {
@@ -607,6 +631,18 @@ body.dark .inverter-card-badge {
     background: #059669;
 }
 
+body.dark .inverter-card-power .inverter-card-badge {
+    background: #2563eb;
+}
+
 body.dark .inverter-card-badge.stale {
     background: #d97706;
+}
+
+body.dark .inverter-card-warning {
+    background: #3b351a;
+}
+
+body.dark .inverter-card-critical {
+    background: #3b1a1a;
 }
