@@ -435,6 +435,7 @@ def loop_once():
 
         new_state = compute_global_state(severities)
         maybe_send_global_push(new_state, monitor_details)
+        check_inverter_alerts()
         return
 
     # Processa monitor
