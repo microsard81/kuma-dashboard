@@ -868,7 +868,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateMobileMenuStatus(initial);
 
     refreshDashboard();
-    setInterval(refreshDashboard, 10000);
+    setInterval(refreshDashboard, 60000);
 
     // Inverter initial render
     if (typeof INVERTER_INITIAL_DATA !== "undefined" && INVERTER_INITIAL_DATA && !INVERTER_INITIAL_DATA.error) {

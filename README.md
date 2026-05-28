@@ -225,7 +225,7 @@ La dashboard integra dati in tempo reale da un endpoint locale `invadcstatus` ch
 - Card raggruppate per categoria: Temperatura (°C) e Potenza (kW)
 - Sparkline Chart.js (ultimi 60 valori storici) in ogni card
 - Badge verde per valori normali, ambra per letture stale (>5 minuti)
-- Auto-refresh ogni 10 secondi (stesso ciclo della dashboard)
+- Auto-refresh ogni 60 secondi (stesso ciclo della dashboard)
 - Errori inverter non bloccano la sezione uptime (fetch indipendenti)
 - Layout responsive: 1 colonna mobile, 2 tablet, 4 desktop
 
