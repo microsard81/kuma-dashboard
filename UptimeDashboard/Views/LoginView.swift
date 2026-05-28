@@ -167,6 +167,7 @@ private final class PreviewNetworkClient: NetworkClientProtocol {
     func unsubscribeAPNs(deviceToken: String) async throws {}
     func getBiometricToken() async throws -> String { return "mock_token" }
     func biometricLogin(username: String, biometricToken: String) async throws {}
+    func fetchSensorData() async throws -> Data { return Data("{}".utf8) }
 }
 
 private final class PreviewKeychainStore: KeychainStoreProtocol {

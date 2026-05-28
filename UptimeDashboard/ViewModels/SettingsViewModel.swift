@@ -131,7 +131,7 @@ final class SettingsViewModel: ObservableObject {
            let saved = ThemeMode(rawValue: raw) {
             self.themeMode = saved
         } else {
-            self.themeMode = .dark
+            self.themeMode = .auto
         }
 
         // Read sortOrder with safe fallback

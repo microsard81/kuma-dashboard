@@ -16,6 +16,8 @@ struct WatchWidgetEntry: TimelineEntry {
     let totalCount: Int
     let downCount: Int
     let mismatchCount: Int
+    let sensorAlertCount: Int       // warning + critical total
+    let sensorAlertSeverity: String // "none", "warning", "critical"
     let isPlaceholder: Bool
 
     static var placeholder: WatchWidgetEntry {
@@ -25,6 +27,8 @@ struct WatchWidgetEntry: TimelineEntry {
             totalCount: 0,
             downCount: 0,
             mismatchCount: 0,
+            sensorAlertCount: 0,
+            sensorAlertSeverity: "none",
             isPlaceholder: true
         )
     }
@@ -72,12 +76,27 @@ struct WatchWidgetAPIClient {
                 }
             }
 
+            // Parse sensor alerts
+            let sensorAlertCount: Int
+            let sensorAlertSeverity: String
+            if let alertsDict = json["sensor_alerts"] as? [String: Any] {
+                let warningCount = alertsDict["warning_count"] as? Int ?? 0
+                let criticalCount = alertsDict["critical_count"] as? Int ?? 0
+                sensorAlertCount = warningCount + criticalCount
+                sensorAlertSeverity = criticalCount > 0 ? "critical" : (warningCount > 0 ? "warning" : "none")
+            } else {
+                sensorAlertCount = 0
+                sensorAlertSeverity = "none"
+            }
+
             return WatchWidgetEntry(
                 date: Date(),
                 globalState: globalState,
                 totalCount: items.count,
                 downCount: downCount,
                 mismatchCount: mismatchCount,
+                sensorAlertCount: sensorAlertCount,
+                sensorAlertSeverity: sensorAlertSeverity,
                 isPlaceholder: false
             )
         } catch {

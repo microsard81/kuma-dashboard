@@ -47,6 +47,7 @@ protocol NetworkClientProtocol {
     func unsubscribeAPNs(deviceToken: String) async throws
     func getBiometricToken() async throws -> String
     func biometricLogin(username: String, biometricToken: String) async throws
+    func fetchSensorData() async throws -> Data
 }
 
 // MARK: - Redirect-aware delegate
@@ -341,6 +342,30 @@ final class NetworkClient: NetworkClientProtocol {
         guard http.statusCode == 200 || http.statusCode == 201 else {
             throw NetworkError.invalidResponse(statusCode: http.statusCode)
         }
+    }
+
+    // MARK: - fetchSensorData
+    func fetchSensorData() async throws -> Data {
+        let url = baseURL.appendingPathComponent("api/inverter-data")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 15
+
+        let delegate = RedirectCapturingDelegate()
+        let delegateSession = makeSessionWithDelegate(delegate)
+
+        let (data, response) = try await performRequest(request, session: delegateSession)
+
+        // Detect session expiry
+        if let destination = delegate.finalURL, destination.path.hasPrefix("/login") {
+            throw NetworkError.sessionExpired
+        }
+
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw NetworkError.invalidResponse(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0)
+        }
+
+        return data
     }
 
     // MARK: - Private helpers

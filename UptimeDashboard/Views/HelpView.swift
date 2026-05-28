@@ -1,111 +1,120 @@
 import SwiftUI
 
-/// Vista Help in-app con documentazione per l'utente.
+/// Vista Help in-app con documentazione completa per l'utente.
 struct HelpView: View {
-    @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
 
-                    // Panoramica
-                    section("Panoramica") {
-                        Text("Dashboard INVA monitora lo stato dei servizi tramite 5 sonde indipendenti distribuite geograficamente. Ogni servizio viene verificato ogni 60 secondi.")
-                    }
-
-                    // Sonde
-                    section("Le 5 sonde") {
-                        probeRow("Aruba", location: "Bergamo")
-                        probeRow("TIM", location: "Sestu (CA)")
-                        probeRow("ILIAD", location: "Sinnai (CA)")
-                        probeRow("NodePing", location: "Europa")
-                        probeRow("Uptime", location: "Globale")
-                    }
-
-                    // Stato
-                    section("Stato delle risorse") {
-                        statusRow(color: .green, label: "UP", description: "Tutte le sonde vedono la risorsa operativa")
-                        statusRow(color: .yellow, label: "Mismatch", description: "Alcune sonde vedono DOWN, altre UP")
-                        statusRow(color: .red, label: "DOWN", description: "Tutte le sonde vedono la risorsa non raggiungibile")
-                    }
-
-                    // Timing
-                    section("Tempistiche") {
-                        infoRow(icon: "clock", text: "Se una sonda mostra DOWN, significa che quella sonda rileva il problema da almeno 10 minuti consecutivi.")
-                        infoRow(icon: "arrow.clockwise", text: "La dashboard si aggiorna automaticamente in base all'intervallo configurato nelle Impostazioni (default: 60 secondi).")
-                    }
-
-                    // Notifiche
-                    section("Notifiche push") {
-                        Text("Ricevi notifiche push quando lo stato dei servizi cambia:")
-                            .font(.subheadline)
-                        notifRow("🔴", text: "Servizi DOWN — una o più risorse completamente irraggiungibili")
-                        notifRow("🟡", text: "Incongruenza — alcune sonde vedono DOWN")
-                        notifRow("🟡🔴", text: "Peggioramento — più sonde DOWN rispetto a prima")
-                        notifRow("🟢", text: "Tutto OK — tutti i servizi ripristinati")
-                    }
-
-                    // Soglia
-                    section("Soglia notifica") {
-                        Text("Puoi configurare quante sonde devono essere DOWN prima di ricevere la notifica (1–5).")
-                            .font(.subheadline)
-                        Text("Esempio: con soglia 3, ricevi la notifica solo quando almeno 3 sonde vedono DOWN su una risorsa. Le notifiche per 1 o 2 sonde DOWN vengono filtrate.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("Impostazioni → Notifiche → Soglia notifica")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                    }
-
-                    // Badge
-                    section("Indicatore stato (in alto a sinistra)") {
-                        HStack(spacing: 8) {
-                            Circle().fill(.green).frame(width: 12, height: 12)
-                            Text("Tutto OK — nessun problema")
-                                .font(.subheadline)
-                        }
-                        HStack(spacing: 8) {
-                            Circle().fill(.yellow).frame(width: 12, height: 12)
-                            Text("+ numero giallo = risorse in mismatch")
-                                .font(.subheadline)
-                        }
-                        HStack(spacing: 8) {
-                            Circle().fill(.red).frame(width: 12, height: 12)
-                            Text("+ numero rosso = risorse completamente DOWN")
-                                .font(.subheadline)
-                        }
-                    }
-
-                    // Sparkline
-                    section("Storico (barre colorate)") {
-                        Text("Ogni risorsa mostra una barra con gli ultimi 60 campionamenti. I colori indicano lo stato in quel momento.")
-                            .font(.subheadline)
-                        Text("Tocca una barra per vedere l'orario e il dettaglio delle sonde.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-
-                    // Supporto
-                    section("Supporto") {
-                        Text("Per assistenza tecnica contattare ABISSI S.r.l.")
-                            .font(.subheadline)
-                    }
-
-                    Spacer(minLength: 40)
+                // Panoramica
+                section("Panoramica") {
+                    Text("Dashboard INVA monitora lo stato dei portali web e dei sensori del datacenter (temperatura e potenza). I dati si aggiornano automaticamente ogni 60 secondi.")
                 }
-                .padding()
-            }
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
-            .navigationTitle("Aiuto")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Chiudi") { dismiss() }
+
+                // Schermata principale
+                section("Schermata principale") {
+                    Text("La schermata principale mostra 3 aree:")
+                        .font(.subheadline)
+                    areaRow(icon: "globe", color: .green, title: "Portali", description: "Stato dei servizi web monitorati da 5 sonde indipendenti")
+                    areaRow(icon: "thermometer.medium", color: .green, title: "Temperatura", description: "Sensori di temperatura del datacenter (°C)")
+                    areaRow(icon: "bolt.fill", color: .blue, title: "Potenza", description: "Sensori di potenza degli inverter (kW)")
+                    Text("Il pallino colorato indica lo stato globale dell'area. Tocca una card per vedere i dettagli.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
+
+                // Portali
+                section("Portali — Le 5 sonde") {
+                    probeRow("Aruba", location: "Bergamo")
+                    probeRow("TIM", location: "Sestu (CA)")
+                    probeRow("ILIAD", location: "Sinnai (CA)")
+                    probeRow("NodePing", location: "Europa")
+                    probeRow("Uptime", location: "Globale")
+                    Divider()
+                    statusRow(color: .green, label: "UP", description: "Tutte le sonde vedono la risorsa operativa")
+                    statusRow(color: .yellow, label: "Mismatch", description: "Alcune sonde vedono DOWN, altre UP")
+                    statusRow(color: .red, label: "DOWN", description: "Tutte le sonde vedono la risorsa non raggiungibile")
+                }
+
+                // Sensori
+                section("Sensori datacenter") {
+                    Text("I sensori misurano temperatura e potenza degli inverter. Ogni sensore ha soglie configurabili:")
+                        .font(.subheadline)
+                    statusRow(color: .green, label: "Normale", description: "Temperatura: valore entro i limiti. Potenza: valore sopra la soglia minima")
+                    statusRow(color: .yellow, label: "Warning", description: "Temperatura troppo alta o potenza troppo bassa (soglia warning)")
+                    statusRow(color: .red, label: "Critical", description: "Temperatura molto alta o potenza molto bassa (soglia critical)")
+                    Divider()
+                    infoRow(icon: "chart.xyaxis.line", text: "Ogni sensore mostra un grafico con gli ultimi 60 valori. Tocca il grafico per vedere valore e orario del punto.")
+                }
+
+                // Storico
+                section("Storico (barre colorate)") {
+                    Text("Nella sezione Portali, ogni risorsa mostra una barra con gli ultimi 60 campionamenti. I colori indicano lo stato in quel momento.")
+                        .font(.subheadline)
+                    Text("Tocca e scorri sulla barra per vedere l'orario e il dettaglio delle sonde in quel momento.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                // Notifiche
+                section("Notifiche push") {
+                    Text("Ricevi notifiche push quando lo stato cambia:")
+                        .font(.subheadline)
+                    notifRow("🔴", text: "Servizi DOWN — risorse completamente irraggiungibili")
+                    notifRow("🟡", text: "Incongruenza — alcune sonde vedono DOWN")
+                    notifRow("🟢", text: "Tutto OK — tutti i servizi ripristinati")
+                    Divider()
+                    notifRow("🔴", text: "Sensore critical — temperatura troppo alta o potenza troppo bassa")
+                    notifRow("🟡", text: "Sensore warning — soglia di attenzione superata")
+                    notifRow("🟢", text: "Sensore rientrato — valore tornato nella norma")
+                }
+
+                // Soglia
+                section("Soglia notifica") {
+                    Text("Puoi configurare quante sonde devono essere DOWN prima di ricevere la notifica (1–5).")
+                        .font(.subheadline)
+                    Text("Esempio: con soglia 3, ricevi la notifica solo quando almeno 3 sonde vedono DOWN. Le notifiche sensori arrivano sempre, indipendentemente dalla soglia.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                // Impostazioni
+                section("Impostazioni") {
+                    infoRow(icon: "paintbrush", text: "Tema: Auto, Chiaro o Scuro")
+                    infoRow(icon: "arrow.up.arrow.down", text: "Ordinamento: per gravità, alfabetico o stato globale")
+                    infoRow(icon: "arrow.clockwise", text: "Auto-refresh: intervallo di aggiornamento automatico")
+                    infoRow(icon: "bell", text: "Notifiche: abilita/disabilita e configura la soglia")
+                    infoRow(icon: "hand.tap", text: "Feedback aptico: vibrazione al tocco sullo storico")
+                    infoRow(icon: "faceid", text: "Sicurezza: accesso rapido con Face ID / Touch ID")
+                }
+
+                // Riordino manuale
+                section("Riordino manuale") {
+                    infoRow(icon: "arrow.up.arrow.down", text: "Scorri verso destra su un elemento (portale o sensore) per far apparire il pulsante \"Riordina\".")
+                    infoRow(icon: "hand.draw", text: "In modalità riordino, trascina gli elementi per disporli nell'ordine che preferisci.")
+                    infoRow(icon: "checkmark.circle", text: "Tocca \"Termina\" in alto a destra per salvare. L'ordine viene mantenuto anche chiudendo l'app.")
+                }
+
+                // Aggiornamento
+                section("Aggiornamento dati") {
+                    infoRow(icon: "arrow.clockwise", text: "I dati si aggiornano automaticamente. Puoi anche trascinare verso il basso in qualsiasi scheda per forzare l'aggiornamento.")
+                    infoRow(icon: "clock", text: "Se una sonda mostra DOWN, significa che rileva il problema da almeno 10 minuti consecutivi.")
+                }
+
+                // Supporto
+                section("Supporto") {
+                    Text("Per assistenza tecnica contattare ABISSI S.r.l.")
+                        .font(.subheadline)
+                }
+
+                Spacer(minLength: 40)
             }
+            .padding()
         }
-        .navigationViewStyle(.stack)
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .navigationTitle("Aiuto")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - Helpers
@@ -127,6 +136,18 @@ struct HelpView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(12)
+    }
+
+    private func areaRow(icon: String, color: Color, title: String, description: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .foregroundColor(color)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.subheadline.bold())
+                Text(description).font(.caption).foregroundColor(.secondary)
+            }
+        }
     }
 
     private func probeRow(_ name: String, location: String) -> some View {

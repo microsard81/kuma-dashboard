@@ -7,7 +7,7 @@
 		<key>Dashboard INVA.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>4</integer>
+			<integer>5</integer>
 		</dict>
 		<key>UptimeDashboard.xcscheme_^#shared#^_</key>
 		<dict>
@@ -27,7 +27,7 @@
 		<key>UptimeDashboardWatch Watch App.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>5</integer>
+			<integer>4</integer>
 		</dict>
 		<key>UptimeDashboardWatchWidgetExtension.xcscheme_^#shared#^_</key>
 		<dict>

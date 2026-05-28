@@ -38,6 +38,7 @@ final class MockNetworkClient: NetworkClientProtocol {
 
     func getBiometricToken() async throws -> String { return "mock_biometric_token" }
     func biometricLogin(username: String, biometricToken: String) async throws {}
+    func fetchSensorData() async throws -> Data { return Data("{}".utf8) }
 }
 
 // MARK: - NotificationManagerTests

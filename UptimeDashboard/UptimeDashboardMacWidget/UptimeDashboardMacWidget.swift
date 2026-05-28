@@ -213,6 +213,29 @@ struct MacSmallWidgetView: View {
                     .font(.caption.bold())
                     .foregroundColor(.green)
             }
+
+            // Sensor alerts (only if no sensor error)
+            if !entry.sensorError, !entry.isPlaceholder {
+                if let alerts = entry.sensorAlerts, alerts.hasAlerts {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(alerts.hasCritical ? Color.red : Color.yellow)
+                            .frame(width: 6, height: 6)
+                        Text("\(alerts.totalCount) sensori")
+                            .font(.system(size: 9))
+                            .foregroundColor(alerts.hasCritical ? .red : .yellow)
+                    }
+                } else if entry.sensorAlerts != nil {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 6, height: 6)
+                        Text("Sensori OK")
+                            .font(.system(size: 9))
+                            .foregroundColor(.green)
+                    }
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -269,6 +292,31 @@ struct MacMediumWidgetView: View {
                     Text("+\(entry.monitors.count - 5) altri servizi")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
+                }
+
+                // Sensor alerts (only if no sensor error)
+                if !entry.sensorError {
+                    if let alerts = entry.sensorAlerts, alerts.hasAlerts {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(alerts.hasCritical ? Color.red : Color.yellow)
+                                .frame(width: 6, height: 6)
+                            Text("\(alerts.totalCount) sensori in allarme")
+                                .font(.system(size: 9))
+                                .foregroundColor(alerts.hasCritical ? .red : .yellow)
+                        }
+                        .padding(.top, 2)
+                    } else if entry.sensorAlerts != nil {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 6, height: 6)
+                            Text("Sensori OK")
+                                .font(.system(size: 9))
+                                .foregroundColor(.green)
+                        }
+                        .padding(.top, 2)
+                    }
                 }
             }
 
@@ -339,6 +387,31 @@ struct MacLargeWidgetView: View {
                     Text("+\(entry.monitors.count - 8) altri servizi")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
+                }
+
+                // Sensor alerts (only if no sensor error)
+                if !entry.sensorError {
+                    if let alerts = entry.sensorAlerts, alerts.hasAlerts {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(alerts.hasCritical ? Color.red : Color.yellow)
+                                .frame(width: 6, height: 6)
+                            Text("\(alerts.totalCount) sensori in allarme")
+                                .font(.system(size: 9))
+                                .foregroundColor(alerts.hasCritical ? .red : .yellow)
+                        }
+                        .padding(.top, 2)
+                    } else if entry.sensorAlerts != nil {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 6, height: 6)
+                            Text("Sensori OK")
+                                .font(.system(size: 9))
+                                .foregroundColor(.green)
+                        }
+                        .padding(.top, 2)
+                    }
                 }
             }
 

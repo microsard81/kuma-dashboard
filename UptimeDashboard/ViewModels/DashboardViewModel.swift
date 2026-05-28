@@ -17,6 +17,13 @@ final class DashboardViewModel: ObservableObject {
     @Published var lastUpdated: Date? = nil
     @Published var isStale: Bool = false
 
+    // MARK: - Sensor properties
+    @Published var sensors: [SensorReading] = []
+    @Published var sensorThresholds: SensorThresholds?
+    @Published var sensorHistory: [String: [SensorHistoryPoint]] = [:]
+    @Published var sensorAlerts: SensorAlerts?
+    @Published var sensorError: String?
+
     // MARK: - Computed properties
 
     /// Returns filtered items based on the current filter state.
@@ -43,6 +50,16 @@ final class DashboardViewModel: ObservableObject {
     /// LED color reflecting the current global state.
     var ledColor: Color {
         globalState.color
+    }
+
+    /// Temperature sensors filtered from the full sensors array.
+    var temperatureSensors: [SensorReading] {
+        sensors.filter { $0.category == .temperature }
+    }
+
+    /// Power sensors filtered from the full sensors array.
+    var powerSensors: [SensorReading] {
+        sensors.filter { $0.category == .power }
     }
 
     // MARK: - Dependencies
@@ -97,6 +114,93 @@ final class DashboardViewModel: ObservableObject {
         } catch {
             // Preserve previous data, mark as stale
             isStale = true
+        }
+
+        // Fetch sensor data independently (graceful degradation)
+        await fetchSensorData()
+    }
+
+    // MARK: - Sensor data fetching
+
+    /// Fetches sensor data from `/api/inverter-data` using the authenticated session.
+    /// On failure, sets sensorError and clears sensor data gracefully.
+    private func fetchSensorData() async {
+        do {
+            let response = try await network.fetchSensorData()
+            parseSensorPayload(data: response)
+        } catch {
+            sensorError = "Errore connessione sensori"
+        }
+    }
+
+    /// Parses sensor fields from the `/api/inverter-data` JSON response.
+    /// Missing fields are treated as empty (graceful degradation).
+    private func parseSensorPayload(data: Data) {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            sensorError = "Errore decodifica sensori"
+            return
+        }
+
+        let decoder = JSONDecoder()
+
+        // Parse sensors array
+        if let sensorsArray = json["sensors"] {
+            if let sensorsData = try? JSONSerialization.data(withJSONObject: sensorsArray),
+               let decoded = try? decoder.decode([SensorReading].self, from: sensorsData) {
+                sensors = decoded
+            } else {
+                sensors = []
+            }
+        } else {
+            sensors = []
+        }
+
+        // Parse thresholds
+        if let thresholdsObj = json["thresholds"] {
+            if let thresholdsData = try? JSONSerialization.data(withJSONObject: thresholdsObj),
+               let decoded = try? decoder.decode(SensorThresholds.self, from: thresholdsData) {
+                sensorThresholds = decoded
+            } else {
+                sensorThresholds = nil
+            }
+        } else {
+            sensorThresholds = nil
+        }
+
+        // Parse history (key is "history" from /api/inverter-data, or "sensor_history" from /api/watch-data)
+        let historyObj = json["history"] ?? json["sensor_history"]
+        if let historyObj = historyObj {
+            if let historyData = try? JSONSerialization.data(withJSONObject: historyObj),
+               let decoded = try? decoder.decode([String: [SensorHistoryPoint]].self, from: historyData) {
+                sensorHistory = decoded
+            } else {
+                sensorHistory = [:]
+            }
+        } else {
+            sensorHistory = [:]
+        }
+
+        // Compute sensor_alerts client-side from sensors + thresholds
+        if let thresholds = sensorThresholds {
+            var warningCount = 0
+            var criticalCount = 0
+            for sensor in sensors {
+                let status = sensor.alertStatus(thresholds: thresholds)
+                if status == .critical { criticalCount += 1 }
+                else if status == .warning { warningCount += 1 }
+            }
+            sensorAlerts = SensorAlerts(warningCount: warningCount, criticalCount: criticalCount)
+        } else {
+            sensorAlerts = nil
+        }
+
+        // Parse error (key is "error" from /api/inverter-data, or "sensor_error" from /api/watch-data)
+        if let errorStr = json["error"] as? String {
+            sensorError = errorStr
+        } else if let errorStr = json["sensor_error"] as? String {
+            sensorError = errorStr
+        } else {
+            sensorError = nil
         }
     }
 

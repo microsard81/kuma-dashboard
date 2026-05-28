@@ -48,6 +48,23 @@ final class MacAppViewModel: ObservableObject {
     @Published var errorMessage: String? = nil
     @Published var lastUpdated: Date? = nil
 
+    // MARK: - Sensor properties
+    @Published var sensors: [SensorReading] = []
+    @Published var sensorThresholds: SensorThresholds?
+    @Published var sensorHistory: [String: [SensorHistoryPoint]] = [:]
+    @Published var sensorAlerts: SensorAlerts?
+    @Published var sensorError: String?
+
+    /// Temperature sensors filtered from the full sensors array.
+    var temperatureSensors: [SensorReading] {
+        sensors.filter { $0.category == .temperature }
+    }
+
+    /// Power sensors filtered from the full sensors array.
+    var powerSensors: [SensorReading] {
+        sensors.filter { $0.category == .power }
+    }
+
     // Preferenze
     @Published var themeMode: String
     @Published var textScale: Double
@@ -400,6 +417,103 @@ final class MacAppViewModel: ObservableObject {
             updateBadge()
         } catch {
             // Silently fail
+        }
+
+        // Fetch sensor data independently (graceful degradation)
+        await fetchSensorData()
+    }
+
+    // MARK: - Fetch Sensor Data
+
+    /// Fetches sensor data from `/api/watch-data` using the WATCH_API_TOKEN from Info.plist.
+    /// On failure, sets sensorError and clears sensor data gracefully.
+    func fetchSensorData() async {
+        guard let apiToken = Bundle.main.object(forInfoDictionaryKey: "WATCH_API_TOKEN") as? String,
+              !apiToken.isEmpty,
+              let url = URL(string: "\(baseURL)/api/watch-data") else {
+            // No token configured — silently skip sensor fetch
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue(apiToken, forHTTPHeaderField: "X-Watch-Token")
+        request.timeoutInterval = 15
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                sensorError = "Errore connessione sensori"
+                return
+            }
+            parseSensorPayload(data: data)
+        } catch {
+            sensorError = "Errore connessione sensori"
+        }
+    }
+
+    /// Parses sensor fields from the `/api/watch-data` JSON response.
+    /// Missing fields are treated as empty (graceful degradation).
+    private func parseSensorPayload(data: Data) {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            sensorError = "Errore decodifica sensori"
+            return
+        }
+
+        let decoder = JSONDecoder()
+
+        // Parse sensors array
+        if let sensorsArray = json["sensors"] {
+            if let sensorsData = try? JSONSerialization.data(withJSONObject: sensorsArray),
+               let decoded = try? decoder.decode([SensorReading].self, from: sensorsData) {
+                sensors = decoded
+            } else {
+                sensors = []
+            }
+        } else {
+            sensors = []
+        }
+
+        // Parse thresholds
+        if let thresholdsObj = json["thresholds"] {
+            if let thresholdsData = try? JSONSerialization.data(withJSONObject: thresholdsObj),
+               let decoded = try? decoder.decode(SensorThresholds.self, from: thresholdsData) {
+                sensorThresholds = decoded
+            } else {
+                sensorThresholds = nil
+            }
+        } else {
+            sensorThresholds = nil
+        }
+
+        // Parse sensor_history
+        if let historyObj = json["sensor_history"] {
+            if let historyData = try? JSONSerialization.data(withJSONObject: historyObj),
+               let decoded = try? decoder.decode([String: [SensorHistoryPoint]].self, from: historyData) {
+                sensorHistory = decoded
+            } else {
+                sensorHistory = [:]
+            }
+        } else {
+            sensorHistory = [:]
+        }
+
+        // Parse sensor_alerts
+        if let alertsObj = json["sensor_alerts"] {
+            if let alertsData = try? JSONSerialization.data(withJSONObject: alertsObj),
+               let decoded = try? decoder.decode(SensorAlerts.self, from: alertsData) {
+                sensorAlerts = decoded
+            } else {
+                sensorAlerts = nil
+            }
+        } else {
+            sensorAlerts = nil
+        }
+
+        // Parse sensor_error
+        if let errorStr = json["sensor_error"] as? String {
+            sensorError = errorStr
+        } else {
+            sensorError = nil
         }
     }
 

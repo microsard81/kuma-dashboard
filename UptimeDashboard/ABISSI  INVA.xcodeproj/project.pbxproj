@@ -39,6 +39,14 @@
 		B0020032 /* ChangePasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020033 /* ChangePasswordView.swift */; };
 		B0020034 /* DeviceAdaptive.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0020035 /* DeviceAdaptive.swift */; };
 		B0040001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0040002 /* Assets.xcassets */; };
+		B0050001 /* SensorModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0050002 /* SensorModels.swift */; };
+		B0060001 /* SensorSparklineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0060002 /* SensorSparklineView.swift */; };
+		B0060003 /* SensorCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0060004 /* SensorCardView.swift */; };
+		B0060005 /* SensorSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0060006 /* SensorSectionView.swift */; };
+		B0070001 /* MonitorRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070002 /* MonitorRowView.swift */; };
+		B0070003 /* PortalsDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070004 /* PortalsDetailView.swift */; };
+		B0070005 /* TemperatureDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070006 /* TemperatureDetailView.swift */; };
+		B0070007 /* PowerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070008 /* PowerDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -152,6 +160,14 @@
 		B0020033 /* ChangePasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangePasswordView.swift; sourceTree = "<group>"; };
 		B0020035 /* DeviceAdaptive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAdaptive.swift; sourceTree = "<group>"; };
 		B0040002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B0050002 /* SensorModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorModels.swift; sourceTree = "<group>"; };
+		B0060002 /* SensorSparklineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorSparklineView.swift; sourceTree = "<group>"; };
+		B0060004 /* SensorCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorCardView.swift; sourceTree = "<group>"; };
+		B0060006 /* SensorSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorSectionView.swift; sourceTree = "<group>"; };
+		B0070002 /* MonitorRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorRowView.swift; sourceTree = "<group>"; };
+		B0070004 /* PortalsDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalsDetailView.swift; sourceTree = "<group>"; };
+		B0070006 /* TemperatureDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemperatureDetailView.swift; sourceTree = "<group>"; };
+		B0070008 /* PowerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -307,6 +323,7 @@
 			isa = PBXGroup;
 			children = (
 				B0020002 /* DashboardModels.swift */,
+				B0050002 /* SensorModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -344,6 +361,7 @@
 		B0030005 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				B0060007 /* Sensors */,
 				817341D42FC47FEA0038AE30 /* HelpView.swift */,
 				B0020012 /* LoginView.swift */,
 				B0020014 /* TwoFAView.swift */,
@@ -354,6 +372,8 @@
 				B002001E /* SettingsView.swift */,
 				B0020031 /* TOTPSetupView.swift */,
 				B0020033 /* ChangePasswordView.swift */,
+				B0070002 /* MonitorRowView.swift */,
+				B0070004 /* PortalsDetailView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -364,6 +384,18 @@
 				B0040002 /* Assets.xcassets */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		B0060007 /* Sensors */ = {
+			isa = PBXGroup;
+			children = (
+				B0060002 /* SensorSparklineView.swift */,
+				B0060004 /* SensorCardView.swift */,
+				B0060006 /* SensorSectionView.swift */,
+				B0070006 /* TemperatureDetailView.swift */,
+				B0070008 /* PowerDetailView.swift */,
+			);
+			path = Sensors;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -645,6 +677,14 @@
 			files = (
 				B001000A /* UptimeDashboardApp.swift in Sources */,
 				B0020001 /* DashboardModels.swift in Sources */,
+				B0050001 /* SensorModels.swift in Sources */,
+				B0060001 /* SensorSparklineView.swift in Sources */,
+				B0060003 /* SensorCardView.swift in Sources */,
+				B0060005 /* SensorSectionView.swift in Sources */,
+				B0070001 /* MonitorRowView.swift in Sources */,
+				B0070003 /* PortalsDetailView.swift in Sources */,
+				B0070005 /* TemperatureDetailView.swift in Sources */,
+				B0070007 /* PowerDetailView.swift in Sources */,
 				B0020003 /* KeychainStore.swift in Sources */,
 				B0020005 /* NetworkClient.swift in Sources */,
 				816E9C782F89397A004F93EF /* WCSessionDelegateHandler.swift in Sources */,

@@ -523,7 +523,7 @@ function isSensorStale(sensorTimestamp, responseTimestamp) {
 
 function getSparklineData(history, sensorId) {
     const entries = (history[sensorId] || []).slice(-INVERTER_MAX_HISTORY);
-    return entries.map(e => e.v);
+    return entries;
 }
 
 function renderInverterCards(data) {
@@ -641,10 +641,10 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, 
         container.appendChild(card);
 
         // Render sparkline chart dopo che il canvas è nel DOM
-        const values = getSparklineData(history, sensor.id);
-        if (values.length > 0) {
+        const entries = getSparklineData(history, sensor.id);
+        if (entries.length > 0) {
             requestAnimationFrame(() => {
-                createOrUpdateSparkline(canvasId, values, category);
+                createOrUpdateSparkline(canvasId, entries, category);
             });
         }
     });
@@ -664,9 +664,16 @@ function _getBadgeState(value, category, thresholds) {
     return "normal";
 }
 
-function createOrUpdateSparkline(canvasId, values, category) {
+function createOrUpdateSparkline(canvasId, entries, category) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
+
+    const values = entries.map(e => e.v);
+    const labels = entries.map(e => {
+        if (!e.t) return "";
+        const d = new Date(e.t);
+        return d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
+    });
 
     // Scale Y fisse per categoria
     const yMin = category === "power" ? 1 : 10;
@@ -674,7 +681,7 @@ function createOrUpdateSparkline(canvasId, values, category) {
 
     // Se esiste già un chart, aggiorna i dati
     if (sparklineCharts[canvasId]) {
-        sparklineCharts[canvasId].data.labels = values.map((_, i) => i);
+        sparklineCharts[canvasId].data.labels = labels;
         sparklineCharts[canvasId].data.datasets[0].data = values;
         sparklineCharts[canvasId].options.scales.y.min = yMin;
         sparklineCharts[canvasId].options.scales.y.max = yMax;
@@ -687,7 +694,7 @@ function createOrUpdateSparkline(canvasId, values, category) {
         sparklineCharts[canvasId] = new Chart(canvas, {
             type: "line",
             data: {
-                labels: values.map((_, i) => i),
+                labels: labels,
                 datasets: [{
                     data: values,
                     borderColor: "#5eead4",
@@ -707,6 +714,10 @@ function createOrUpdateSparkline(canvasId, values, category) {
                         enabled: true,
                         mode: "index",
                         intersect: false,
+                        callbacks: {
+                            title: function(ctx) { return ctx[0].label || ""; },
+                            label: function(ctx) { return ctx.parsed.y.toFixed(1); },
+                        },
                     },
                 },
                 scales: {

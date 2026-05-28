@@ -491,9 +491,18 @@ UptimeDashboard/
 │   ├── TOTPSetupView.swift         # Enrollment TOTP con QR code
 │   ├── TwoFAView.swift             # Input TOTP con autocompletamento SMS
 │   ├── BiometricGateView.swift     # Gate Face ID / Touch ID per sessioni salvate
-│   ├── DashboardView.swift         # Lista monitor, LED, badge, filtro DOWN, raggruppamento per stato
-│   ├── SettingsView.swift          # Menu impostazioni (tema, ordinamento, refresh, notifiche, biometria, info)
-│   └── SparklineView.swift         # Barre colorate con effetto fisheye e haptic feedback
+│   ├── DashboardView.swift         # Schermata principale con 3 macro-aree (Portali, Temperatura, Potenza)
+│   ├── PortalsDetailView.swift     # Dettaglio portali con monitor, sparkline, riordino
+│   ├── MonitorRowView.swift        # Riga singolo monitor con sonde e sparkline
+│   ├── SettingsView.swift          # Impostazioni (tema, ordinamento, refresh, notifiche, biometria)
+│   ├── HelpView.swift              # Help in-app completo
+│   ├── SparklineView.swift         # Barre colorate con effetto fisheye e haptic feedback
+│   └── Sensors/
+│       ├── SensorSparklineView.swift   # Sparkline sensori con tooltip interattivo (valore + orario)
+│       ├── SensorCardView.swift        # Card singolo sensore con badge e sparkline
+│       ├── SensorSectionView.swift     # Sezione raggruppata per categoria
+│       ├── TemperatureDetailView.swift # Dettaglio sensori temperatura con riordino
+│       └── PowerDetailView.swift       # Dettaglio sensori potenza con riordino
 ├── Services/
 │   ├── NetworkClient.swift         # URLSession, cookie Flask, tutti gli endpoint
 │   ├── KeychainStore.swift         # Archiviazione sicura session token
@@ -520,15 +529,18 @@ UptimeDashboardTests/
 - **Cambio password obbligatorio** — al primo accesso o dopo reset da parte dell'admin
 - **Enrollment TOTP** — configurazione 2FA con QR code al primo accesso o dopo reset
 - **Biometria** — accesso rapido con Face ID / Touch ID quando c'è una sessione salvata nel Keychain
-- **Dashboard** — lista monitor con stato per sonda, colore riga, sparkline storico, raggruppamento per stato (DOWN/Mismatch/UP)
-- **Auto-refresh** — aggiornamento automatico configurabile (default 60s)
-- **Filtro DOWN** — toggle per mostrare solo i monitor in stato DOWN o mismatch
-- **LED globale** — indicatore colorato nella navbar che riflette lo stato globale
-- **Sparkline** — barre colorate con effetto fisheye (stile Dock macOS) e haptic feedback durante lo scrubbing; orario e stato del campione mostrati nella riga delle sonde; dettaglio per-sonda su campioni mismatch
+- **Schermata principale** — 3 macro-aree (Portali, Temperatura, Potenza) con stato globale e conteggio alert per ciascuna; tap per entrare nel dettaglio
+- **Portali** — lista monitor con stato per sonda, colore riga, sparkline storico, raggruppamento per stato (DOWN/Mismatch/UP)
+- **Sensori Temperatura** — lista sensori con sparkline, badge valore, colore arancione (normal), giallo (warning), rosso (critical); ordinati per gravità
+- **Sensori Potenza** — lista sensori con sparkline, badge valore, colore blu (normal), giallo (warning), rosso (critical); ordinati per gravità
+- **Tooltip interattivo** — tocca il grafico di un sensore per vedere valore e orario (HH:mm) del punto
+- **Riordino manuale** — swipe a destra su un elemento → "Riordina" → drag & drop → "Termina"; ordine salvato in UserDefaults
+- **Auto-refresh** — aggiornamento automatico configurabile (default 60s); pull-to-refresh in ogni scheda
+- **Filtro DOWN** — toggle per mostrare solo i monitor in stato DOWN o mismatch (nella scheda Portali)
 - **Badge icona app** — numero di risorse con problemi mostrato sull'icona dell'app (disattivabile)
-- **Notifiche push** — notifiche native APNs al cambio di stato globale con dettaglio risorse e sonde
-- **Impostazioni** — tema (dark default/chiaro/auto), ordinamento, intervallo auto-refresh, notifiche, biometria, haptic feedback, badge, info app
-- **Tema dark** — sfondo #141c2b (come splash screen), default all'installazione
+- **Notifiche push** — notifiche native APNs al cambio di stato globale e al superamento soglie sensori
+- **Impostazioni** — tema (auto default/chiaro/scuro), ordinamento, intervallo auto-refresh, notifiche, biometria, haptic feedback, badge, info app
+- **Help** — documentazione completa in-app con tutte le funzionalità
 - **Logout** — con conferma, elimina il token dal Keychain
 
 ### Test iOS

@@ -238,6 +238,76 @@ def extract_monitor_url(name, statuses):
 
 
 # ============================================================================
+# SENSOR ALERT LOGIC
+# ============================================================================
+def compute_alert_status(sensor: dict, thresholds: dict) -> str:
+    """
+    Computes alert status for a single sensor reading.
+    Temperature: alert when value > threshold (higher is worse)
+    Power: alert when value < threshold (lower is worse)
+    Returns: "normal", "warning", or "critical"
+    """
+    value = sensor.get("value")
+    category = sensor.get("category")
+    if value is None or category is None:
+        return "normal"
+
+    if category == "temperature":
+        t_crit = thresholds.get("temperature", {}).get("critical")
+        t_warn = thresholds.get("temperature", {}).get("warning")
+        if t_crit is not None and value > t_crit:
+            return "critical"
+        if t_warn is not None and value > t_warn:
+            return "warning"
+    elif category == "power":
+        p_crit = thresholds.get("power", {}).get("critical")
+        p_warn = thresholds.get("power", {}).get("warning")
+        if p_crit is not None and value < p_crit:
+            return "critical"
+        if p_warn is not None and value < p_warn:
+            return "warning"
+
+    return "normal"
+
+
+def build_sensor_payload(inverter_data: dict) -> dict:
+    """
+    Builds the sensor portion of the watch-data response.
+    Returns dict with: sensors, thresholds, sensor_history, sensor_alerts,
+    and optionally sensor_error.
+    """
+    if inverter_data.get("error"):
+        return {
+            "sensors": [],
+            "thresholds": inverter_data.get("thresholds", {}),
+            "sensor_history": {},
+            "sensor_alerts": {"warning_count": 0, "critical_count": 0},
+            "sensor_error": inverter_data["error"],
+        }
+
+    sensors = inverter_data.get("sensors", [])
+    thresholds = inverter_data.get("thresholds", {})
+    history = inverter_data.get("history", {})
+
+    # Compute alerts
+    warning_count = 0
+    critical_count = 0
+    for s in sensors:
+        status = compute_alert_status(s, thresholds)
+        if status == "critical":
+            critical_count += 1
+        elif status == "warning":
+            warning_count += 1
+
+    return {
+        "sensors": sensors,
+        "thresholds": thresholds,
+        "sensor_history": history,
+        "sensor_alerts": {"warning_count": warning_count, "critical_count": critical_count},
+    }
+
+
+# ============================================================================
 # COSTRUZIONE DATI DASHBOARD
 # ============================================================================
 def build_dashboard_data():
@@ -690,9 +760,18 @@ def api_watch_data():
         return {"ok": False, "error": "unauthorized"}, 401
 
     rows, global_state = build_dashboard_data()
-    return jsonify(
-        {"items": rows, "global_state": global_state, "timestamp": datetime.now().isoformat()}
-    )
+
+    # Sensor data (graceful degradation)
+    inverter = fetch_inverter_data()
+    sensor_payload = build_sensor_payload(inverter)
+
+    response = {
+        "items": rows,
+        "global_state": global_state,
+        "timestamp": datetime.now().isoformat(),
+    }
+    response.update(sensor_payload)
+    return jsonify(response)
 
 
 @app.route("/api/mac/apns/subscribe", methods=["POST"])

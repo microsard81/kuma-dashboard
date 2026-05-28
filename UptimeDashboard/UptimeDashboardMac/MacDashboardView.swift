@@ -146,6 +146,21 @@ struct MacDashboardView: View {
                         }
                     }
                 }
+
+                // Sensor section (displayed below uptime monitors)
+                if !viewModel.sensors.isEmpty || viewModel.sensorError != nil {
+                    Divider()
+                        .padding(.vertical, 8)
+
+                    SensorSectionView(
+                        sensors: viewModel.sensors,
+                        thresholds: viewModel.sensorThresholds,
+                        history: viewModel.sensorHistory,
+                        error: viewModel.sensorError
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+                }
             }
         }
         .background(dashboardBackground)
