@@ -116,6 +116,10 @@ Copia `.env.example` in `.env` e compila tutti i campi:
 | `BIOMETRIC_SECRET` | — | Segreto per firmare i token biometrici (default: `FLASK_SECRET_KEY`) |
 | `PUSH_LOG_FILE` | — | Percorso file di log per le notifiche push VAPID e APNs (vuoto = disabilitato) |
 | `INVERTER_STATUS_URL` | — | URL endpoint invadcstatus (default: `http://127.0.0.1:9000/invadcstatus`) |
+| `INVERTER_TEMP_WARNING` | — | Soglia warning temperatura °C — notifica se maggiore di (default: `35`) |
+| `INVERTER_TEMP_CRITICAL` | — | Soglia critical temperatura °C — notifica se maggiore di (default: `45`) |
+| `INVERTER_POWER_WARNING` | — | Soglia warning potenza kW — notifica se minore di (default: `5`) |
+| `INVERTER_POWER_CRITICAL` | — | Soglia critical potenza kW — notifica se minore di (default: `2`) |
 | `REDIS_HOST` | — | Host Redis (default: `127.0.0.1`) |
 | `REDIS_PORT` | — | Porta Redis (default: `6379`) |
 | `REDIS_DB` | — | Database Redis (default: `0`) |
@@ -257,6 +261,37 @@ La dashboard integra dati in tempo reale da un endpoint locale `invadcstatus` ch
 
 **Configurazione:** la variabile `INVERTER_STATUS_URL` nel `.env` permette di puntare a un endpoint diverso (default: `http://127.0.0.1:9000/invadcstatus`). Il token di autenticazione è lo stesso `STATUS_TOKEN` già usato per l'uptime.
 
+**Soglie e notifiche push:**
+
+Il sistema invia notifiche push (VAPID + APNs) quando un sensore supera le soglie configurate:
+
+| Variabile | Tipo | Logica |
+|---|---|---|
+| `INVERTER_TEMP_WARNING` | Temperatura | Notifica se valore **>** soglia |
+| `INVERTER_TEMP_CRITICAL` | Temperatura | Notifica se valore **>** soglia |
+| `INVERTER_POWER_WARNING` | Potenza | Notifica se valore **<** soglia |
+| `INVERTER_POWER_CRITICAL` | Potenza | Notifica se valore **<** soglia |
+
+- Le notifiche vengono inviate solo alle **transizioni** di stato (normal→warning, →critical, →normal)
+- Lo stato di ogni sensore è persistito in Redis (`inverter:alert_state:<nome>`)
+- Il check avviene nel `history_worker.py` ad ogni ciclo (60s)
+- Badge nella dashboard: verde (normale), ambra (warning), rosso (critical)
+
+Esempio notifiche:
+```
+⚠️ Temperatura Media
+Temperatura 38.2 °C (soglia warning: >35 °C)
+Ore 14:32
+
+🔴 Active Power Fase 1
+Potenza 1.5 kW (soglia critical: <2 kW)
+Ore 14:32
+
+🟢 Temperatura Media
+Valore rientrato nella norma: 22.3 °C
+Ore 14:35
+```
+
 ### Redis — schema chiavi
 
 | Chiave | Tipo | Descrizione |
@@ -268,6 +303,7 @@ La dashboard integra dati in tempo reale da un endpoint locale `invadcstatus` ch
 | `anomalous_resources` | Set | Nomi risorse anomale del ciclo corrente (per notifiche same-state) |
 | `user:<username>` | Hash | Credenziali utente (`password_hash`, `totp_secret`, `totp_enrolled`, `must_change_password`, `password_history`) |
 | `biometric:<username>:<token>` | String | Token biometrico con TTL 90 giorni |
+| `inverter:alert_state:<sensor_name>` | String | Stato alert sensore inverter (`normal`/`warning`/`critical`) |
 
 ### Gestione utenti
 
