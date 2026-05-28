@@ -92,6 +92,19 @@ struct WatchDashboardView: View {
                     }
                 }
             }
+
+            // Sensor section — hidden if no sensor data and no error
+            if !viewModel.sensors.isEmpty || viewModel.sensorError != nil {
+                Section {
+                    WatchSensorListView(
+                        sensors: viewModel.sensors,
+                        thresholds: viewModel.sensorThresholds,
+                        error: viewModel.sensorError
+                    )
+                } header: {
+                    Label("Sensori", systemImage: "thermometer.medium")
+                }
+            }
         }
     }
 

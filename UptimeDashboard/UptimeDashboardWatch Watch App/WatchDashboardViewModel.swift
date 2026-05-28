@@ -13,6 +13,11 @@ final class WatchDashboardViewModel: NSObject, ObservableObject {
     @Published var isLoading: Bool = false
     @Published var lastError: String? = nil
 
+    // MARK: - Sensor data
+    @Published var sensors: [SensorReading] = []
+    @Published var sensorThresholds: SensorThresholds? = nil
+    @Published var sensorError: String? = nil
+
     private var wcSession: WCSession?
     private var refreshTimer: Timer?
 
@@ -151,10 +156,57 @@ extension WatchDashboardViewModel: WCSessionDelegate {
             )
         }
 
+        // Parse sensor data from the response
+        let parsedSensors = parseSensors(from: payload)
+        let parsedThresholds = parseSensorThresholds(from: payload)
+        let parsedSensorError = payload["sensor_error"] as? String
+
         DispatchQueue.main.async {
             self.monitors = parsed
             self.globalState = payload["global_state"] as? String ?? "GREEN"
             self.lastUpdated = Date()
+            self.sensors = parsedSensors
+            self.sensorThresholds = parsedThresholds
+            self.sensorError = parsedSensorError
         }
+    }
+
+    // MARK: - Sensor Parsing
+
+    private func parseSensors(from payload: [String: Any]) -> [SensorReading] {
+        guard let sensorsArray = payload["sensors"] as? [[String: Any]] else { return [] }
+
+        return sensorsArray.compactMap { dict in
+            guard let id = dict["id"] as? String,
+                  let name = dict["name"] as? String,
+                  let categoryStr = dict["category"] as? String,
+                  let category = SensorCategory(rawValue: categoryStr),
+                  let value = dict["value"] as? Double,
+                  let unit = dict["unit"] as? String else { return nil }
+            let timestamp = dict["timestamp"] as? String
+            return SensorReading(
+                id: id,
+                name: name,
+                category: category,
+                value: value,
+                unit: unit,
+                timestamp: timestamp
+            )
+        }
+    }
+
+    private func parseSensorThresholds(from payload: [String: Any]) -> SensorThresholds? {
+        guard let thresholdsDict = payload["thresholds"] as? [String: Any],
+              let tempDict = thresholdsDict["temperature"] as? [String: Any],
+              let powerDict = thresholdsDict["power"] as? [String: Any],
+              let tempWarning = tempDict["warning"] as? Double,
+              let tempCritical = tempDict["critical"] as? Double,
+              let powerWarning = powerDict["warning"] as? Double,
+              let powerCritical = powerDict["critical"] as? Double else { return nil }
+
+        return SensorThresholds(
+            temperature: ThresholdPair(warning: tempWarning, critical: tempCritical),
+            power: ThresholdPair(warning: powerWarning, critical: powerCritical)
+        )
     }
 }
