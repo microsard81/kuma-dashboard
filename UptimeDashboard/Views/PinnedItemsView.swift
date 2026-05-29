@@ -74,7 +74,7 @@ struct PinnedCardView: View {
                 .font(.system(size: 10, weight: .bold))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
-                .foregroundColor(textColor)
+                .foregroundColor(.primary)
 
             // Status
             Text(statusText)
@@ -180,9 +180,14 @@ struct PinnedCardView: View {
                 return monitor.final.rawValue
             }
             return "—"
-        case .temperatura, .potenza:
+        case .temperatura:
             if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
-                return String(format: "%.1f", sensor.value)
+                return String(format: "%.1f °C", sensor.value)
+            }
+            return "—"
+        case .potenza:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                return String(format: "%.1f kW", sensor.value)
             }
             return "—"
         }
