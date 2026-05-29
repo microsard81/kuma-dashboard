@@ -308,11 +308,6 @@ struct DashboardView: View {
                         }
                         .foregroundColor(.secondary)
                     }
-                    .simultaneousGesture(TapGesture().onEnded {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            unreadNotifications = 0
-                        }
-                    })
 
                     NavigationLink {
                         SettingsView()
@@ -375,6 +370,9 @@ struct DashboardView: View {
             withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
         }
         .onDisappear { viewModel.stopAutoRefresh() }
+        .onReceive(NotificationCenter.default.publisher(for: .notificationReadStateChanged)) { _ in
+            unreadNotifications = NotificationStore.shared.unreadCount
+        }
         .onChange(of: viewModel.lastUpdated) { _ in
             unreadNotifications = NotificationStore.shared.unreadCount
         }

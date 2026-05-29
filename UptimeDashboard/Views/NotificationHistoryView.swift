@@ -206,6 +206,9 @@ final class NotificationStore {
             for i in records.indices { records[i].isRead = true }
             persistInternal(records)
         }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .notificationReadStateChanged, object: nil)
+        }
     }
 
     /// Mark a single notification as read.
@@ -216,6 +219,9 @@ final class NotificationStore {
                 records[idx].isRead = true
                 persistInternal(records)
             }
+        }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .notificationReadStateChanged, object: nil)
         }
     }
 
@@ -228,16 +234,26 @@ final class NotificationStore {
                 persistInternal(records)
             }
         }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .notificationReadStateChanged, object: nil)
+        }
     }
 
     /// Save a new notification only if not a duplicate (same requestId).
     func saveIfNotDuplicate(title: String, body: String, requestId: String? = nil) {
+        var didSave = false
         queue.sync {
             if let rid = requestId {
                 let existing = loadAllInternal()
                 if existing.contains(where: { $0.requestId == rid }) { return }
             }
             saveInternal(title: title, body: body, requestId: requestId)
+            didSave = true
+        }
+        if didSave {
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .notificationReadStateChanged, object: nil)
+            }
         }
     }
 
@@ -245,6 +261,9 @@ final class NotificationStore {
     func save(title: String, body: String, requestId: String? = nil) {
         queue.sync {
             saveInternal(title: title, body: body, requestId: requestId)
+        }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .notificationReadStateChanged, object: nil)
         }
     }
 
@@ -275,4 +294,10 @@ final class NotificationStore {
         guard let data = try? JSONEncoder().encode(records) else { return }
         UserDefaults.standard.set(data, forKey: key)
     }
+}
+
+// MARK: - Notification Name
+
+extension Notification.Name {
+    static let notificationReadStateChanged = Notification.Name("notificationReadStateChanged")
 }
