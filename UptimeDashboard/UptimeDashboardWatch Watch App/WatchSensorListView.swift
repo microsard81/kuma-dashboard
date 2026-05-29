@@ -31,9 +31,11 @@ struct WatchSensorListView: View {
 
     private var temperatureSensors: [SensorReading] {
         sensors.filter { $0.category == .temperature }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     private var powerSensors: [SensorReading] {
         sensors.filter { $0.category == .power }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 }

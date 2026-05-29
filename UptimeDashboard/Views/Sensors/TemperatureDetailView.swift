@@ -57,10 +57,13 @@ struct TemperatureDetailView: View {
             return baseOrder.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         }
 
-        // Default: per gravità
+        // Per gravità: ordina alfabeticamente dentro ogni gruppo
         let critical = baseOrder.filter { $0.alertStatus(thresholds: t) == .critical }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         let warning = baseOrder.filter { $0.alertStatus(thresholds: t) == .warning }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         let normal = baseOrder.filter { $0.alertStatus(thresholds: t) == .normal }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         return critical + warning + normal
     }
 

@@ -5,8 +5,11 @@ struct WatchPortalsDetailView: View {
 
     var body: some View {
         let downItems = viewModel.monitors.filter { $0.isDown }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         let mismatchItems = viewModel.monitors.filter { $0.isMismatch }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         let upItems = viewModel.monitors.filter { !$0.isDown && !$0.isMismatch }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         let allUp = downItems.isEmpty && mismatchItems.isEmpty
 
         List {

@@ -55,11 +55,13 @@ final class DashboardViewModel: ObservableObject {
     /// Temperature sensors filtered from the full sensors array.
     var temperatureSensors: [SensorReading] {
         sensors.filter { $0.category == .temperature }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     /// Power sensors filtered from the full sensors array.
     var powerSensors: [SensorReading] {
         sensors.filter { $0.category == .power }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     // MARK: - Dependencies
@@ -238,14 +240,28 @@ final class DashboardViewModel: ObservableObject {
     // MARK: - Sorting
 
     /// Riordina items secondo il criterio specificato.
+    /// Per severity e globalState, gli elementi all'interno di ogni gruppo
+    /// sono sempre ordinati alfabeticamente.
     func applySortOrder(_ order: SortOrder) {
         switch order {
         case .severity:
-            items.sort { $0.severityRank > $1.severityRank }
+            items.sort {
+                if $0.severityRank != $1.severityRank {
+                    return $0.severityRank > $1.severityRank
+                }
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
         case .alphabetical:
             items.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         case .globalState:
-            items.sort { globalStateRank($0.rowColor) > globalStateRank($1.rowColor) }
+            items.sort {
+                let rank0 = globalStateRank($0.rowColor)
+                let rank1 = globalStateRank($1.rowColor)
+                if rank0 != rank1 {
+                    return rank0 > rank1
+                }
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
         }
     }
 

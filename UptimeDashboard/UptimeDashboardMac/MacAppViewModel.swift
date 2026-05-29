@@ -58,11 +58,13 @@ final class MacAppViewModel: ObservableObject {
     /// Temperature sensors filtered from the full sensors array.
     var temperatureSensors: [SensorReading] {
         sensors.filter { $0.category == .temperature }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     /// Power sensors filtered from the full sensors array.
     var powerSensors: [SensorReading] {
         sensors.filter { $0.category == .power }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     // Preferenze
@@ -411,6 +413,13 @@ final class MacAppViewModel: ObservableObject {
                                   finalStatus: final_, severity: severity,
                                   link: dict["link"] as? String,
                                   history: history)
+            }
+            // Ordina per gravità (severity decrescente), poi alfabetico dentro ogni gruppo
+            monitors.sort {
+                if $0.severity != $1.severity {
+                    return $0.severity > $1.severity
+                }
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
             }
             globalState = json["global_state"] as? String ?? "GREEN"
             lastUpdated = Date()
