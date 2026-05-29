@@ -63,6 +63,10 @@ struct SensorSparklineView: View {
         .chartYAxis(.hidden)
         .chartLegend(.hidden)
         .chartXSelection(value: $selectedIndex)
+        .onChange(of: selectedIndex) { _ in
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+        }
     }
 
     private func formatTime(_ date: Date) -> String {
@@ -74,11 +78,18 @@ struct SensorSparklineView: View {
     /// Parses an ISO 8601 timestamp string into a Date.
     private func parseISO(_ str: String?) -> Date? {
         guard let str = str else { return nil }
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: str) { return date }
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: str)
+        // Try ISO8601 with fractional seconds
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = iso.date(from: str) { return date }
+        // Try ISO8601 without fractional seconds
+        iso.formatOptions = [.withInternetDateTime]
+        if let date = iso.date(from: str) { return date }
+        // Fallback: no timezone (local time assumed)
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        df.locale = Locale(identifier: "en_US_POSIX")
+        return df.date(from: str)
     }
 }
 
