@@ -33,7 +33,9 @@ struct NotificationHistoryView: View {
             }
         }
         .navigationTitle("Notifiche")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
         .onAppear { loadNotifications() }
     }
 
