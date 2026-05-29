@@ -27,6 +27,15 @@ struct NotificationHistoryView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
+                        // Hint pull-to-refresh (solo se ci sono non lette)
+                        if notifications.contains(where: { !$0.isRead }) {
+                            Text("↓ Scorri per segnare tutte come lette")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                        }
+
                         // Header "Non lette"
                         if notifications.contains(where: { !$0.isRead }) {
                             HStack {
@@ -193,43 +202,65 @@ private struct NotificationSwipeRow: View {
             }
 
             // Main content
-            NotificationRow(notification: notification)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(isUnread ? Color.blue.opacity(0.08) : Color(.systemBackground))
-                .offset(x: offset)
-                .gesture(
-                    DragGesture(minimumDistance: 30)
-                        .onChanged { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                            if value.translation.width < 0 {
-                                offset = value.translation.width
-                            } else if offset < 0 {
-                                offset = min(0, offset + value.translation.width)
+            HStack {
+                if isUnread {
+                    Circle()
+                        .fill(Color.blue)
+                        .frame(width: 8, height: 8)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(notification.title)
+                            .font(.subheadline.bold())
+                        Spacer()
+                        Text(formatDate(notification.date))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    if !notification.body.isEmpty {
+                        Text(notification.body)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(3)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(isUnread ? Color.blue.opacity(0.08) : Color(.systemBackground))
+            .offset(x: offset)
+            .gesture(
+                DragGesture(minimumDistance: 30)
+                    .onChanged { value in
+                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                        if value.translation.width < 0 {
+                            offset = value.translation.width
+                        } else if offset < 0 {
+                            offset = min(0, offset + value.translation.width)
+                        }
+                    }
+                    .onEnded { value in
+                        guard abs(value.translation.width) > abs(value.translation.height) else {
+                            withAnimation(.easeOut(duration: 0.2)) { offset = 0 }
+                            return
+                        }
+                        // Full swipe: esegui azione direttamente
+                        if value.translation.width < -fullSwipeThreshold {
+                            withAnimation(.easeOut(duration: 0.2)) { offset = 0 }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                onAction()
+                            }
+                        } else if value.translation.width < -actionWidth / 2 {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                offset = -actionWidth
+                            }
+                        } else {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                offset = 0
                             }
                         }
-                        .onEnded { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else {
-                                withAnimation(.easeOut(duration: 0.2)) { offset = 0 }
-                                return
-                            }
-                            // Full swipe: esegui azione direttamente
-                            if value.translation.width < -fullSwipeThreshold {
-                                withAnimation(.easeOut(duration: 0.2)) { offset = 0 }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                    onAction()
-                                }
-                            } else if value.translation.width < -actionWidth / 2 {
-                                withAnimation(.easeOut(duration: 0.2)) {
-                                    offset = -actionWidth
-                                }
-                            } else {
-                                withAnimation(.easeOut(duration: 0.2)) {
-                                    offset = 0
-                                }
-                            }
-                        }
-                )
+                    }
+            )
         }
         .frame(maxWidth: .infinity)
         .clipped()
@@ -239,37 +270,6 @@ private struct NotificationSwipeRow: View {
 
         Divider()
             .padding(.leading, 16)
-    }
-}
-
-// MARK: - NotificationRow
-
-private struct NotificationRow: View {
-    let notification: NotificationRecord
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                if !notification.isRead {
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 8, height: 8)
-                }
-                Text(notification.title)
-                    .font(.subheadline.bold())
-                Spacer()
-                Text(formatDate(notification.date))
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-            if !notification.body.isEmpty {
-                Text(notification.body)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(3)
-            }
-        }
-        .padding(.vertical, 4)
     }
 
     private func formatDate(_ date: Date) -> String {
