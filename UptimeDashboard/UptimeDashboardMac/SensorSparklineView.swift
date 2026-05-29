@@ -70,40 +70,39 @@ struct SensorSparklineView: View {
                 }
             }
 
-            // Touch gesture overlay (200ms delay before showing tooltip)
+            // Touch gesture overlay — UIKit long press that doesn't block scroll
             GeometryReader { geometry in
-                Rectangle()
-                    .fill(Color.clear)
-                    .contentShape(Rectangle())
-                    .gesture(
-                        LongPressGesture(minimumDuration: 0.2)
-                            .sequenced(before: DragGesture(minimumDistance: 0))
-                            .onChanged { value in
-                                switch value {
-                                case .second(true, let drag):
-                                    guard let drag = drag else { return }
-                                    let x = drag.location.x
-                                    let plotWidth = geometry.size.width
-                                    guard plotWidth > 0, !points.isEmpty else { return }
-                                    let ratio = max(0, min(1, x / plotWidth))
-                                    let index = Int(round(ratio * Double(points.count - 1)))
-                                    let clamped = max(0, min(points.count - 1, index))
-                                    if clamped != selectedIndex {
-                                        selectedIndex = clamped
-                                        #if os(iOS)
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                        #endif
-                                    }
-                                default:
-                                    break
-                                }
-                            }
-                            .onEnded { _ in
-                                selectedIndex = nil
-                            }
-                    )
+                SensorScrubGestureOverlay(
+                    onActivated: { location in
+                        let idx = indexForX(location.x, width: geometry.size.width)
+                        if idx != selectedIndex {
+                            selectedIndex = idx
+                            #if os(iOS)
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            #endif
+                        }
+                    },
+                    onMoved: { location in
+                        let idx = indexForX(location.x, width: geometry.size.width)
+                        if idx != selectedIndex {
+                            selectedIndex = idx
+                            #if os(iOS)
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            #endif
+                        }
+                    },
+                    onEnded: {
+                        selectedIndex = nil
+                    }
+                )
             }
         }
+    }
+
+    private func indexForX(_ x: CGFloat, width: CGFloat) -> Int {
+        guard width > 0, !points.isEmpty else { return 0 }
+        let ratio = max(0, min(1, x / width))
+        return max(0, min(points.count - 1, Int(round(ratio * Double(points.count - 1)))))
     }
 
     /// Get time label for a point. Tries to extract from the t field first,
@@ -143,6 +142,105 @@ struct SensorSparklineView: View {
         return ""
     }
 }
+
+// MARK: - SensorScrubGestureOverlay (UIKit — doesn't block scroll)
+
+#if os(iOS)
+private struct SensorScrubGestureOverlay: UIViewRepresentable {
+    let onActivated: (CGPoint) -> Void
+    let onMoved: (CGPoint) -> Void
+    let onEnded: () -> Void
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+
+        let longPress = UILongPressGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleLongPress(_:))
+        )
+        longPress.minimumPressDuration = 0.2
+        longPress.allowableMovement = .greatestFiniteMagnitude
+        longPress.cancelsTouchesInView = false
+        longPress.delaysTouchesBegan = false
+        view.addGestureRecognizer(longPress)
+
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.onActivated = onActivated
+        context.coordinator.onMoved = onMoved
+        context.coordinator.onEnded = onEnded
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onActivated: onActivated, onMoved: onMoved, onEnded: onEnded)
+    }
+
+    final class Coordinator: NSObject {
+        var onActivated: (CGPoint) -> Void
+        var onMoved: (CGPoint) -> Void
+        var onEnded: () -> Void
+
+        init(onActivated: @escaping (CGPoint) -> Void,
+             onMoved: @escaping (CGPoint) -> Void,
+             onEnded: @escaping () -> Void) {
+            self.onActivated = onActivated
+            self.onMoved = onMoved
+            self.onEnded = onEnded
+        }
+
+        @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+            guard let view = gesture.view else { return }
+            let location = gesture.location(in: view)
+
+            switch gesture.state {
+            case .began:
+                findScrollView(in: view)?.isScrollEnabled = false
+                onActivated(location)
+            case .changed:
+                onMoved(location)
+            case .ended, .cancelled, .failed:
+                findScrollView(in: view)?.isScrollEnabled = true
+                onEnded()
+            default:
+                break
+            }
+        }
+
+        private func findScrollView(in view: UIView) -> UIScrollView? {
+            var current: UIView? = view.superview
+            while let v = current {
+                if let scrollView = v as? UIScrollView { return scrollView }
+                current = v.superview
+            }
+            return nil
+        }
+    }
+}
+#else
+// macOS fallback — simple hover gesture
+private struct SensorScrubGestureOverlay: View {
+    let onActivated: (CGPoint) -> Void
+    let onMoved: (CGPoint) -> Void
+    let onEnded: () -> Void
+
+    var body: some View {
+        Rectangle()
+            .fill(Color.clear)
+            .contentShape(Rectangle())
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let location):
+                    onMoved(location)
+                case .ended:
+                    onEnded()
+                }
+            }
+    }
+}
+#endif
 
 // MARK: - Legacy convenience init (backward compatibility)
 extension SensorSparklineView {
