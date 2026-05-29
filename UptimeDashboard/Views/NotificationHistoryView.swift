@@ -147,7 +147,7 @@ private struct NotificationRow: View {
 
 // MARK: - NotificationRecord
 
-struct NotificationRecord: Identifiable, Codable {
+struct NotificationRecord: Identifiable, Codable, Equatable {
     let id: UUID
     let title: String
     let body: String
