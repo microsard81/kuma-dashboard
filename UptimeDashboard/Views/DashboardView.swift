@@ -182,7 +182,6 @@ struct DashboardView: View {
                         // Pinned items (square cards)
                         if !pinnedItems.isEmpty {
                             Divider()
-                                .padding(.vertical, 4)
 
                             // Header with title + Fine button
                             HStack {
