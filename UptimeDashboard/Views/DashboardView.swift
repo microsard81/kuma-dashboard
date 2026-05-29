@@ -15,6 +15,7 @@ struct DashboardView: View {
     @State private var unreadNotifications = NotificationStore.shared.unreadCount
     @State private var pinnedItems: [PinnedItem] = PinnedStore.shared.loadAll()
     @State private var isReorderingPinned = false
+    @State private var draggingPinnedItem: PinnedItem? = nil
 
     init(network: NetworkClientProtocol) {
         _viewModel = StateObject(wrappedValue: DashboardViewModel(network: network))
@@ -129,16 +130,13 @@ struct DashboardView: View {
                             }
 
                             if isReorderingPinned {
-                                // Reorder mode: cards with jiggle + remove badge + drag
+                                // Reorder mode: cards with remove badge + drag to reorder
                                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                     ForEach(pinnedItems) { item in
                                         ZStack(alignment: .topLeading) {
                                             PinnedCardView(item: item, viewModel: viewModel)
                                                 .aspectRatio(1, contentMode: .fit)
-                                                .overlay(
-                                                    RoundedRectangle(cornerRadius: 10)
-                                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                                                )
+                                                .opacity(draggingPinnedItem?.id == item.id ? 0.5 : 1)
                                             // Remove badge
                                             Button {
                                                 PinnedStore.shared.unpin(id: item.id)
@@ -152,8 +150,14 @@ struct DashboardView: View {
                                             .offset(x: -6, y: -6)
                                         }
                                         .onDrag {
-                                            NSItemProvider(object: item.id as NSString)
+                                            draggingPinnedItem = item
+                                            return NSItemProvider(object: item.id as NSString)
                                         }
+                                        .onDrop(of: [.text], delegate: PinnedReorderDropDelegate(
+                                            item: item,
+                                            items: $pinnedItems,
+                                            draggingItem: $draggingPinnedItem
+                                        ))
                                     }
                                 }
                             } else {
