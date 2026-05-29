@@ -25,49 +25,52 @@ struct SensorSparklineView: View {
     }
 
     var body: some View {
-        Chart {
-            ForEach(Array(points.enumerated()), id: \.offset) { index, point in
-                LineMark(
-                    x: .value("Index", index),
-                    y: .value("Valore", point.v)
-                )
-                .foregroundStyle(color.gradient)
-                .interpolationMethod(.catmullRom)
+        ZStack(alignment: .topLeading) {
+            // Chart
+            Chart {
+                ForEach(Array(points.enumerated()), id: \.offset) { index, point in
+                    LineMark(
+                        x: .value("Index", index),
+                        y: .value("Valore", point.v)
+                    )
+                    .foregroundStyle(color.gradient)
+                    .interpolationMethod(.catmullRom)
 
-                AreaMark(
-                    x: .value("Index", index),
-                    y: .value("Valore", point.v)
-                )
-                .foregroundStyle(color.opacity(0.1).gradient)
-                .interpolationMethod(.catmullRom)
+                    AreaMark(
+                        x: .value("Index", index),
+                        y: .value("Valore", point.v)
+                    )
+                    .foregroundStyle(color.opacity(0.1).gradient)
+                    .interpolationMethod(.catmullRom)
+                }
             }
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .chartYScale(domain: yMin...yMax)
+            .chartLegend(.hidden)
 
-            // Selection indicator
+            // Tooltip overlay
             if let idx = selectedIndex, idx >= 0, idx < points.count {
                 let point = points[idx]
-                RuleMark(x: .value("Index", idx))
-                    .foregroundStyle(color.opacity(0.5))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    .annotation(position: .top, spacing: 4) {
-                        VStack(spacing: 2) {
-                            Text(String(format: "%.1f", point.v))
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(color)
-                            Text(extractTime(from: point.t))
-                                .font(.system(size: 8))
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 4))
+                let timeLabel = getTimeLabel(for: idx, point: point)
+                GeometryReader { geo in
+                    let xPos = geo.size.width * CGFloat(idx) / CGFloat(max(points.count - 1, 1))
+                    VStack(spacing: 1) {
+                        Text(String(format: "%.1f", point.v))
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(color)
+                        Text(timeLabel)
+                            .font(.system(size: 8))
+                            .foregroundColor(.secondary)
                     }
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 3)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 4))
+                    .position(x: min(max(xPos, 30), geo.size.width - 30), y: 12)
+                }
             }
-        }
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
-        .chartYScale(domain: yMin...yMax)
-        .chartLegend(.hidden)
-        .chartOverlay { proxy in
+
+            // Touch gesture overlay
             GeometryReader { geometry in
                 Rectangle()
                     .fill(Color.clear)
@@ -78,14 +81,13 @@ struct SensorSparklineView: View {
                                 let x = value.location.x
                                 let plotWidth = geometry.size.width
                                 guard plotWidth > 0, !points.isEmpty else { return }
-                                let ratio = x / plotWidth
-                                let index = Int(ratio * Double(points.count - 1))
+                                let ratio = max(0, min(1, x / plotWidth))
+                                let index = Int(round(ratio * Double(points.count - 1)))
                                 let clamped = max(0, min(points.count - 1, index))
                                 if clamped != selectedIndex {
                                     selectedIndex = clamped
                                     #if os(iOS)
-                                    let generator = UIImpactFeedbackGenerator(style: .light)
-                                    generator.impactOccurred()
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                     #endif
                                 }
                             }
@@ -97,29 +99,41 @@ struct SensorSparklineView: View {
         }
     }
 
+    /// Get time label for a point. Tries to extract from the t field first,
+    /// falls back to calculating from position (1 point = 1 minute, last = now).
+    private func getTimeLabel(for index: Int, point: SensorHistoryPoint) -> String {
+        // Try to extract time from the t field
+        let extracted = extractTimeFromString(point.t)
+        if !extracted.isEmpty {
+            return extracted
+        }
+        // Fallback: calculate time assuming 1-minute intervals, last point = now
+        let minutesAgo = points.count - 1 - index
+        let date = Date().addingTimeInterval(-Double(minutesAgo) * 60)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+
     /// Extract HH:mm from a raw timestamp string
-    private func extractTime(from str: String) -> String {
+    private func extractTimeFromString(_ str: String) -> String {
+        guard !str.isEmpty, str != "null", str != "None", str.count > 4 else { return "" }
         // Look for T followed by HH:mm (e.g. "2026-05-29T08:37:00+00:00")
-        if let tIndex = str.firstIndex(of: "T") {
+        if let tIndex = str.firstIndex(of: "T"),
+           str.distance(from: str.startIndex, to: tIndex) >= 8 {
             let timeStart = str.index(after: tIndex)
-            let timeStr = String(str[timeStart...])
-            if timeStr.count >= 5 {
-                return String(timeStr.prefix(5))
+            if str.distance(from: timeStart, to: str.endIndex) >= 5 {
+                return String(str[timeStart...].prefix(5))
             }
         }
         // Look for space followed by HH:mm (e.g. "2026-05-29 08:37:00")
-        if let spaceIndex = str.firstIndex(of: " ") {
+        if let spaceIndex = str.lastIndex(of: " ") {
             let timeStart = str.index(after: spaceIndex)
-            let timeStr = String(str[timeStart...])
-            if timeStr.count >= 5 {
-                return String(timeStr.prefix(5))
+            if str.distance(from: timeStart, to: str.endIndex) >= 5 {
+                return String(str[timeStart...].prefix(5))
             }
         }
-        // If the string itself looks like HH:mm or HH:mm:ss
-        if str.count >= 5, str.contains(":") {
-            return String(str.prefix(5))
-        }
-        return str
+        return ""
     }
 }
 
@@ -127,10 +141,10 @@ struct SensorSparklineView: View {
 extension SensorSparklineView {
     init(points: [Double], color: Color) {
         let now = Date()
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
         let syntheticPoints = points.suffix(60).enumerated().map { index, value in
             let date = now.addingTimeInterval(Double(index - points.suffix(60).count) * 60)
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime]
             return SensorHistoryPoint(t: formatter.string(from: date), v: value)
         }
         self.historyPoints = syntheticPoints
