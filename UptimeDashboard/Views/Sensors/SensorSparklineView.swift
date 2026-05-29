@@ -6,7 +6,7 @@ import Charts
 
 /// A compact line + area sparkline for sensor history data.
 /// Displays the last 60 data points using catmullRom interpolation.
-/// Supports interactive tooltip on touch/hover showing value and time (HH:mm).
+/// Supports interactive tooltip on touch showing value and time (HH:mm).
 /// Y-axis uses fixed scale based on sensor category.
 struct SensorSparklineView: View {
     let historyPoints: [SensorHistoryPoint]
@@ -19,43 +19,41 @@ struct SensorSparklineView: View {
     private var yMin: Double { category == .power ? 1 : 10 }
     private var yMax: Double { category == .power ? 100 : 65 }
 
-    /// Parsed data points with raw timestamp for tooltip display.
-    private var dataPoints: [(rawTime: String, value: Double, index: Int)] {
-        Array(historyPoints.suffix(60)).enumerated().map { index, point in
-            let time = extractTime(from: point.t)
-            return (rawTime: time, value: point.v, index: index)
-        }
+    /// Data points from the last 60 history entries.
+    private var points: [SensorHistoryPoint] {
+        Array(historyPoints.suffix(60))
     }
 
     var body: some View {
         Chart {
-            ForEach(dataPoints, id: \.index) { point in
+            ForEach(Array(points.enumerated()), id: \.offset) { index, point in
                 LineMark(
-                    x: .value("Index", point.index),
-                    y: .value("Valore", point.value)
+                    x: .value("Index", index),
+                    y: .value("Valore", point.v)
                 )
                 .foregroundStyle(color.gradient)
                 .interpolationMethod(.catmullRom)
 
                 AreaMark(
-                    x: .value("Index", point.index),
-                    y: .value("Valore", point.value)
+                    x: .value("Index", index),
+                    y: .value("Valore", point.v)
                 )
                 .foregroundStyle(color.opacity(0.1).gradient)
                 .interpolationMethod(.catmullRom)
             }
 
             // Selection indicator
-            if let idx = selectedIndex, let point = dataPoints.first(where: { $0.index == idx }) {
-                RuleMark(x: .value("Index", point.index))
+            if let idx = selectedIndex, idx >= 0, idx < points.count {
+                let point = points[idx]
+                RuleMark(x: .value("Index", idx))
                     .foregroundStyle(color.opacity(0.5))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                     .annotation(position: .top, spacing: 4) {
                         VStack(spacing: 2) {
-                            Text(String(format: "%.1f", point.value))
+                            Text(String(format: "%.1f", point.v))
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(color)
-                            Text(point.rawTime.isEmpty ? "—" : point.rawTime)
+                            Text(extractTime(from: point.t))
                                 .font(.system(size: 8))
                                 .foregroundColor(.secondary)
                         }
@@ -69,12 +67,33 @@ struct SensorSparklineView: View {
         .chartYAxis(.hidden)
         .chartYScale(domain: yMin...yMax)
         .chartLegend(.hidden)
-        .chartXSelection(value: $selectedIndex)
-        .onChange(of: selectedIndex) { _ in
-            #if os(iOS)
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
-            #endif
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Rectangle()
+                    .fill(Color.clear)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                let x = value.location.x
+                                let plotWidth = geometry.size.width
+                                guard plotWidth > 0, !points.isEmpty else { return }
+                                let ratio = x / plotWidth
+                                let index = Int(ratio * Double(points.count - 1))
+                                let clamped = max(0, min(points.count - 1, index))
+                                if clamped != selectedIndex {
+                                    selectedIndex = clamped
+                                    #if os(iOS)
+                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                    generator.impactOccurred()
+                                    #endif
+                                }
+                            }
+                            .onEnded { _ in
+                                selectedIndex = nil
+                            }
+                    )
+            }
         }
     }
 
