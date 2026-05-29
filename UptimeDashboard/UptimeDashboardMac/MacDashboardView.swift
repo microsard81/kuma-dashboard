@@ -30,14 +30,12 @@ struct MacDashboardView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
-    @State private var isReorderingSections = false
     @State private var sectionOrder: [String] = []
 
     private let sectionOrderKey = "mac_dashboard_section_order"
     private let defaultOrder = ["portali", "temperatura", "potenza"]
 
     private var displayOrder: [String] {
-        if isReorderingSections { return sectionOrder }
         let saved = UserDefaults.standard.stringArray(forKey: sectionOrderKey) ?? []
         return saved.isEmpty ? defaultOrder : saved
     }
@@ -106,21 +104,38 @@ struct MacDashboardView: View {
                 }
                 .controlSize(.small)
 
-                // Lock/unlock section reorder
-                Button {
-                    if isReorderingSections {
-                        UserDefaults.standard.set(sectionOrder, forKey: sectionOrderKey)
-                        withAnimation { isReorderingSections = false }
-                    } else {
-                        sectionOrder = displayOrder
-                        withAnimation { isReorderingSections = true }
+                // Section order menu
+                Menu {
+                    Button("Portali · Temperatura · Potenza") {
+                        UserDefaults.standard.set(["portali", "temperatura", "potenza"], forKey: sectionOrderKey)
+                        sectionOrder = ["portali", "temperatura", "potenza"]
+                    }
+                    Button("Portali · Potenza · Temperatura") {
+                        UserDefaults.standard.set(["portali", "potenza", "temperatura"], forKey: sectionOrderKey)
+                        sectionOrder = ["portali", "potenza", "temperatura"]
+                    }
+                    Button("Temperatura · Potenza · Portali") {
+                        UserDefaults.standard.set(["temperatura", "potenza", "portali"], forKey: sectionOrderKey)
+                        sectionOrder = ["temperatura", "potenza", "portali"]
+                    }
+                    Button("Temperatura · Portali · Potenza") {
+                        UserDefaults.standard.set(["temperatura", "portali", "potenza"], forKey: sectionOrderKey)
+                        sectionOrder = ["temperatura", "portali", "potenza"]
+                    }
+                    Button("Potenza · Temperatura · Portali") {
+                        UserDefaults.standard.set(["potenza", "temperatura", "portali"], forKey: sectionOrderKey)
+                        sectionOrder = ["potenza", "temperatura", "portali"]
+                    }
+                    Button("Potenza · Portali · Temperatura") {
+                        UserDefaults.standard.set(["potenza", "portali", "temperatura"], forKey: sectionOrderKey)
+                        sectionOrder = ["potenza", "portali", "temperatura"]
                     }
                 } label: {
-                    Image(systemName: isReorderingSections ? "lock.open" : "lock")
-                        .foregroundColor(isReorderingSections ? .orange : .secondary)
+                    Image(systemName: "rectangle.3.group")
+                        .foregroundColor(.secondary)
                 }
                 .controlSize(.small)
-                .help(isReorderingSections ? "Salva ordine sezioni" : "Riordina sezioni")
+                .help("Riordina sezioni")
 
                 Button {
                     showNotificationHistory = true
@@ -268,14 +283,15 @@ struct MacDashboardView: View {
         let sensors = viewModel.sensors.filter { $0.category == .temperature }
         return VStack(spacing: 0) {
             HStack {
+                Circle()
+                    .fill(temperatureStatusColor)
+                    .frame(width: 10, height: 10)
+                    .shadow(color: temperatureStatusColor.opacity(0.6), radius: 3)
                 Image(systemName: "thermometer.medium")
                     .foregroundColor(temperatureStatusColor)
                 Text("Temperatura (°C)")
                     .font(.headline)
                 Spacer()
-                Circle()
-                    .fill(temperatureStatusColor)
-                    .frame(width: 10, height: 10)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
@@ -303,14 +319,15 @@ struct MacDashboardView: View {
         let sensors = viewModel.sensors.filter { $0.category == .power }
         return VStack(spacing: 0) {
             HStack {
+                Circle()
+                    .fill(powerStatusColor)
+                    .frame(width: 10, height: 10)
+                    .shadow(color: powerStatusColor.opacity(0.6), radius: 3)
                 Image(systemName: "bolt.fill")
                     .foregroundColor(powerStatusColor)
                 Text("Potenza (kW)")
                     .font(.headline)
                 Spacer()
-                Circle()
-                    .fill(powerStatusColor)
-                    .frame(width: 10, height: 10)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)

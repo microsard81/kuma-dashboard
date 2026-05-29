@@ -223,7 +223,7 @@ struct LargeWidgetView: View {
                 Divider().background(Color.white.opacity(0.2))
 
                 // Monitor list
-                ForEach(sortedMonitors.prefix(5)) { monitor in
+                ForEach(sortedMonitors) { monitor in
                     HStack(spacing: 6) {
                         Text(shortName(monitor.name))
                             .font(.system(size: 11, weight: .medium))
@@ -237,12 +237,6 @@ struct LargeWidgetView: View {
                             .frame(width: 32)
                     }
                     .padding(.vertical, 1)
-                }
-
-                if entry.monitors.count > 5 {
-                    Text("+\(entry.monitors.count - 5) altri")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
                 }
             }
             Spacer(minLength: 0)
