@@ -16,6 +16,7 @@ struct DashboardView: View {
     @State private var pinnedItems: [PinnedItem] = PinnedStore.shared.loadAll()
     @State private var isReorderingPinned = false
     @State private var draggingPinnedItem: PinnedItem? = nil
+    @State private var selectedPinnedItem: PinnedItem? = nil
 
     init(network: NetworkClientProtocol) {
         _viewModel = StateObject(wrappedValue: DashboardViewModel(network: network))
@@ -162,18 +163,30 @@ struct DashboardView: View {
                                 // Normal mode: tap to navigate, long press to enter reorder
                                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                     ForEach(pinnedItems) { item in
-                                        NavigationLink {
-                                            pinnedDestination(for: item)
-                                        } label: {
-                                            PinnedCardView(item: item, viewModel: viewModel)
-                                                .aspectRatio(1, contentMode: .fit)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .onLongPressGesture {
-                                            withAnimation { isReorderingPinned = true }
-                                        }
+                                        PinnedCardView(item: item, viewModel: viewModel)
+                                            .aspectRatio(1, contentMode: .fit)
+                                            .onTapGesture {
+                                                selectedPinnedItem = item
+                                            }
+                                            .onLongPressGesture(minimumDuration: 0.5) {
+                                                withAnimation { isReorderingPinned = true }
+                                            }
                                     }
                                 }
+                                .background(
+                                    NavigationLink(
+                                        destination: Group {
+                                            if let item = selectedPinnedItem {
+                                                pinnedDestination(for: item)
+                                            }
+                                        },
+                                        isActive: Binding(
+                                            get: { selectedPinnedItem != nil },
+                                            set: { if !$0 { selectedPinnedItem = nil } }
+                                        )
+                                    ) { EmptyView() }
+                                        .hidden()
+                                )
                             }
                         }
                     }
