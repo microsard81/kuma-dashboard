@@ -131,32 +131,20 @@ struct NotificationHistoryView: View {
 
     private func markAsRead(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsRead(id: notif.id)
-        // Step 1: rimuovi dalla sezione "Non lette" (fade out / collapse)
-        withAnimation(.easeOut(duration: 0.3)) {
-            if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+        // Aggiorna lo stato locale — la riga esce da "Non lette" e appare in "Lette"
+        // Tutto in un'unica animazione: SwiftUI anima il collapse nella sezione di origine
+        if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+            let _ = withAnimation(.easeInOut(duration: 0.3)) {
                 notifications[idx].isRead = true
-            }
-        }
-        // Step 2: dopo che la riga è uscita, ricarica per inserirla in "Lette"
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            withAnimation(.easeIn(duration: 0.3)) {
-                reloadNotifications()
             }
         }
     }
 
     private func markAsUnread(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsUnread(id: notif.id)
-        // Step 1: rimuovi dalla sezione "Lette" (fade out / collapse)
-        withAnimation(.easeOut(duration: 0.3)) {
-            if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+        if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+            let _ = withAnimation(.easeInOut(duration: 0.3)) {
                 notifications[idx].isRead = false
-            }
-        }
-        // Step 2: dopo che la riga è uscita, ricarica per inserirla in "Non lette"
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            withAnimation(.easeIn(duration: 0.3)) {
-                reloadNotifications()
             }
         }
     }
