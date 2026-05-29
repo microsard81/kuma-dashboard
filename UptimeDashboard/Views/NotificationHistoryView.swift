@@ -201,8 +201,10 @@ private struct NotificationSwipeRow: View {
                 .background(isUnread ? Color.blue.opacity(0.08) : Color(.systemBackground))
                 .offset(x: offset)
                 .gesture(
-                    DragGesture(minimumDistance: 20)
+                    DragGesture(minimumDistance: 30)
                         .onChanged { value in
+                            // Solo swipe orizzontale (ignora verticale per permettere scroll/refresh)
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
                             if value.translation.width < 0 {
                                 offset = max(value.translation.width, -actionWidth)
                             } else if offset < 0 {
@@ -210,6 +212,10 @@ private struct NotificationSwipeRow: View {
                             }
                         }
                         .onEnded { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else {
+                                withAnimation(.easeOut(duration: 0.2)) { offset = 0 }
+                                return
+                            }
                             withAnimation(.easeOut(duration: 0.2)) {
                                 if value.translation.width < -actionWidth / 2 {
                                     offset = -actionWidth
