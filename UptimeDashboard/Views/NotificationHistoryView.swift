@@ -41,42 +41,29 @@ struct NotificationHistoryView: View {
                             .padding(.bottom, 4)
                         }
 
-                        ForEach(notifications.filter { !$0.isRead }) { notif in
-                            NotificationSwipeRow(
-                                notification: notif,
-                                onAction: { markAsRead(notif) }
-                            )
-                            .id(notif.id)
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .top).combined(with: .opacity),
-                                removal: .move(edge: .bottom).combined(with: .opacity)
-                            ))
-                        }
-
-                        // Header "Lette"
-                        if notifications.contains(where: { $0.isRead }) {
-                            HStack {
-                                Text("Lette")
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
-                                    .textCase(.uppercase)
-                                Spacer()
+                        // Singolo ForEach — ordine: non lette prima, poi lette
+                        ForEach($notifications) { $notif in
+                            // Header "Lette" prima del primo elemento letto
+                            if notif.isRead && isFirstRead(notif) {
+                                HStack {
+                                    Text("Lette")
+                                        .font(.footnote)
+                                        .foregroundColor(.secondary)
+                                        .textCase(.uppercase)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
+                                .padding(.bottom, 4)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
-                            .padding(.bottom, 4)
-                        }
 
-                        ForEach(notifications.filter { $0.isRead }) { notif in
                             NotificationSwipeRow(
-                                notification: notif,
-                                onAction: { markAsUnread(notif) }
+                                notification: $notif,
+                                onAction: {
+                                    toggleReadState(notif)
+                                }
                             )
                             .id(notif.id)
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .bottom).combined(with: .opacity),
-                                removal: .move(edge: .top).combined(with: .opacity)
-                            ))
                         }
                     }
                     .padding(.bottom, 16)
@@ -129,21 +116,33 @@ struct NotificationHistoryView: View {
     #endif
 
     private func markAsRead(_ notif: NotificationRecord) {
-        NotificationStore.shared.markAsRead(id: notif.id)
+        toggleReadState(notif)
+    }
+
+    private func markAsUnread(_ notif: NotificationRecord) {
+        toggleReadState(notif)
+    }
+
+    private func toggleReadState(_ notif: NotificationRecord) {
+        guard let idx = notifications.firstIndex(where: { $0.id == notif.id }) else { return }
+        let newState = !notifications[idx].isRead
+        if newState {
+            NotificationStore.shared.markAsRead(id: notif.id)
+        } else {
+            NotificationStore.shared.markAsUnread(id: notif.id)
+        }
         withAnimation(.easeInOut(duration: 0.35)) {
-            if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
-                notifications[idx].isRead = true
+            notifications[idx].isRead = newState
+            // Riordina: non lette prima, poi lette, entrambi per data desc
+            notifications.sort {
+                if $0.isRead != $1.isRead { return !$0.isRead }
+                return $0.date > $1.date
             }
         }
     }
 
-    private func markAsUnread(_ notif: NotificationRecord) {
-        NotificationStore.shared.markAsUnread(id: notif.id)
-        withAnimation(.easeInOut(duration: 0.35)) {
-            if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
-                notifications[idx].isRead = false
-            }
-        }
+    private func isFirstRead(_ notif: NotificationRecord) -> Bool {
+        notifications.first(where: { $0.isRead })?.id == notif.id
     }
 
     private func reloadNotifications() {
@@ -158,39 +157,38 @@ struct NotificationHistoryView: View {
 // MARK: - NotificationSwipeRow (custom swipe senza List)
 
 private struct NotificationSwipeRow: View {
-    let notification: NotificationRecord
+    @Binding var notification: NotificationRecord
     let onAction: () -> Void
 
     @State private var offset: CGFloat = 0
 
     private let actionWidth: CGFloat = 80
+    private let fullSwipeThreshold: CGFloat = 200
 
     private var isUnread: Bool { !notification.isRead }
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            // Action button (revealed on swipe) — visibile solo quando lo swipe è attivo
+            // Action button — visibile solo quando lo swipe è attivo
             if offset < 0 {
                 HStack {
                     Spacer()
-                    Button {
+                    VStack(spacing: 2) {
+                        Image(systemName: isUnread ? "envelope.open" : "envelope.badge")
+                            .font(.system(size: 16))
+                        Text(isUnread ? "Letta" : "Non letta")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.white)
+                    .frame(width: max(-offset, actionWidth))
+                    .frame(maxHeight: .infinity)
+                    .background(Color.blue)
+                    .onTapGesture {
                         withAnimation(.easeOut(duration: 0.15)) { offset = 0 }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                             onAction()
                         }
-                    } label: {
-                        VStack(spacing: 2) {
-                            Image(systemName: isUnread ? "envelope.open" : "envelope.badge")
-                                .font(.system(size: 16))
-                            Text(isUnread ? "Letta" : "Non letta")
-                                .font(.system(size: 10))
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxHeight: .infinity)
-                        .frame(width: actionWidth)
                     }
-                    .frame(width: actionWidth)
-                    .background(Color.blue)
                 }
             }
 
@@ -203,10 +201,9 @@ private struct NotificationSwipeRow: View {
                 .gesture(
                     DragGesture(minimumDistance: 30)
                         .onChanged { value in
-                            // Solo swipe orizzontale (ignora verticale per permettere scroll/refresh)
                             guard abs(value.translation.width) > abs(value.translation.height) else { return }
                             if value.translation.width < 0 {
-                                offset = max(value.translation.width, -actionWidth)
+                                offset = value.translation.width
                             } else if offset < 0 {
                                 offset = min(0, offset + value.translation.width)
                             }
@@ -216,10 +213,18 @@ private struct NotificationSwipeRow: View {
                                 withAnimation(.easeOut(duration: 0.2)) { offset = 0 }
                                 return
                             }
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                if value.translation.width < -actionWidth / 2 {
+                            // Full swipe: esegui azione direttamente
+                            if value.translation.width < -fullSwipeThreshold {
+                                withAnimation(.easeOut(duration: 0.2)) { offset = 0 }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                    onAction()
+                                }
+                            } else if value.translation.width < -actionWidth / 2 {
+                                withAnimation(.easeOut(duration: 0.2)) {
                                     offset = -actionWidth
-                                } else {
+                                }
+                            } else {
+                                withAnimation(.easeOut(duration: 0.2)) {
                                     offset = 0
                                 }
                             }
