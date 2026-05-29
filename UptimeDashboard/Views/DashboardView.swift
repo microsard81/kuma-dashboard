@@ -128,24 +128,37 @@ struct DashboardView: View {
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                             }
 
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                                ForEach(pinnedItems) { item in
-                                    if isReorderingPinned {
-                                        // Reorder mode: show remove button, no navigation
-                                        VStack(spacing: 4) {
-                                            PinnedCardView(item: item, viewModel: viewModel)
-                                                .aspectRatio(1, contentMode: .fit)
+                            if isReorderingPinned {
+                                // Reorder mode: List with drag handles
+                                List {
+                                    ForEach(pinnedItems) { item in
+                                        HStack {
+                                            Image(systemName: iconForType(item.type))
+                                                .foregroundColor(colorForType(item.type))
+                                            Text(item.id.replacingOccurrences(of: "INVA - ", with: ""))
+                                                .font(.caption)
+                                                .lineLimit(1)
+                                            Spacer()
                                             Button {
                                                 PinnedStore.shared.unpin(id: item.id)
                                                 withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
                                             } label: {
                                                 Image(systemName: "minus.circle.fill")
                                                     .foregroundColor(.red)
-                                                    .font(.system(size: 16))
                                             }
                                         }
-                                    } else {
-                                        // Normal mode: navigation on tap
+                                    }
+                                    .onMove { from, to in
+                                        pinnedItems.move(fromOffsets: from, toOffset: to)
+                                    }
+                                }
+                                .listStyle(.plain)
+                                .environment(\.editMode, .constant(.active))
+                                .frame(height: CGFloat(pinnedItems.count * 44 + 8))
+                            } else {
+                                // Normal mode: grid with navigation
+                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                                    ForEach(pinnedItems) { item in
                                         NavigationLink {
                                             pinnedDestination(for: item)
                                         } label: {
@@ -274,6 +287,24 @@ struct DashboardView: View {
             if !enabled {
                 UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
             }
+        }
+    }
+
+    // MARK: - Pinned Helpers
+
+    private func iconForType(_ type: PinnedItem.PinnedType) -> String {
+        switch type {
+        case .portale: return "globe"
+        case .temperatura: return "thermometer.medium"
+        case .potenza: return "bolt.fill"
+        }
+    }
+
+    private func colorForType(_ type: PinnedItem.PinnedType) -> Color {
+        switch type {
+        case .portale: return .green
+        case .temperatura: return .orange
+        case .potenza: return .blue
         }
     }
 

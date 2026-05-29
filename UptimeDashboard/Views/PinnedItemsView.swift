@@ -209,3 +209,5 @@ struct PinnedCardView: View {
 extension Notification.Name {
     static let pinnedItemsChanged = Notification.Name("pinnedItemsChanged")
 }
+
+
