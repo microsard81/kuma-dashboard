@@ -169,10 +169,21 @@ struct MacDashboardView: View {
                 Button {
                     showNotificationHistory = true
                 } label: {
-                    Image(systemName: "bell")
-                        .font(.system(size: 13))
-                        .frame(width: 28, height: 28)
-                        .background(.ultraThinMaterial, in: Circle())
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "bell")
+                            .font(.system(size: 13))
+                            .frame(width: 28, height: 28)
+                            .background(.ultraThinMaterial, in: Circle())
+                        if NotificationStore.shared.unreadCount > 0 {
+                            Text("\(NotificationStore.shared.unreadCount)")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(2)
+                                .background(Color.red)
+                                .clipShape(Circle())
+                                .offset(x: 4, y: -2)
+                        }
+                    }
                 }
                 .buttonStyle(.plain)
                 .popover(isPresented: $showNotificationHistory) {
@@ -700,7 +711,10 @@ private struct MacNotificationHistoryPopover: View {
                 .listStyle(.plain)
             }
         }
-        .onAppear { notifications = NotificationStore.shared.loadAll() }
+        .onAppear {
+            notifications = NotificationStore.shared.loadAll()
+            NotificationStore.shared.markAllAsRead()
+        }
     }
 
     private func formatDate(_ date: Date) -> String {

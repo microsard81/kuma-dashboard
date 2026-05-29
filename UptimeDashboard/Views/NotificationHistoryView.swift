@@ -34,7 +34,10 @@ struct NotificationHistoryView: View {
         }
         .navigationTitle("Notifiche")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { loadNotifications() }
+        .onAppear {
+            loadNotifications()
+            NotificationStore.shared.markAllAsRead()
+        }
     }
 
     private func loadNotifications() {
@@ -103,9 +106,21 @@ struct NotificationRecord: Identifiable, Codable {
 final class NotificationStore {
     static let shared = NotificationStore()
     private let key = "notification_history"
+    private let lastReadKey = "notification_last_read_date"
     private let maxAge: TimeInterval = 30 * 24 * 3600 // 30 days
 
     private init() {}
+
+    /// Number of unread notifications (received after last read date).
+    var unreadCount: Int {
+        let lastRead = UserDefaults.standard.object(forKey: lastReadKey) as? Date ?? Date.distantPast
+        return loadAll().filter { $0.date > lastRead }.count
+    }
+
+    /// Mark all notifications as read.
+    func markAllAsRead() {
+        UserDefaults.standard.set(Date(), forKey: lastReadKey)
+    }
 
     /// Save a new notification to history.
     func save(title: String, body: String) {

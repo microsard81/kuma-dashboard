@@ -96,8 +96,19 @@ struct DashboardView: View {
                         NotificationHistoryView()
                     } label: {
                         VStack(spacing: 4) {
-                            Image(systemName: "bell")
-                                .font(.title3)
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "bell")
+                                    .font(.title3)
+                                if NotificationStore.shared.unreadCount > 0 {
+                                    Text("\(NotificationStore.shared.unreadCount)")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .padding(3)
+                                        .background(Color.red)
+                                        .clipShape(Circle())
+                                        .offset(x: 8, y: -4)
+                                }
+                            }
                             Text("Notifiche")
                                 .font(.caption2)
                         }
