@@ -30,6 +30,17 @@ struct MacDashboardView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
+    @State private var isReorderingSections = false
+    @State private var sectionOrder: [String] = []
+
+    private let sectionOrderKey = "mac_dashboard_section_order"
+    private let defaultOrder = ["portali", "temperatura", "potenza"]
+
+    private var displayOrder: [String] {
+        if isReorderingSections { return sectionOrder }
+        let saved = UserDefaults.standard.stringArray(forKey: sectionOrderKey) ?? []
+        return saved.isEmpty ? defaultOrder : saved
+    }
 
     private var filteredMonitors: [MacMonitor] {
         var sorted: [MacMonitor]
@@ -95,6 +106,22 @@ struct MacDashboardView: View {
                 }
                 .controlSize(.small)
 
+                // Lock/unlock section reorder
+                Button {
+                    if isReorderingSections {
+                        UserDefaults.standard.set(sectionOrder, forKey: sectionOrderKey)
+                        withAnimation { isReorderingSections = false }
+                    } else {
+                        sectionOrder = displayOrder
+                        withAnimation { isReorderingSections = true }
+                    }
+                } label: {
+                    Image(systemName: isReorderingSections ? "lock.open" : "lock")
+                        .foregroundColor(isReorderingSections ? .orange : .secondary)
+                }
+                .controlSize(.small)
+                .help(isReorderingSections ? "Salva ordine sezioni" : "Riordina sezioni")
+
                 Button {
                     showNotificationHistory = true
                 } label: {
@@ -125,24 +152,24 @@ struct MacDashboardView: View {
                 if isWide {
                     // Side by side
                     HStack(alignment: .top, spacing: 1) {
-                        portalsSection
-                            .frame(maxWidth: .infinity)
-                        Divider()
-                        temperatureSection
-                            .frame(maxWidth: .infinity)
-                        Divider()
-                        powerSection
-                            .frame(maxWidth: .infinity)
+                        ForEach(displayOrder, id: \.self) { section in
+                            if section != displayOrder.first {
+                                Divider()
+                            }
+                            sectionView(for: section)
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                 } else {
                     // Stacked
                     ScrollView {
                         VStack(spacing: 0) {
-                            portalsSection
-                            Divider().padding(.vertical, 4)
-                            temperatureSection
-                            Divider().padding(.vertical, 4)
-                            powerSection
+                            ForEach(displayOrder, id: \.self) { section in
+                                if section != displayOrder.first {
+                                    Divider().padding(.vertical, 4)
+                                }
+                                sectionView(for: section)
+                            }
                         }
                     }
                 }
@@ -157,12 +184,28 @@ struct MacDashboardView: View {
         }
     }
 
+    // MARK: - Section Router
+
+    @ViewBuilder
+    private func sectionView(for section: String) -> some View {
+        switch section {
+        case "portali": portalsSection
+        case "temperatura": temperatureSection
+        case "potenza": powerSection
+        default: EmptyView()
+        }
+    }
+
     // MARK: - Portals Section
 
     private var portalsSection: some View {
         VStack(spacing: 0) {
             // Section header
             HStack {
+                Circle()
+                    .fill(ledColor)
+                    .frame(width: 10, height: 10)
+                    .shadow(color: ledColor.opacity(0.6), radius: 3)
                 Image(systemName: "globe")
                     .foregroundColor(ledColor)
                 Text("Portali")
