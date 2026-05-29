@@ -30,14 +30,15 @@ struct MacDashboardView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
-    @State private var sectionOrder: [String] = []
+    @State private var sectionOrder: [String] = UserDefaults.standard.stringArray(forKey: "mac_dashboard_section_order") ?? ["portali", "temperatura", "potenza"]
+    @State private var isPortalsCollapsed = false
+    @State private var isTemperatureCollapsed = false
+    @State private var isPowerCollapsed = false
 
     private let sectionOrderKey = "mac_dashboard_section_order"
-    private let defaultOrder = ["portali", "temperatura", "potenza"]
 
     private var displayOrder: [String] {
-        let saved = UserDefaults.standard.stringArray(forKey: sectionOrderKey) ?? []
-        return saved.isEmpty ? defaultOrder : saved
+        sectionOrder
     }
 
     private var filteredMonitors: [MacMonitor] {
@@ -134,7 +135,8 @@ struct MacDashboardView: View {
                     Image(systemName: "rectangle.3.group")
                         .foregroundColor(.secondary)
                 }
-                .controlSize(.small)
+                .menuStyle(.borderlessButton)
+                .fixedSize()
                 .help("Riordina sezioni")
 
                 Button {
@@ -221,6 +223,9 @@ struct MacDashboardView: View {
                     .foregroundColor(ledColor)
                 Text("Portali")
                     .font(.headline)
+                Image(systemName: isPortalsCollapsed ? "chevron.right" : "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 Spacer()
                 Circle()
                     .fill(ledColor)
@@ -239,8 +244,10 @@ struct MacDashboardView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(ledColor.opacity(0.05))
+            .onTapGesture { withAnimation { isPortalsCollapsed.toggle() } }
 
             // Monitor list
+            if !isPortalsCollapsed {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     let downItems = filteredMonitors.filter { $0.isDown }
@@ -274,6 +281,7 @@ struct MacDashboardView: View {
                     }
                 }
             }
+            } // end if !isPortalsCollapsed
         }
     }
 
@@ -287,6 +295,9 @@ struct MacDashboardView: View {
                     .foregroundColor(temperatureStatusColor)
                 Text("Temperatura (°C)")
                     .font(.headline)
+                Image(systemName: isTemperatureCollapsed ? "chevron.right" : "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 Spacer()
                 Circle()
                     .fill(temperatureStatusColor)
@@ -296,6 +307,9 @@ struct MacDashboardView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(temperatureStatusColor.opacity(0.05))
+            .onTapGesture { withAnimation { isTemperatureCollapsed.toggle() } }
+
+            if !isTemperatureCollapsed {
 
             ScrollView {
                 LazyVStack(spacing: 0) {
@@ -310,6 +324,7 @@ struct MacDashboardView: View {
                     }
                 }
             }
+            } // end if !isTemperatureCollapsed
         }
     }
 
@@ -323,6 +338,9 @@ struct MacDashboardView: View {
                     .foregroundColor(powerStatusColor)
                 Text("Potenza (kW)")
                     .font(.headline)
+                Image(systemName: isPowerCollapsed ? "chevron.right" : "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 Spacer()
                 Circle()
                     .fill(powerStatusColor)
@@ -332,6 +350,9 @@ struct MacDashboardView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(powerStatusColor.opacity(0.05))
+            .onTapGesture { withAnimation { isPowerCollapsed.toggle() } }
+
+            if !isPowerCollapsed {
 
             ScrollView {
                 LazyVStack(spacing: 0) {
@@ -346,6 +367,7 @@ struct MacDashboardView: View {
                     }
                 }
             }
+            } // end if !isPowerCollapsed
         }
     }
 
