@@ -188,7 +188,8 @@ private struct NotificationSwipeRow: View {
                             .font(.system(size: 10))
                     }
                     .foregroundColor(.white)
-                    .frame(width: actionWidth, maxHeight: .infinity)
+                    .frame(maxHeight: .infinity)
+                    .frame(width: actionWidth)
                 }
                 .frame(width: actionWidth)
                 .background(Color.blue)
