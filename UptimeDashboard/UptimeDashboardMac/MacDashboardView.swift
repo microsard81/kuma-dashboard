@@ -654,6 +654,7 @@ private struct MacSparklineSegment: Identifiable {
 
 private struct MacNotificationHistoryPopover: View {
     @State private var notifications: [NotificationRecord] = []
+    @Environment(\.textScale) var scale
 
     var body: some View {
         VStack(spacing: 0) {
