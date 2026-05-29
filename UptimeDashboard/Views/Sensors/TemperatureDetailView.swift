@@ -38,7 +38,13 @@ struct TemperatureDetailView: View {
             baseOrder = viewModel.temperatureSensors
         }
 
-        // Stable sort: critical first, then warning, then normal — preserving relative order within each group
+        // Apply global sort order
+        let sortOrder = UserDefaults.standard.string(forKey: "sortOrder") ?? "severity"
+        if sortOrder == "alphabetical" {
+            return baseOrder.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        }
+
+        // Stable sort: critical first, then warning, then normal
         guard let t = viewModel.sensorThresholds else { return baseOrder }
         let critical = baseOrder.filter { $0.alertStatus(thresholds: t) == .critical }
         let warning = baseOrder.filter { $0.alertStatus(thresholds: t) == .warning }
