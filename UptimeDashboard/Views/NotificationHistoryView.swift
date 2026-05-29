@@ -169,29 +169,29 @@ private struct NotificationSwipeRow: View {
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            // Action button (revealed on swipe)
-            HStack {
-                Spacer()
-                Button {
-                    // Chiudi lo swipe prima di eseguire l'azione
-                    withAnimation(.easeOut(duration: 0.15)) { offset = 0 }
-                    // Esegui l'azione dopo la chiusura dello swipe
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        onAction()
+            // Action button (revealed on swipe) — visibile solo quando lo swipe è attivo
+            if offset < 0 {
+                HStack {
+                    Spacer()
+                    Button {
+                        withAnimation(.easeOut(duration: 0.15)) { offset = 0 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            onAction()
+                        }
+                    } label: {
+                        VStack(spacing: 2) {
+                            Image(systemName: isUnread ? "envelope.open" : "envelope.badge")
+                                .font(.system(size: 16))
+                            Text(isUnread ? "Letta" : "Non letta")
+                                .font(.system(size: 10))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxHeight: .infinity)
+                        .frame(width: actionWidth)
                     }
-                } label: {
-                    VStack(spacing: 2) {
-                        Image(systemName: isUnread ? "envelope.open" : "envelope.badge")
-                            .font(.system(size: 16))
-                        Text(isUnread ? "Letta" : "Non letta")
-                            .font(.system(size: 10))
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxHeight: .infinity)
                     .frame(width: actionWidth)
+                    .background(Color.blue)
                 }
-                .frame(width: actionWidth)
-                .background(Color.blue)
             }
 
             // Main content
