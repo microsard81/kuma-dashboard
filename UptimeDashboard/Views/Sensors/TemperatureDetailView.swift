@@ -105,7 +105,7 @@ struct TemperatureDetailView: View {
                 }
             }
         }
-        .listStyle(.sidebar)
+        .listStyle(.plain)
         .environment(\.editMode, isReordering ? .constant(.active) : .constant(.inactive))
         .refreshable { await viewModel.refresh() }
         .navigationTitle("Temperatura (°C)")

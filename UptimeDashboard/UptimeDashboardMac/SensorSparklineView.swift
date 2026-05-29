@@ -70,29 +70,38 @@ struct SensorSparklineView: View {
                 }
             }
 
-            // Touch gesture overlay
+            // Touch gesture overlay (200ms delay before showing tooltip)
             GeometryReader { geometry in
                 Rectangle()
                     .fill(Color.clear)
                     .contentShape(Rectangle())
                     .gesture(
-                        DragGesture(minimumDistance: 0)
+                        LongPressGesture(minimumDuration: 0.2)
+                            .sequenced(before: DragGesture(minimumDistance: 0))
                             .onChanged { value in
-                                let x = value.location.x
-                                let plotWidth = geometry.size.width
-                                guard plotWidth > 0, !points.isEmpty else { return }
-                                let ratio = max(0, min(1, x / plotWidth))
-                                let index = Int(round(ratio * Double(points.count - 1)))
-                                let clamped = max(0, min(points.count - 1, index))
-                                if clamped != selectedIndex {
-                                    selectedIndex = clamped
-                                    #if os(iOS)
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    #endif
+                                switch value {
+                                case .second(true, let drag):
+                                    guard let drag = drag else { return }
+                                    let x = drag.location.x
+                                    let plotWidth = geometry.size.width
+                                    guard plotWidth > 0, !points.isEmpty else { return }
+                                    let ratio = max(0, min(1, x / plotWidth))
+                                    let index = Int(round(ratio * Double(points.count - 1)))
+                                    let clamped = max(0, min(points.count - 1, index))
+                                    if clamped != selectedIndex {
+                                        selectedIndex = clamped
+                                        #if os(iOS)
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        #endif
+                                    }
+                                default:
+                                    break
                                 }
                             }
                             .onEnded { _ in
                                 selectedIndex = nil
+                            }
+                    )
                             }
                     )
             }
