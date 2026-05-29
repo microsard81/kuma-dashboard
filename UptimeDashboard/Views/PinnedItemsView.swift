@@ -40,12 +40,14 @@ final class PinnedStore {
         guard !items.contains(where: { $0.id == id }) else { return }
         items.append(PinnedItem(id: id, type: type))
         persist(items)
+        NotificationCenter.default.post(name: .pinnedItemsChanged, object: nil)
     }
 
     func unpin(id: String) {
         var items = loadAll()
         items.removeAll { $0.id == id }
         persist(items)
+        NotificationCenter.default.post(name: .pinnedItemsChanged, object: nil)
     }
 
     private func persist(_ items: [PinnedItem]) {
@@ -61,29 +63,29 @@ struct PinnedCardView: View {
     let viewModel: DashboardViewModel
 
     var body: some View {
-        HStack(spacing: 12) {
+        VStack(spacing: 8) {
             // Icon
             ZStack {
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 10)
                     .fill(cardColor.opacity(0.15))
-                    .frame(width: 36, height: 36)
+                    .frame(width: 40, height: 40)
                 Image(systemName: iconName)
-                    .font(.system(size: 14))
+                    .font(.system(size: 16))
                     .foregroundColor(cardColor)
             }
 
-            // Name + status
-            VStack(alignment: .leading, spacing: 2) {
-                Text(displayName)
-                    .font(.caption.bold())
-                    .lineLimit(1)
-                Text(statusText)
-                    .font(.caption2)
-                    .foregroundColor(cardColor)
-            }
+            // Name
+            Text(displayName)
+                .font(.caption.bold())
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
 
-            Spacer()
+            // Status
+            Text(statusText)
+                .font(.caption2.bold())
+                .foregroundColor(cardColor)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(10)
         .background(.ultraThinMaterial)
         .cornerRadius(12)
@@ -142,4 +144,11 @@ struct PinnedCardView: View {
             return "—"
         }
     }
+}
+
+
+// MARK: - Notification Name
+
+extension Notification.Name {
+    static let pinnedItemsChanged = Notification.Name("pinnedItemsChanged")
 }

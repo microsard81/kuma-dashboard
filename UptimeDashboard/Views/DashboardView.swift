@@ -13,6 +13,7 @@ struct DashboardView: View {
 
     @State private var showLogoutAlert = false
     @State private var unreadNotifications = NotificationStore.shared.unreadCount
+    @State private var pinnedItems: [PinnedItem] = PinnedStore.shared.loadAll()
 
     init(network: NetworkClientProtocol) {
         _viewModel = StateObject(wrappedValue: DashboardViewModel(network: network))
@@ -86,15 +87,16 @@ struct DashboardView: View {
                             .cornerRadius(8)
                         }
 
-                        // Pinned items
-                        let pinnedItems = PinnedStore.shared.loadAll()
+                        // Pinned items (square cards)
                         if !pinnedItems.isEmpty {
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                                 ForEach(pinnedItems) { item in
                                     PinnedCardView(item: item, viewModel: viewModel)
+                                        .aspectRatio(1, contentMode: .fit)
                                         .contextMenu {
                                             Button(role: .destructive) {
                                                 PinnedStore.shared.unpin(id: item.id)
+                                                withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
                                             } label: {
                                                 Label("Rimuovi dalla home", systemImage: "minus.circle")
                                             }
@@ -193,6 +195,10 @@ struct DashboardView: View {
             viewModel.bindSettings(settingsVM)
             viewModel.startAutoRefresh()
             unreadNotifications = NotificationStore.shared.unreadCount
+            pinnedItems = PinnedStore.shared.loadAll()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .pinnedItemsChanged)) { _ in
+            withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
         }
         .onDisappear { viewModel.stopAutoRefresh() }
         .onChange(of: viewModel.lastUpdated) { _ in
