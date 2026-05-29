@@ -102,8 +102,6 @@ struct SensorSparklineView: View {
                                 selectedIndex = nil
                             }
                     )
-                            }
-                    )
             }
         }
     }
