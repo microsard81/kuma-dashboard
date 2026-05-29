@@ -10,6 +10,7 @@ struct SensorCardView: View {
     let sensor: SensorReading
     let thresholds: SensorThresholds?
     let historyPoints: [SensorHistoryPoint]
+    @Environment(\.textScale) var scale
 
     private var status: AlertStatus {
         guard let t = thresholds else { return .normal }
@@ -31,11 +32,11 @@ struct SensorCardView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(sensor.name)
-                    .font(.headline)
+                    .font(.scaled(.body, scale: scale, weight: .semibold))
                 Spacer()
                 // Status badge with value only (unit shown in section header)
                 Text("\(sensor.value, specifier: "%.1f")")
-                    .font(.caption.bold())
+                    .font(.scaled(.caption, scale: scale, weight: .bold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
                     .background(displayColor.opacity(0.2))
