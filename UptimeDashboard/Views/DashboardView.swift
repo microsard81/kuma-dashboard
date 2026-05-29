@@ -12,20 +12,9 @@ struct DashboardView: View {
     @EnvironmentObject private var settingsVM: SettingsViewModel
 
     @State private var showLogoutAlert = false
-    @State private var isReorderingSections = false
-    @State private var sectionOrder: [String] = []
-
-    private let sectionOrderKey = "dashboard_section_order"
-    private let defaultOrder = ["portali", "temperatura", "potenza"]
 
     init(network: NetworkClientProtocol) {
         _viewModel = StateObject(wrappedValue: DashboardViewModel(network: network))
-    }
-
-    private var displayOrder: [String] {
-        if isReorderingSections { return sectionOrder }
-        let saved = UserDefaults.standard.stringArray(forKey: sectionOrderKey) ?? []
-        return saved.isEmpty ? defaultOrder : saved
     }
 
     // MARK: - Computed states
@@ -72,50 +61,32 @@ struct DashboardView: View {
             VStack(spacing: 0) {
                 if viewModel.isStale { staleBanner }
 
-                List {
-                    ForEach(displayOrder, id: \.self) { section in
-                        switch section {
-                        case "portali":
-                            sectionPortali
-                                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                                .listRowSeparator(.hidden)
-                        case "temperatura":
-                            if !viewModel.temperatureSensors.isEmpty {
-                                sectionTemperatura
-                                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                                    .listRowSeparator(.hidden)
-                            }
-                        case "potenza":
-                            if !viewModel.powerSensors.isEmpty {
-                                sectionPotenza
-                                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                                    .listRowSeparator(.hidden)
-                            }
-                        default:
-                            EmptyView()
+                ScrollView {
+                    VStack(spacing: 16) {
+                        sectionPortali
+                        if !viewModel.temperatureSensors.isEmpty {
+                            sectionTemperatura
                         }
-                    }
-                    .onMove { from, to in
-                        sectionOrder.move(fromOffsets: from, toOffset: to)
-                    }
+                        if !viewModel.powerSensors.isEmpty {
+                            sectionPotenza
+                        }
 
-                    // Sensor error banner (only if no sensor data available)
-                    if let error = viewModel.sensorError, viewModel.sensors.isEmpty {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.orange)
+                        // Sensor error banner (only if no sensor data available)
+                        if let error = viewModel.sensorError, viewModel.sensors.isEmpty {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                            .padding(8)
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(8)
                         }
-                        .padding(8)
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(8)
-                        .listRowSeparator(.hidden)
                     }
+                    .padding()
                 }
-                .listStyle(.plain)
-                .environment(\.editMode, isReorderingSections ? .constant(.active) : .constant(.inactive))
                 .refreshable { await viewModel.refresh() }
 
                 // MARK: - Footer actions (fixed at bottom, centered)
@@ -174,24 +145,6 @@ struct DashboardView: View {
             .background(dashboardBackground.ignoresSafeArea())
             .navigationTitle("Dashboard INVA")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        if isReorderingSections {
-                            // Save and exit
-                            UserDefaults.standard.set(sectionOrder, forKey: sectionOrderKey)
-                            withAnimation { isReorderingSections = false }
-                        } else {
-                            // Enter reorder mode
-                            sectionOrder = displayOrder
-                            withAnimation { isReorderingSections = true }
-                        }
-                    } label: {
-                        Image(systemName: isReorderingSections ? "lock.open" : "lock")
-                            .foregroundColor(isReorderingSections ? .orange : .secondary)
-                    }
-                }
-            }
             .alert("Conferma logout", isPresented: $showLogoutAlert) {
                 Button("Annulla", role: .cancel) {}
                 Button("Logout", role: .destructive) {
