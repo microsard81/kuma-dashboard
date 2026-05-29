@@ -85,6 +85,23 @@ struct DashboardView: View {
                             .background(Color.orange.opacity(0.1))
                             .cornerRadius(8)
                         }
+
+                        // Pinned items
+                        let pinnedItems = PinnedStore.shared.loadAll()
+                        if !pinnedItems.isEmpty {
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                                ForEach(pinnedItems) { item in
+                                    PinnedCardView(item: item, viewModel: viewModel)
+                                        .contextMenu {
+                                            Button(role: .destructive) {
+                                                PinnedStore.shared.unpin(id: item.id)
+                                            } label: {
+                                                Label("Rimuovi dalla home", systemImage: "minus.circle")
+                                            }
+                                        }
+                                }
+                            }
+                        }
                     }
                     .padding()
                 }

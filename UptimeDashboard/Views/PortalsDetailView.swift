@@ -148,6 +148,23 @@ struct PortalsDetailView: View {
                 }
                 .tint(.green)
             }
+            .swipeActions(edge: .trailing) {
+                if PinnedStore.shared.isPinned(id: item.name) {
+                    Button {
+                        PinnedStore.shared.unpin(id: item.name)
+                    } label: {
+                        Label("Rimuovi", systemImage: "minus.circle")
+                    }
+                    .tint(.red)
+                } else {
+                    Button {
+                        PinnedStore.shared.pin(id: item.name, type: .portale)
+                    } label: {
+                        Label("Home", systemImage: "plus.circle")
+                    }
+                    .tint(.purple)
+                }
+            }
     }
 
     private func rowBackground(for color: RowColor) -> Color {

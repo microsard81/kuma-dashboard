@@ -48,6 +48,7 @@
 		B0070005 /* TemperatureDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070006 /* TemperatureDetailView.swift */; };
 		B0070007 /* PowerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070008 /* PowerDetailView.swift */; };
 		B0080001 /* NotificationHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0080002 /* NotificationHistoryView.swift */; };
+		B0090001 /* PinnedItemsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0090002 /* PinnedItemsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -170,6 +171,7 @@
 		B0070006 /* TemperatureDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemperatureDetailView.swift; sourceTree = "<group>"; };
 		B0070008 /* PowerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerDetailView.swift; sourceTree = "<group>"; };
 		B0080002 /* NotificationHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationHistoryView.swift; sourceTree = "<group>"; };
+		B0090002 /* PinnedItemsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedItemsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -377,6 +379,7 @@
 				B0070002 /* MonitorRowView.swift */,
 				B0070004 /* PortalsDetailView.swift */,
 				B0080002 /* NotificationHistoryView.swift */,
+				B0090002 /* PinnedItemsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -689,6 +692,7 @@
 				B0070005 /* TemperatureDetailView.swift in Sources */,
 				B0070007 /* PowerDetailView.swift in Sources */,
 				B0080001 /* NotificationHistoryView.swift in Sources */,
+				B0090001 /* PinnedItemsView.swift in Sources */,
 				B0020003 /* KeychainStore.swift in Sources */,
 				B0020005 /* NetworkClient.swift in Sources */,
 				816E9C782F89397A004F93EF /* WCSessionDelegateHandler.swift in Sources */,

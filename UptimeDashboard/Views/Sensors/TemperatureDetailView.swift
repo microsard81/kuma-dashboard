@@ -138,6 +138,23 @@ struct TemperatureDetailView: View {
                     .tint(.orange)
                 }
             }
+            .swipeActions(edge: .trailing) {
+                if PinnedStore.shared.isPinned(id: sensor.id) {
+                    Button {
+                        PinnedStore.shared.unpin(id: sensor.id)
+                    } label: {
+                        Label("Rimuovi", systemImage: "minus.circle")
+                    }
+                    .tint(.red)
+                } else {
+                    Button {
+                        PinnedStore.shared.pin(id: sensor.id, type: .temperatura)
+                    } label: {
+                        Label("Home", systemImage: "plus.circle")
+                    }
+                    .tint(.purple)
+                }
+            }
     }
 
     // MARK: - Persistence
