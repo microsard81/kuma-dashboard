@@ -17,6 +17,8 @@ struct DashboardView: View {
     @State private var isReorderingPinned = false
     @State private var draggingPinnedItem: PinnedItem? = nil
     @State private var selectedPinnedItem: PinnedItem? = nil
+    @State private var sectionOrder: [String] = UserDefaults.standard.stringArray(forKey: "ios_section_order") ?? ["portali", "temperatura", "potenza"]
+    @State private var isReorderingSections = false
 
     init(network: NetworkClientProtocol) {
         _viewModel = StateObject(wrappedValue: DashboardViewModel(network: network))
@@ -68,12 +70,63 @@ struct DashboardView: View {
 
                 ScrollView {
                     VStack(spacing: 16) {
-                        sectionPortali
-                        if !viewModel.temperatureSensors.isEmpty {
-                            sectionTemperatura
-                        }
-                        if !viewModel.powerSensors.isEmpty {
-                            sectionPotenza
+                        if isReorderingSections {
+                            // Reorder mode: List with drag handles
+                            HStack {
+                                Spacer()
+                                Button {
+                                    UserDefaults.standard.set(sectionOrder, forKey: "ios_section_order")
+                                    withAnimation { isReorderingSections = false }
+                                } label: {
+                                    Text("Fine")
+                                        .font(.caption.bold())
+                                        .foregroundColor(.blue)
+                                }
+                            }
+
+                            List {
+                                ForEach(sectionOrder, id: \.self) { section in
+                                    HStack {
+                                        Image(systemName: sectionIcon(section))
+                                            .foregroundColor(sectionColor(section))
+                                        Text(sectionTitle(section))
+                                            .font(.headline)
+                                    }
+                                }
+                                .onMove { from, to in
+                                    sectionOrder.move(fromOffsets: from, toOffset: to)
+                                }
+                            }
+                            .listStyle(.plain)
+                            .environment(\.editMode, .constant(.active))
+                            .frame(height: 180)
+                        } else {
+                            // Normal mode: ordered sections with long press
+                            ForEach(sectionOrder, id: \.self) { section in
+                                switch section {
+                                case "portali":
+                                    sectionPortali
+                                        .onLongPressGesture(minimumDuration: 0.5) {
+                                            withAnimation { isReorderingSections = true }
+                                        }
+                                case "temperatura":
+                                    if !viewModel.temperatureSensors.isEmpty {
+                                        sectionTemperatura
+                                            .onLongPressGesture(minimumDuration: 0.5) {
+                                                withAnimation { isReorderingSections = true }
+                                            }
+                                    }
+                                case "potenza":
+                                    if !viewModel.powerSensors.isEmpty {
+                                        sectionPotenza
+                                            .onLongPressGesture(minimumDuration: 0.5) {
+                                                withAnimation { isReorderingSections = true }
+                                            }
+                                    }
+                                default:
+                                    EmptyView()
+                                }
+                            }
                         }
 
                         // Sensor error banner (only if no sensor data available)
@@ -298,6 +351,35 @@ struct DashboardView: View {
             if !enabled {
                 UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
             }
+        }
+    }
+
+    // MARK: - Section Helpers
+
+    private func sectionIcon(_ section: String) -> String {
+        switch section {
+        case "portali": return "globe"
+        case "temperatura": return "thermometer.medium"
+        case "potenza": return "bolt.fill"
+        default: return "questionmark"
+        }
+    }
+
+    private func sectionColor(_ section: String) -> Color {
+        switch section {
+        case "portali": return portalsColor
+        case "temperatura": return temperatureStatusColor
+        case "potenza": return powerStatusColor
+        default: return .gray
+        }
+    }
+
+    private func sectionTitle(_ section: String) -> String {
+        switch section {
+        case "portali": return "Portali"
+        case "temperatura": return "Temperatura"
+        case "potenza": return "Potenza"
+        default: return section
         }
     }
 
