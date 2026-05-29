@@ -217,15 +217,15 @@ struct MacDashboardView: View {
         VStack(spacing: 0) {
             // Section header
             HStack {
-                Circle()
-                    .fill(ledColor)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: ledColor.opacity(0.6), radius: 3)
                 Image(systemName: "globe")
                     .foregroundColor(ledColor)
                 Text("Portali")
                     .font(.headline)
                 Spacer()
+                Circle()
+                    .fill(ledColor)
+                    .frame(width: 10, height: 10)
+                    .shadow(color: ledColor.opacity(0.6), radius: 3)
                 if problemCount > 0 {
                     Toggle(isOn: $showOnlyProblems) {
                         Label("Solo problemi", systemImage: showOnlyProblems
@@ -283,15 +283,15 @@ struct MacDashboardView: View {
         let sensors = viewModel.sensors.filter { $0.category == .temperature }
         return VStack(spacing: 0) {
             HStack {
-                Circle()
-                    .fill(temperatureStatusColor)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: temperatureStatusColor.opacity(0.6), radius: 3)
                 Image(systemName: "thermometer.medium")
                     .foregroundColor(temperatureStatusColor)
                 Text("Temperatura (°C)")
                     .font(.headline)
                 Spacer()
+                Circle()
+                    .fill(temperatureStatusColor)
+                    .frame(width: 10, height: 10)
+                    .shadow(color: temperatureStatusColor.opacity(0.6), radius: 3)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
@@ -319,15 +319,15 @@ struct MacDashboardView: View {
         let sensors = viewModel.sensors.filter { $0.category == .power }
         return VStack(spacing: 0) {
             HStack {
-                Circle()
-                    .fill(powerStatusColor)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: powerStatusColor.opacity(0.6), radius: 3)
                 Image(systemName: "bolt.fill")
                     .foregroundColor(powerStatusColor)
                 Text("Potenza (kW)")
                     .font(.headline)
                 Spacer()
+                Circle()
+                    .fill(powerStatusColor)
+                    .frame(width: 10, height: 10)
+                    .shadow(color: powerStatusColor.opacity(0.6), radius: 3)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
