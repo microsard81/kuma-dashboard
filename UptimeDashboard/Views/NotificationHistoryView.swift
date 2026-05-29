@@ -184,61 +184,78 @@ final class NotificationStore {
     static let shared = NotificationStore()
     private let key = "notification_history"
     private let maxAge: TimeInterval = 30 * 24 * 3600 // 30 days
+    private let queue = DispatchQueue(label: "notificationStore", qos: .userInitiated)
 
     private init() {}
 
     /// Number of unread notifications.
     var unreadCount: Int {
-        loadAll().filter { !$0.isRead }.count
+        queue.sync { loadAllInternal().filter { !$0.isRead }.count }
     }
 
     /// Mark all notifications as read.
     func markAllAsRead() {
-        var records = loadAll()
-        for i in records.indices { records[i].isRead = true }
-        persist(records)
+        queue.sync {
+            var records = loadAllInternal()
+            for i in records.indices { records[i].isRead = true }
+            persistInternal(records)
+        }
     }
 
     /// Mark a single notification as read.
     func markAsRead(id: UUID) {
-        var records = loadAll()
-        if let idx = records.firstIndex(where: { $0.id == id }) {
-            records[idx].isRead = true
-            persist(records)
+        queue.sync {
+            var records = loadAllInternal()
+            if let idx = records.firstIndex(where: { $0.id == id }) {
+                records[idx].isRead = true
+                persistInternal(records)
+            }
         }
     }
 
     /// Mark a single notification as unread.
     func markAsUnread(id: UUID) {
-        var records = loadAll()
-        if let idx = records.firstIndex(where: { $0.id == id }) {
-            records[idx].isRead = false
-            persist(records)
+        queue.sync {
+            var records = loadAllInternal()
+            if let idx = records.firstIndex(where: { $0.id == id }) {
+                records[idx].isRead = false
+                persistInternal(records)
+            }
         }
     }
 
     /// Save a new notification only if not a duplicate (same requestId).
     func saveIfNotDuplicate(title: String, body: String, requestId: String? = nil) {
-        if let rid = requestId {
-            let existing = loadAll()
-            if existing.contains(where: { $0.requestId == rid }) { return }
+        queue.sync {
+            if let rid = requestId {
+                let existing = loadAllInternal()
+                if existing.contains(where: { $0.requestId == rid }) { return }
+            }
+            saveInternal(title: title, body: body, requestId: requestId)
         }
-        save(title: title, body: body, requestId: requestId)
     }
 
-    /// Save a new notification to history.
+    /// Save a new notification to history (always saves, no dedup).
     func save(title: String, body: String, requestId: String? = nil) {
-        var records = loadAll()
-        // Dedup by requestId
-        if let rid = requestId, records.contains(where: { $0.requestId == rid }) { return }
+        queue.sync {
+            saveInternal(title: title, body: body, requestId: requestId)
+        }
+    }
+
+    private func saveInternal(title: String, body: String, requestId: String?) {
+        var records = loadAllInternal()
         records.insert(NotificationRecord(title: title, body: body, requestId: requestId), at: 0)
         let cutoff = Date().addingTimeInterval(-maxAge)
         records = records.filter { $0.date > cutoff }
-        persist(records)
+        persistInternal(records)
     }
 
     /// Load all notifications (newest first), pruning old ones.
     func loadAll() -> [NotificationRecord] {
+        queue.sync { loadAllInternal() }
+    }
+
+    private func loadAllInternal() -> [NotificationRecord] {
         guard let data = UserDefaults.standard.data(forKey: key),
               var records = try? JSONDecoder().decode([NotificationRecord].self, from: data) else {
             return []
@@ -248,7 +265,7 @@ final class NotificationStore {
         return records.sorted { $0.date > $1.date }
     }
 
-    private func persist(_ records: [NotificationRecord]) {
+    private func persistInternal(_ records: [NotificationRecord]) {
         guard let data = try? JSONEncoder().encode(records) else { return }
         UserDefaults.standard.set(data, forKey: key)
     }
