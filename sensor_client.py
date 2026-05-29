@@ -64,18 +64,20 @@ def fetch_inverter_data():
         logger.info("Endpoint invadcstatus ha restituito errore: %s", error_msg)
         return _empty_response(error_msg)
 
-    # Normalizza i sensori: l'endpoint non fornisce id, category, unit
-    # Li deriviamo dal nome del sensore
+    # Normalizza i sensori: l'endpoint fornisce type, name, unit
     raw_sensors = data.get("sensors", [])
     sensors = []
     for s in raw_sensors:
         name = s.get("name", "")
+        sensor_type = s.get("type", "")
+        category = _type_to_category(sensor_type)
+        unit = s.get("unit", "")
         sensors.append({
             "id": name,  # usiamo il nome come ID (corrisponde alle chiavi history)
             "name": name,
-            "category": _guess_category(name),
+            "category": category,
             "value": s.get("value"),
-            "unit": "kW" if _guess_category(name) == "power" else "°C",
+            "unit": unit if unit else ("°C" if category == "temperature" else "kW" if category == "power" else ""),
             "timestamp": _epoch_to_iso(s.get("timestamp")),
         })
 
@@ -100,17 +102,16 @@ def fetch_inverter_data():
     }
 
 
-# Nomi sensori di potenza (contengono "Power" o "Consumo")
-_POWER_KEYWORDS = ("power", "consumo")
+# Mapping type → category
+_TYPE_MAP = {
+    "TEMPERATURE": "temperature",
+    "POWER_KWATTS": "power",
+}
 
 
-def _guess_category(name):
-    """Determina la categoria dal nome del sensore."""
-    lower = name.lower()
-    for kw in _POWER_KEYWORDS:
-        if kw in lower:
-            return "power"
-    return "temperature"
+def _type_to_category(sensor_type):
+    """Converte il campo 'type' dell'endpoint nella categoria interna."""
+    return _TYPE_MAP.get(sensor_type, "other")
 
 
 def _epoch_to_iso(ts):
