@@ -13,6 +13,7 @@ struct TemperatureDetailView: View {
     @State private var isWarningCollapsed = false
     @State private var isNormalCollapsed = false
     @State private var showPinConfirmation = false
+    @State private var showUnpinConfirmation = false
 
     private let orderKey = "sensor_order_temperature"
 
@@ -112,6 +113,7 @@ struct TemperatureDetailView: View {
         .navigationTitle("Temperatura (°C)")
         .navigationBarTitleDisplayMode(.inline)
         .overlay { CheckmarkPopup(isPresented: $showPinConfirmation) }
+        .overlay { CheckmarkPopup(isPresented: $showUnpinConfirmation, isRemoval: true) }
         .toolbar {
             if isReordering {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -144,6 +146,7 @@ struct TemperatureDetailView: View {
                 if PinnedStore.shared.isPinned(id: sensor.id) {
                     Button {
                         PinnedStore.shared.unpin(id: sensor.id)
+                        withAnimation { showUnpinConfirmation = true }
                     } label: {
                         Label("Rimuovi", systemImage: "minus.circle")
                     }

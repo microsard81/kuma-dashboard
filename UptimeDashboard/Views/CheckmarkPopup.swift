@@ -2,10 +2,11 @@
 
 import SwiftUI
 
-/// A full-screen overlay showing a large checkmark that fades in and out.
-/// Used to confirm an action (e.g., pinning a resource to the home screen).
+/// A full-screen overlay showing a large checkmark or X that fades in and out.
+/// Used to confirm an action (e.g., pinning/unpinning a resource).
 struct CheckmarkPopup: View {
     @Binding var isPresented: Bool
+    var isRemoval: Bool = false
 
     var body: some View {
         if isPresented {
@@ -14,10 +15,10 @@ struct CheckmarkPopup: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 12) {
-                    Image(systemName: "checkmark.circle.fill")
+                    Image(systemName: isRemoval ? "xmark.circle.fill" : "checkmark.circle.fill")
                         .font(.system(size: 60))
-                        .foregroundColor(.green)
-                    Text("Aggiunto")
+                        .foregroundColor(isRemoval ? .red : .green)
+                    Text(isRemoval ? "Rimosso" : "Aggiunto")
                         .font(.headline)
                         .foregroundColor(.white)
                 }

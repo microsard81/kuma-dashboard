@@ -14,6 +14,7 @@ struct PortalsDetailView: View {
     @State private var isMismatchCollapsed = false
     @State private var isUpCollapsed = false
     @State private var showPinConfirmation = false
+    @State private var showUnpinConfirmation = false
 
     private let orderKey = "monitor_order_portals"
 
@@ -116,6 +117,7 @@ struct PortalsDetailView: View {
         .navigationTitle("Portali")
         .navigationBarTitleDisplayMode(.inline)
         .overlay { CheckmarkPopup(isPresented: $showPinConfirmation) }
+        .overlay { CheckmarkPopup(isPresented: $showUnpinConfirmation, isRemoval: true) }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 if isReordering {
@@ -154,6 +156,7 @@ struct PortalsDetailView: View {
                 if PinnedStore.shared.isPinned(id: item.name) {
                     Button {
                         PinnedStore.shared.unpin(id: item.name)
+                        withAnimation { showUnpinConfirmation = true }
                     } label: {
                         Label("Rimuovi", systemImage: "minus.circle")
                     }
