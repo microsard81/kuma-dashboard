@@ -14,6 +14,7 @@ struct TemperatureDetailView: View {
     @State private var isNormalCollapsed = false
     @State private var showPinConfirmation = false
     @State private var showUnpinConfirmation = false
+    @State private var pinnedIds: Set<String> = Set(PinnedStore.shared.loadAll().map(\.id))
 
     private let orderKey = "sensor_order_temperature"
 
@@ -143,9 +144,10 @@ struct TemperatureDetailView: View {
                 }
             }
             .swipeActions(edge: .trailing) {
-                if PinnedStore.shared.isPinned(id: sensor.id) {
+                if pinnedIds.contains(sensor.id) {
                     Button {
                         PinnedStore.shared.unpin(id: sensor.id)
+                        pinnedIds.remove(sensor.id)
                         withAnimation { showUnpinConfirmation = true }
                     } label: {
                         Label("Rimuovi", systemImage: "minus.circle")
@@ -154,6 +156,7 @@ struct TemperatureDetailView: View {
                 } else {
                     Button {
                         PinnedStore.shared.pin(id: sensor.id, type: .temperatura)
+                        pinnedIds.insert(sensor.id)
                         withAnimation { showPinConfirmation = true }
                     } label: {
                         Label("Home", systemImage: "plus.circle")

@@ -94,7 +94,7 @@ struct DashboardView: View {
                             Divider()
                                 .padding(.vertical, 4)
 
-                            // Header with title
+                            // Header with title + Fine button
                             HStack {
                                 Text("In evidenza")
                                     .font(.headline)
@@ -111,33 +111,31 @@ struct DashboardView: View {
                                 }
                             }
 
-                            // Remove all button (only in reorder mode)
+                            // Remove all (centered, only in reorder mode)
                             if isReorderingPinned {
-                                HStack {
-                                    Button(role: .destructive) {
-                                        PinnedStore.shared.unpinAll()
-                                        withAnimation {
-                                            pinnedItems = []
-                                            isReorderingPinned = false
-                                        }
-                                    } label: {
-                                        Label("Rimuovi tutti", systemImage: "trash")
-                                            .font(.caption)
-                                            .foregroundColor(.red)
+                                Button(role: .destructive) {
+                                    PinnedStore.shared.unpinAll()
+                                    withAnimation {
+                                        pinnedItems = []
+                                        isReorderingPinned = false
                                     }
-                                    Spacer()
+                                } label: {
+                                    Label("Rimuovi tutti", systemImage: "trash")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
                                 }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 4)
                             }
 
                             if isReorderingPinned {
-                                // Reorder mode: cards with remove badge + drag to reorder
+                                // Reorder mode: cards with remove badge + drag
                                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                     ForEach(pinnedItems) { item in
                                         ZStack(alignment: .topLeading) {
                                             PinnedCardView(item: item, viewModel: viewModel)
                                                 .aspectRatio(1, contentMode: .fit)
                                                 .opacity(draggingPinnedItem?.id == item.id ? 0.5 : 1)
-                                            // Remove badge
                                             Button {
                                                 PinnedStore.shared.unpin(id: item.id)
                                                 withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
@@ -161,7 +159,7 @@ struct DashboardView: View {
                                     }
                                 }
                             } else {
-                                // Normal mode: grid with navigation
+                                // Normal mode: tap to navigate, long press to enter reorder
                                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                     ForEach(pinnedItems) { item in
                                         NavigationLink {
@@ -171,18 +169,8 @@ struct DashboardView: View {
                                                 .aspectRatio(1, contentMode: .fit)
                                         }
                                         .buttonStyle(.plain)
-                                        .contextMenu {
-                                            Button(role: .destructive) {
-                                                PinnedStore.shared.unpin(id: item.id)
-                                                withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
-                                            } label: {
-                                                Label("Rimuovi dalla home", systemImage: "minus.circle")
-                                            }
-                                            Button {
-                                                withAnimation { isReorderingPinned = true }
-                                            } label: {
-                                                Label("Riordina", systemImage: "arrow.up.arrow.down")
-                                            }
+                                        .onLongPressGesture {
+                                            withAnimation { isReorderingPinned = true }
                                         }
                                     }
                                 }

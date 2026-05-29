@@ -15,6 +15,7 @@ struct PortalsDetailView: View {
     @State private var isUpCollapsed = false
     @State private var showPinConfirmation = false
     @State private var showUnpinConfirmation = false
+    @State private var pinnedIds: Set<String> = Set(PinnedStore.shared.loadAll().map(\.id))
 
     private let orderKey = "monitor_order_portals"
 
@@ -153,9 +154,10 @@ struct PortalsDetailView: View {
                 .tint(.green)
             }
             .swipeActions(edge: .trailing) {
-                if PinnedStore.shared.isPinned(id: item.name) {
+                if pinnedIds.contains(item.name) {
                     Button {
                         PinnedStore.shared.unpin(id: item.name)
+                        pinnedIds.remove(item.name)
                         withAnimation { showUnpinConfirmation = true }
                     } label: {
                         Label("Rimuovi", systemImage: "minus.circle")
@@ -164,6 +166,7 @@ struct PortalsDetailView: View {
                 } else {
                     Button {
                         PinnedStore.shared.pin(id: item.name, type: .portale)
+                        pinnedIds.insert(item.name)
                         withAnimation { showPinConfirmation = true }
                     } label: {
                         Label("Home", systemImage: "plus.circle")
