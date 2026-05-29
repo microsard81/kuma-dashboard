@@ -25,67 +25,52 @@ struct NotificationHistoryView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                let unreadCount = notifications.filter { !$0.isRead }.count
-                let hasUnread = unreadCount > 0
-                let hasRead = notifications.contains { $0.isRead }
-
                 List {
-                    // Non lette
-                    if hasUnread {
-                        Section {
-                            ForEach(notifications.filter { !$0.isRead }) { notif in
-                                NotificationRow(notification: notif)
-                                    .listRowBackground(Color.blue.opacity(0.08))
-                                    .swipeActions(edge: .trailing) {
-                                        Button {
-                                            markAsRead(notif)
-                                        } label: {
-                                            Label("Letta", systemImage: "envelope.open")
-                                        }
-                                        .tint(.blue)
+                    ForEach(notifications) { notif in
+                        NotificationRow(notification: notif)
+                            .id(notif.id)
+                            .listRowBackground(notif.isRead ? Color.clear : Color.blue.opacity(0.08))
+                            .swipeActions(edge: .trailing) {
+                                if notif.isRead {
+                                    Button {
+                                        markAsUnread(notif)
+                                    } label: {
+                                        Label("Non letta", systemImage: "envelope.badge")
                                     }
-                            }
-                        } header: {
-                            Text("Non lette (\(unreadCount))")
-                        }
-                    }
-
-                    // Lette
-                    if hasRead {
-                        Section {
-                            ForEach(notifications.filter { $0.isRead }) { notif in
-                                NotificationRow(notification: notif)
-                                    .swipeActions(edge: .trailing) {
-                                        Button {
-                                            markAsUnread(notif)
-                                        } label: {
-                                            Label("Non letta", systemImage: "envelope.badge")
-                                        }
-                                        .tint(.blue)
+                                    .tint(.blue)
+                                } else {
+                                    Button {
+                                        markAsRead(notif)
+                                    } label: {
+                                        Label("Letta", systemImage: "envelope.open")
                                     }
+                                    .tint(.blue)
+                                }
                             }
-                        } header: {
-                            Text("Lette")
-                        }
                     }
                 }
-                .listStyle(.plain)
+                .listStyle(.insetGrouped)
                 .refreshable {
                     NotificationStore.shared.markAllAsRead()
                     withAnimation(.easeInOut(duration: 0.35)) {
                         reloadNotifications()
                     }
                 }
-                .overlay(alignment: .top) {
-                    if hasUnread {
+                .safeAreaInset(edge: .top) {
+                    if notifications.contains(where: { !$0.isRead }) {
                         HStack {
+                            let unreadCount = notifications.filter { !$0.isRead }.count
+                            Text("Non lette: \(unreadCount)")
+                                .font(.footnote.bold())
+                                .foregroundColor(.blue)
                             Spacer()
                             Text("↓ Segna tutte come lette")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
                         .padding(.horizontal, 16)
-                        .padding(.top, -20)
+                        .padding(.vertical, 6)
+                        .background(.ultraThinMaterial)
                     }
                 }
             }
@@ -131,11 +116,14 @@ struct NotificationHistoryView: View {
 
     private func markAsRead(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsRead(id: notif.id)
-        // Aggiorna lo stato locale — la riga esce da "Non lette" e appare in "Lette"
-        // Tutto in un'unica animazione: SwiftUI anima il collapse nella sezione di origine
         if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
-            let _ = withAnimation(.easeInOut(duration: 0.3)) {
+            withAnimation(.easeInOut(duration: 0.4)) {
                 notifications[idx].isRead = true
+                // Riordina: non lette prima (per data desc), poi lette (per data desc)
+                notifications.sort {
+                    if $0.isRead != $1.isRead { return !$0.isRead }
+                    return $0.date > $1.date
+                }
             }
         }
     }
@@ -143,8 +131,12 @@ struct NotificationHistoryView: View {
     private func markAsUnread(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsUnread(id: notif.id)
         if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
-            let _ = withAnimation(.easeInOut(duration: 0.3)) {
+            withAnimation(.easeInOut(duration: 0.4)) {
                 notifications[idx].isRead = false
+                notifications.sort {
+                    if $0.isRead != $1.isRead { return !$0.isRead }
+                    return $0.date > $1.date
+                }
             }
         }
     }
