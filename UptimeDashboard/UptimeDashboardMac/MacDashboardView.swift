@@ -98,14 +98,7 @@ struct MacDashboardView: View {
                         .foregroundColor(.secondary)
                 }
 
-                Button {
-                    Task { await viewModel.fetchDashboard() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .controlSize(.small)
-
-                // Section order menu
+                // Section order menu (first)
                 Menu {
                     Button("Portali · Temperatura · Potenza") {
                         UserDefaults.standard.set(["portali", "temperatura", "potenza"], forKey: sectionOrderKey)
@@ -133,29 +126,53 @@ struct MacDashboardView: View {
                     }
                 } label: {
                     Image(systemName: "rectangle.3.group")
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 13))
+                        .frame(width: 28, height: 28)
+                        .background(.ultraThinMaterial, in: Circle())
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
                 .help("Riordina sezioni")
 
+                // Refresh
+                Button {
+                    Task { await viewModel.fetchDashboard() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 13))
+                        .frame(width: 28, height: 28)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .help("Aggiorna")
+
+                // Notifications
                 Button {
                     showNotificationHistory = true
                 } label: {
                     Image(systemName: "bell")
+                        .font(.system(size: 13))
+                        .frame(width: 28, height: 28)
+                        .background(.ultraThinMaterial, in: Circle())
                 }
-                .controlSize(.small)
+                .buttonStyle(.plain)
                 .popover(isPresented: $showNotificationHistory) {
                     MacNotificationHistoryPopover()
                         .frame(width: 350, height: 400)
                 }
+                .help("Notifiche")
 
+                // Logout
                 Button {
                     viewModel.logout()
                 } label: {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .font(.system(size: 13))
+                        .frame(width: 28, height: 28)
+                        .background(.ultraThinMaterial, in: Circle())
                 }
-                .controlSize(.small)
+                .buttonStyle(.plain)
+                .help("Logout")
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
