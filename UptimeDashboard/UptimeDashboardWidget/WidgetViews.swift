@@ -116,7 +116,7 @@ struct SmallWidgetView: View {
     }
 }
 
-// MARK: - Medium Widget: 3 sezioni + stato
+// MARK: - Medium Widget: 3 card quadrate affiancate
 
 struct MediumWidgetView: View {
     let entry: DashboardEntry
@@ -141,12 +141,11 @@ struct MediumWidgetView: View {
                 Spacer()
             } else {
                 Spacer(minLength: 4)
-                // Portali
-                MacroRow(icon: "globe", title: "Portali", color: portalsColor, detail: portalsDetail)
-                // Temperatura
-                MacroRow(icon: "thermometer.medium", title: "Temperatura", color: temperatureColor, detail: temperatureDetail)
-                // Potenza
-                MacroRow(icon: "bolt.fill", title: "Potenza", color: powerColor, detail: powerDetail)
+                HStack(spacing: 12) {
+                    MacroCard(icon: "globe", title: "Portali", color: portalsColor, subtitle: portalsSubtitle)
+                    MacroCard(icon: "thermometer.medium", title: "Temperatura", color: temperatureColor, subtitle: temperatureSubtitle)
+                    MacroCard(icon: "bolt.fill", title: "Potenza", color: powerColor, subtitle: powerSubtitle)
+                }
                 Spacer(minLength: 0)
             }
         }
@@ -159,7 +158,7 @@ struct MediumWidgetView: View {
         return .green
     }
 
-    private var portalsDetail: String {
+    private var portalsSubtitle: String {
         let total = entry.monitors.count
         if entry.downCount > 0 { return "\(entry.downCount) DOWN / \(total)" }
         if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠ / \(total)" }
@@ -173,7 +172,7 @@ struct MediumWidgetView: View {
         return .orange
     }
 
-    private var temperatureDetail: String {
+    private var temperatureSubtitle: String {
         if entry.sensorError { return "Errore" }
         guard let alerts = entry.sensorAlerts else { return "—" }
         if alerts.hasAlerts { return "\(alerts.totalCount) in allarme" }
@@ -182,13 +181,13 @@ struct MediumWidgetView: View {
 
     private var powerColor: Color { .blue }
 
-    private var powerDetail: String {
+    private var powerSubtitle: String {
         if entry.sensorError { return "Errore" }
         return "Tutto OK"
     }
 }
 
-// MARK: - Large Widget: 3 sezioni + dettaglio monitor
+// MARK: - Large Widget: 3 card + lista monitor
 
 struct LargeWidgetView: View {
     let entry: DashboardEntry
@@ -213,14 +212,17 @@ struct LargeWidgetView: View {
                 HStack { Spacer(); Text("Caricamento...").font(.caption).foregroundColor(.secondary); Spacer() }
                 Spacer()
             } else {
-                // 3 sezioni
-                MacroRow(icon: "globe", title: "Portali", color: portalsColor, detail: portalsDetail)
-                MacroRow(icon: "thermometer.medium", title: "Temperatura", color: temperatureColor, detail: temperatureDetail)
-                MacroRow(icon: "bolt.fill", title: "Potenza", color: powerColor, detail: powerDetail)
+                // 3 card
+                HStack(spacing: 12) {
+                    MacroCard(icon: "globe", title: "Portali", color: portalsColor, subtitle: portalsSubtitle)
+                    MacroCard(icon: "thermometer.medium", title: "Temp", color: temperatureColor, subtitle: temperatureSubtitle)
+                    MacroCard(icon: "bolt.fill", title: "Potenza", color: powerColor, subtitle: powerSubtitle)
+                }
+                .padding(.bottom, 4)
 
-                Divider().background(Color.white.opacity(0.2)).padding(.vertical, 4)
+                Divider().background(Color.white.opacity(0.2))
 
-                // Top monitors
+                // Monitor list
                 ForEach(sortedMonitors.prefix(5)) { monitor in
                     HStack(spacing: 6) {
                         Text(shortName(monitor.name))
@@ -270,10 +272,10 @@ struct LargeWidgetView: View {
         return .green
     }
 
-    private var portalsDetail: String {
+    private var portalsSubtitle: String {
         let total = entry.monitors.count
-        if entry.downCount > 0 { return "\(entry.downCount) DOWN / \(total)" }
-        if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠ / \(total)" }
+        if entry.downCount > 0 { return "\(entry.downCount) DOWN" }
+        if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠" }
         return "OK (\(total))"
     }
 
@@ -284,18 +286,46 @@ struct LargeWidgetView: View {
         return .orange
     }
 
-    private var temperatureDetail: String {
+    private var temperatureSubtitle: String {
         if entry.sensorError { return "Errore" }
         guard let alerts = entry.sensorAlerts else { return "—" }
-        if alerts.hasAlerts { return "\(alerts.totalCount) in allarme" }
+        if alerts.hasAlerts { return "\(alerts.totalCount) ⚠" }
         return "OK"
     }
 
     private var powerColor: Color { .blue }
 
-    private var powerDetail: String {
+    private var powerSubtitle: String {
         if entry.sensorError { return "Errore" }
         return "OK"
+    }
+}
+
+// MARK: - MacroCard (quadrato per medium/large)
+
+private struct MacroCard: View {
+    let icon: String
+    let title: String
+    let color: Color
+    let subtitle: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(color)
+            Text(title)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(.white)
+            Text(subtitle)
+                .font(.system(size: 8))
+                .foregroundColor(color)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(color.opacity(0.1))
+        .cornerRadius(8)
     }
 }
 
