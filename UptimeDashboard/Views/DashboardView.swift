@@ -101,26 +101,38 @@ struct DashboardView: View {
                             .environment(\.editMode, .constant(.active))
                             .frame(height: 180)
                         } else {
-                            // Normal mode: ordered sections with long press
+                            // Normal mode: ordered sections with long press context menu
                             ForEach(sectionOrder, id: \.self) { section in
                                 switch section {
                                 case "portali":
                                     sectionPortali
-                                        .onLongPressGesture(minimumDuration: 0.5) {
-                                            withAnimation { isReorderingSections = true }
+                                        .contextMenu {
+                                            Button {
+                                                withAnimation { isReorderingSections = true }
+                                            } label: {
+                                                Label("Riordina sezioni", systemImage: "arrow.up.arrow.down")
+                                            }
                                         }
                                 case "temperatura":
                                     if !viewModel.temperatureSensors.isEmpty {
                                         sectionTemperatura
-                                            .onLongPressGesture(minimumDuration: 0.5) {
-                                                withAnimation { isReorderingSections = true }
+                                            .contextMenu {
+                                                Button {
+                                                    withAnimation { isReorderingSections = true }
+                                                } label: {
+                                                    Label("Riordina sezioni", systemImage: "arrow.up.arrow.down")
+                                                }
                                             }
                                     }
                                 case "potenza":
                                     if !viewModel.powerSensors.isEmpty {
                                         sectionPotenza
-                                            .onLongPressGesture(minimumDuration: 0.5) {
-                                                withAnimation { isReorderingSections = true }
+                                            .contextMenu {
+                                                Button {
+                                                    withAnimation { isReorderingSections = true }
+                                                } label: {
+                                                    Label("Riordina sezioni", systemImage: "arrow.up.arrow.down")
+                                                }
                                             }
                                     }
                                 default:
