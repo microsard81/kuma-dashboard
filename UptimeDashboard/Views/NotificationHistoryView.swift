@@ -26,7 +26,7 @@ struct NotificationHistoryView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
-                    ForEach(sortedNotifications) { notif in
+                    ForEach($notifications) { $notif in
                         NotificationRow(notification: notif)
                             .listRowBackground(notif.isRead ? Color.clear : Color.blue.opacity(0.08))
                             .swipeActions(edge: .trailing) {
@@ -49,7 +49,6 @@ struct NotificationHistoryView: View {
                     }
                 }
                 .listStyle(.plain)
-                .animation(.easeInOut(duration: 0.3), value: notifications)
                 .refreshable {
                     NotificationStore.shared.markAllAsRead()
                     notifications = NotificationStore.shared.loadAll()
@@ -69,16 +68,13 @@ struct NotificationHistoryView: View {
         .onAppear { loadNotifications() }
     }
 
-    /// Sorted: unread first (by date desc), then read (by date desc).
-    private var sortedNotifications: [NotificationRecord] {
-        notifications.sorted {
+    private func loadNotifications() {
+        let all = NotificationStore.shared.loadAll()
+        // Ordina: non lette prima, poi per data decrescente
+        notifications = all.sorted {
             if $0.isRead != $1.isRead { return !$0.isRead }
             return $0.date > $1.date
         }
-    }
-
-    private func loadNotifications() {
-        notifications = NotificationStore.shared.loadAll()
         #if DEBUG
         // Seed 4 test notifications if empty
         if notifications.isEmpty {
@@ -86,7 +82,11 @@ struct NotificationHistoryView: View {
             NotificationStore.shared.save(title: "🔴 Portale DOWN", body: "www.regione.vda.it non raggiungibile da tutte le sonde")
             NotificationStore.shared.save(title: "⚡ Potenza bassa", body: "INV2 - Alimentazione sotto soglia warning (4.1 kW)")
             NotificationStore.shared.save(title: "✅ Ripristino servizio", body: "mail.cst.inva.it è tornato UP su tutte le sonde")
-            notifications = NotificationStore.shared.loadAll()
+            let seeded = NotificationStore.shared.loadAll()
+            notifications = seeded.sorted {
+                if $0.isRead != $1.isRead { return !$0.isRead }
+                return $0.date > $1.date
+            }
         }
         #endif
     }
