@@ -93,12 +93,20 @@ struct SensorSparklineView: View {
 
     /// Extract HH:mm from a raw ISO timestamp string without full parsing
     private func extractTime(from str: String) -> String {
-        // Look for T followed by HH:mm
+        // Look for T followed by HH:mm (e.g. "2026-05-29T08:37:00")
         if let tIndex = str.firstIndex(of: "T") {
             let timeStart = str.index(after: tIndex)
             let timeStr = String(str[timeStart...])
             if timeStr.count >= 5 {
-                return String(timeStr.prefix(5)) // "HH:mm"
+                return String(timeStr.prefix(5))
+            }
+        }
+        // Look for space followed by HH:mm (e.g. "2026-05-29 08:37:00")
+        if let spaceIndex = str.firstIndex(of: " ") {
+            let timeStart = str.index(after: spaceIndex)
+            let timeStr = String(str[timeStart...])
+            if timeStr.count >= 5 {
+                return String(timeStr.prefix(5))
             }
         }
         return ""
@@ -112,17 +120,27 @@ struct SensorSparklineView: View {
 
     /// Parses an ISO 8601 timestamp string into a Date.
     private func parseISO(_ str: String?) -> Date? {
-        guard let str = str else { return nil }
+        guard let str = str, !str.isEmpty else { return nil }
         let iso = ISO8601DateFormatter()
+        // Try with fractional seconds + timezone
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = iso.date(from: str) { return date }
+        // Try without fractional seconds
         iso.formatOptions = [.withInternetDateTime]
         if let date = iso.date(from: str) { return date }
-        // Fallback: no timezone
+        // Fallback: various common formats
         let df = DateFormatter()
-        df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         df.locale = Locale(identifier: "en_US_POSIX")
-        return df.date(from: str)
+        for format in [
+            "yyyy-MM-dd'T'HH:mm:ssZ",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd'T'HH:mm:ssXXXXX",
+        ] {
+            df.dateFormat = format
+            if let date = df.date(from: str) { return date }
+        }
+        return nil
     }
 }
 

@@ -16,15 +16,7 @@ struct MonitorRowView: View {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "it-IT")
         formatter.dateFormat = "HH:mm"
-        let time = formatter.string(from: ts)
-        let status: String
-        switch seg.severity {
-        case 0: status = "UP"
-        case 1: status = "Mismatch"
-        case 2: status = "DOWN"
-        default: status = "?"
-        }
-        return "\(time) · \(status)"
+        return formatter.string(from: ts)
     }
 
     /// Durante lo scrubbing su un campione mismatch, restituisce lo stato per-sonda
