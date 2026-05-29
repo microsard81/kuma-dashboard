@@ -50,6 +50,15 @@ final class PinnedStore {
         NotificationCenter.default.post(name: .pinnedItemsChanged, object: nil)
     }
 
+    func unpinAll() {
+        persist([])
+        NotificationCenter.default.post(name: .pinnedItemsChanged, object: nil)
+    }
+
+    func reorder(_ items: [PinnedItem]) {
+        persist(items)
+    }
+
     private func persist(_ items: [PinnedItem]) {
         guard let data = try? JSONEncoder().encode(items) else { return }
         UserDefaults.standard.set(data, forKey: key)

@@ -14,6 +14,7 @@ struct DashboardView: View {
     @State private var showLogoutAlert = false
     @State private var unreadNotifications = NotificationStore.shared.unreadCount
     @State private var pinnedItems: [PinnedItem] = PinnedStore.shared.loadAll()
+    @State private var isReorderingPinned = false
 
     init(network: NetworkClientProtocol) {
         _viewModel = StateObject(wrappedValue: DashboardViewModel(network: network))
@@ -91,28 +92,78 @@ struct DashboardView: View {
                         if !pinnedItems.isEmpty {
                             Divider()
                                 .padding(.vertical, 4)
-                            Text("In evidenza")
-                                .font(.headline)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            // Header with title + reorder button
+                            HStack {
+                                Text("In evidenza")
+                                    .font(.headline)
+                                Spacer()
+                                Button {
+                                    if isReorderingPinned {
+                                        // Save and exit
+                                        PinnedStore.shared.reorder(pinnedItems)
+                                        withAnimation { isReorderingPinned = false }
+                                    } else {
+                                        withAnimation { isReorderingPinned = true }
+                                    }
+                                } label: {
+                                    Image(systemName: isReorderingPinned ? "checkmark.circle.fill" : "square.grid.2x2")
+                                        .foregroundColor(isReorderingPinned ? .green : .secondary)
+                                }
+                            }
+
+                            // Remove all button (only in reorder mode)
+                            if isReorderingPinned {
+                                Button(role: .destructive) {
+                                    PinnedStore.shared.unpinAll()
+                                    withAnimation {
+                                        pinnedItems = []
+                                        isReorderingPinned = false
+                                    }
+                                } label: {
+                                    Label("Rimuovi tutti", systemImage: "trash")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                            }
 
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                 ForEach(pinnedItems) { item in
-                                    NavigationLink {
-                                        pinnedDestination(for: item)
-                                    } label: {
-                                        PinnedCardView(item: item, viewModel: viewModel)
-                                            .aspectRatio(1, contentMode: .fit)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .contextMenu {
-                                        Button(role: .destructive) {
-                                            PinnedStore.shared.unpin(id: item.id)
-                                            withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
+                                    if isReorderingPinned {
+                                        // Reorder mode: show remove button, no navigation
+                                        VStack(spacing: 4) {
+                                            PinnedCardView(item: item, viewModel: viewModel)
+                                                .aspectRatio(1, contentMode: .fit)
+                                            Button {
+                                                PinnedStore.shared.unpin(id: item.id)
+                                                withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
+                                            } label: {
+                                                Image(systemName: "minus.circle.fill")
+                                                    .foregroundColor(.red)
+                                                    .font(.system(size: 16))
+                                            }
+                                        }
+                                    } else {
+                                        // Normal mode: navigation on tap
+                                        NavigationLink {
+                                            pinnedDestination(for: item)
                                         } label: {
-                                            Label("Rimuovi dalla home", systemImage: "minus.circle")
+                                            PinnedCardView(item: item, viewModel: viewModel)
+                                                .aspectRatio(1, contentMode: .fit)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .contextMenu {
+                                            Button(role: .destructive) {
+                                                PinnedStore.shared.unpin(id: item.id)
+                                                withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
+                                            } label: {
+                                                Label("Rimuovi dalla home", systemImage: "minus.circle")
+                                            }
                                         }
                                     }
                                 }
+                            }
                             }
                         }
                     }
