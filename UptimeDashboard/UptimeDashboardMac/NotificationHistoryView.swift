@@ -78,6 +78,17 @@ struct NotificationHistoryView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        .toolbar {
+            if !unreadNotifications.isEmpty {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Segna tutte come lette") {
+                        NotificationStore.shared.markAllAsRead()
+                        withAnimation { notifications = NotificationStore.shared.loadAll() }
+                    }
+                    .font(.caption)
+                }
+            }
+        }
         .onAppear { loadNotifications() }
     }
 

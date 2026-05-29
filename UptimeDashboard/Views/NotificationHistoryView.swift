@@ -76,6 +76,17 @@ struct NotificationHistoryView: View {
         }
         .navigationTitle("Notifiche")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !unreadNotifications.isEmpty {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Segna tutte come lette") {
+                        NotificationStore.shared.markAllAsRead()
+                        withAnimation { notifications = NotificationStore.shared.loadAll() }
+                    }
+                    .font(.caption)
+                }
+            }
+        }
         .onAppear { loadNotifications() }
     }
 
