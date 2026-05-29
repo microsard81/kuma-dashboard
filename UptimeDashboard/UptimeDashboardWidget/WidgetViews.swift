@@ -43,22 +43,38 @@ struct SmallWidgetView: View {
     let entry: DashboardEntry
 
     var body: some View {
-        VStack(spacing: 6) {
-            Text("INVA")
-                .font(.caption2.bold())
-                .foregroundColor(.white)
+        VStack(alignment: .leading, spacing: 8) {
+            // Header
+            HStack {
+                Text("INVA")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.white)
+                Spacer()
+                if !entry.isPlaceholder {
+                    Text(entry.date, style: .time)
+                        .font(.system(size: 8))
+                        .foregroundColor(.secondary)
+                }
+            }
 
             if entry.isPlaceholder {
+                Spacer()
                 Text("Caricamento...")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity)
+                Spacer()
             } else {
+                Spacer(minLength: 2)
+
                 // Portali
                 MacroRow(icon: "globe", title: "Portali", color: portalsColor, detail: portalsDetail)
                 // Temperatura
-                MacroRow(icon: "thermometer.medium", title: "Temp", color: temperatureColor, detail: temperatureDetail)
+                MacroRow(icon: "thermometer.medium", title: "Temperatura", color: temperatureColor, detail: temperatureDetail)
                 // Potenza
                 MacroRow(icon: "bolt.fill", title: "Potenza", color: powerColor, detail: powerDetail)
+
+                Spacer(minLength: 0)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -73,18 +89,20 @@ struct SmallWidgetView: View {
     private var portalsDetail: String {
         if entry.downCount > 0 { return "\(entry.downCount) DOWN" }
         if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠" }
-        return "OK"
+        return "OK (\(entry.monitors.count))"
     }
 
     private var temperatureColor: Color {
         guard let alerts = entry.sensorAlerts else { return .orange }
-        // We only have total counts, not per-category. Use orange as default.
+        if alerts.hasCritical { return .red }
+        if alerts.hasAlerts { return .yellow }
         return .orange
     }
 
     private var temperatureDetail: String {
+        if entry.sensorError { return "—" }
         guard let alerts = entry.sensorAlerts else { return "—" }
-        if alerts.hasCritical || alerts.hasAlerts { return "\(alerts.totalCount) ⚠" }
+        if alerts.hasAlerts { return "\(alerts.totalCount) ⚠" }
         return "OK"
     }
 
@@ -93,7 +111,7 @@ struct SmallWidgetView: View {
     }
 
     private var powerDetail: String {
-        guard entry.sensorAlerts != nil else { return "—" }
+        if entry.sensorError { return "—" }
         return "OK"
     }
 }
