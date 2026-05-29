@@ -10,6 +10,8 @@ struct HelpView: View {
                 // Panoramica
                 section("Panoramica") {
                     Text("Dashboard INVA monitora lo stato dei portali web e dei sensori del datacenter (temperatura e potenza). I dati si aggiornano automaticamente ogni 60 secondi.")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.leading)
                 }
 
                 // Schermata principale
@@ -103,7 +105,9 @@ struct HelpView: View {
                     infoRow(icon: "plus.circle", text: "Nelle schede Portali, Temperatura o Potenza, scorri verso sinistra su un elemento per aggiungerlo alla pagina principale.")
                     infoRow(icon: "square.grid.2x2", text: "Le risorse in evidenza appaiono come quadrati nella home, sotto le 3 sezioni principali.")
                     infoRow(icon: "hand.tap", text: "Tocca una risorsa in evidenza per aprire la scheda corrispondente.")
-                    infoRow(icon: "minus.circle", text: "Per rimuovere: tieni premuto sulla card nella home, oppure scorri verso sinistra nella scheda di dettaglio.")
+                    infoRow(icon: "hand.press", text: "Tieni premuto su una card per entrare in modalità riordino: trascina per spostare, tocca ⊖ per rimuovere.")
+                    infoRow(icon: "trash", text: "In modalità riordino, 'Rimuovi tutti' elimina tutte le risorse in evidenza.")
+                    infoRow(icon: "checkmark.circle", text: "Tocca 'Fine' per salvare l'ordine e uscire dalla modalità riordino.")
                 }
 
                 // Aggiornamento
