@@ -165,7 +165,6 @@ private struct NotificationSwipeRow: View {
     let onAction: () -> Void
 
     @State private var offset: CGFloat = 0
-    @State private var showAction = false
 
     private let actionWidth: CGFloat = 80
 
@@ -175,8 +174,12 @@ private struct NotificationSwipeRow: View {
             HStack {
                 Spacer()
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { offset = 0 }
-                    onAction()
+                    // Chiudi lo swipe prima di eseguire l'azione
+                    withAnimation(.easeOut(duration: 0.15)) { offset = 0 }
+                    // Esegui l'azione dopo la chiusura dello swipe
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        onAction()
+                    }
                 } label: {
                     VStack(spacing: 2) {
                         Image(systemName: isUnread ? "envelope.open" : "envelope.badge")
@@ -185,7 +188,7 @@ private struct NotificationSwipeRow: View {
                             .font(.system(size: 10))
                     }
                     .foregroundColor(.white)
-                    .frame(width: actionWidth, height: .infinity)
+                    .frame(width: actionWidth, maxHeight: .infinity)
                 }
                 .frame(width: actionWidth)
                 .background(Color.blue)
@@ -202,6 +205,9 @@ private struct NotificationSwipeRow: View {
                         .onChanged { value in
                             if value.translation.width < 0 {
                                 offset = max(value.translation.width, -actionWidth)
+                            } else if offset < 0 {
+                                // Permetti di chiudere trascinando a destra
+                                offset = min(0, offset + value.translation.width)
                             }
                         }
                         .onEnded { value in
@@ -217,6 +223,10 @@ private struct NotificationSwipeRow: View {
         }
         .frame(maxWidth: .infinity)
         .clipped()
+        // Reset offset quando l'elemento cambia stato (viene riusato)
+        .onChange(of: notification.isRead) { _ in
+            offset = 0
+        }
 
         Divider()
             .padding(.leading, 16)
