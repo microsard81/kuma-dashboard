@@ -93,68 +93,69 @@ struct DashboardView: View {
                             Divider()
                                 .padding(.vertical, 4)
 
-                            // Header with title + reorder button
+                            // Header with title
                             HStack {
                                 Text("In evidenza")
                                     .font(.headline)
                                 Spacer()
-                                Button {
-                                    if isReorderingPinned {
-                                        // Save and exit
+                                if isReorderingPinned {
+                                    Button {
                                         PinnedStore.shared.reorder(pinnedItems)
                                         withAnimation { isReorderingPinned = false }
-                                    } else {
-                                        withAnimation { isReorderingPinned = true }
+                                    } label: {
+                                        Text("Fine")
+                                            .font(.caption.bold())
+                                            .foregroundColor(.blue)
                                     }
-                                } label: {
-                                    Image(systemName: isReorderingPinned ? "checkmark.circle.fill" : "square.grid.2x2")
-                                        .foregroundColor(isReorderingPinned ? .green : .secondary)
                                 }
                             }
 
                             // Remove all button (only in reorder mode)
                             if isReorderingPinned {
-                                Button(role: .destructive) {
-                                    PinnedStore.shared.unpinAll()
-                                    withAnimation {
-                                        pinnedItems = []
-                                        isReorderingPinned = false
+                                HStack {
+                                    Button(role: .destructive) {
+                                        PinnedStore.shared.unpinAll()
+                                        withAnimation {
+                                            pinnedItems = []
+                                            isReorderingPinned = false
+                                        }
+                                    } label: {
+                                        Label("Rimuovi tutti", systemImage: "trash")
+                                            .font(.caption)
+                                            .foregroundColor(.red)
                                     }
-                                } label: {
-                                    Label("Rimuovi tutti", systemImage: "trash")
-                                        .font(.caption)
-                                        .foregroundColor(.red)
+                                    Spacer()
                                 }
-                                .frame(maxWidth: .infinity, alignment: .trailing)
                             }
 
                             if isReorderingPinned {
-                                // Reorder mode: List with drag handles
-                                List {
+                                // Reorder mode: cards with jiggle + remove badge + drag
+                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                     ForEach(pinnedItems) { item in
-                                        HStack {
-                                            Image(systemName: iconForType(item.type))
-                                                .foregroundColor(colorForType(item.type))
-                                            Text(item.id.replacingOccurrences(of: "INVA - ", with: ""))
-                                                .font(.caption)
-                                                .lineLimit(1)
-                                            Spacer()
+                                        ZStack(alignment: .topLeading) {
+                                            PinnedCardView(item: item, viewModel: viewModel)
+                                                .aspectRatio(1, contentMode: .fit)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 10)
+                                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                                                )
+                                            // Remove badge
                                             Button {
                                                 PinnedStore.shared.unpin(id: item.id)
                                                 withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
                                             } label: {
                                                 Image(systemName: "minus.circle.fill")
+                                                    .font(.system(size: 18))
                                                     .foregroundColor(.red)
+                                                    .background(Circle().fill(Color.white).frame(width: 16, height: 16))
                                             }
+                                            .offset(x: -6, y: -6)
+                                        }
+                                        .onDrag {
+                                            NSItemProvider(object: item.id as NSString)
                                         }
                                     }
-                                    .onMove { from, to in
-                                        pinnedItems.move(fromOffsets: from, toOffset: to)
-                                    }
                                 }
-                                .listStyle(.plain)
-                                .environment(\.editMode, .constant(.active))
-                                .frame(height: CGFloat(pinnedItems.count * 44 + 8))
                             } else {
                                 // Normal mode: grid with navigation
                                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -172,6 +173,11 @@ struct DashboardView: View {
                                                 withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
                                             } label: {
                                                 Label("Rimuovi dalla home", systemImage: "minus.circle")
+                                            }
+                                            Button {
+                                                withAnimation { isReorderingPinned = true }
+                                            } label: {
+                                                Label("Riordina", systemImage: "arrow.up.arrow.down")
                                             }
                                         }
                                     }
