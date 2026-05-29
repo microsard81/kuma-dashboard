@@ -19,11 +19,11 @@ struct SensorSparklineView: View {
     private var yMin: Double { category == .power ? 1 : 10 }
     private var yMax: Double { category == .power ? 100 : 65 }
 
-    /// Parsed data points with Date for tooltip display.
-    private var dataPoints: [(date: Date?, value: Double, index: Int)] {
-        historyPoints.suffix(60).enumerated().map { index, point in
-            let date = parseISO(point.t)
-            return (date: date, value: point.v, index: index)
+    /// Parsed data points with raw timestamp for tooltip display.
+    private var dataPoints: [(rawTime: String, value: Double, index: Int)] {
+        Array(historyPoints.suffix(60)).enumerated().map { index, point in
+            let time = extractTime(from: point.t)
+            return (rawTime: time, value: point.v, index: index)
         }
     }
 
@@ -55,12 +55,8 @@ struct SensorSparklineView: View {
                             Text(String(format: "%.1f", point.value))
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(color)
-                            if let date = point.date {
-                                Text(formatTime(date))
-                                    .font(.system(size: 8))
-                                    .foregroundColor(.secondary)
-                            } else if let raw = rawTimestamp(at: idx) {
-                                Text(extractTime(from: raw))
+                            if !point.rawTime.isEmpty {
+                                Text(point.rawTime)
                                     .font(.system(size: 8))
                                     .foregroundColor(.secondary)
                             }
@@ -84,16 +80,9 @@ struct SensorSparklineView: View {
         }
     }
 
-    /// Get raw timestamp string at index for fallback display
-    private func rawTimestamp(at index: Int) -> String? {
-        let slice = Array(historyPoints.suffix(60))
-        guard index >= 0, index < slice.count else { return nil }
-        return slice[index].t
-    }
-
-    /// Extract HH:mm from a raw ISO timestamp string without full parsing
+    /// Extract HH:mm from a raw timestamp string
     private func extractTime(from str: String) -> String {
-        // Look for T followed by HH:mm (e.g. "2026-05-29T08:37:00")
+        // Look for T followed by HH:mm (e.g. "2026-05-29T08:37:00+00:00")
         if let tIndex = str.firstIndex(of: "T") {
             let timeStart = str.index(after: tIndex)
             let timeStr = String(str[timeStart...])
@@ -109,38 +98,11 @@ struct SensorSparklineView: View {
                 return String(timeStr.prefix(5))
             }
         }
-        return ""
-    }
-
-    private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: date)
-    }
-
-    /// Parses an ISO 8601 timestamp string into a Date.
-    private func parseISO(_ str: String?) -> Date? {
-        guard let str = str, !str.isEmpty else { return nil }
-        let iso = ISO8601DateFormatter()
-        // Try with fractional seconds + timezone
-        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = iso.date(from: str) { return date }
-        // Try without fractional seconds
-        iso.formatOptions = [.withInternetDateTime]
-        if let date = iso.date(from: str) { return date }
-        // Fallback: various common formats
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        for format in [
-            "yyyy-MM-dd'T'HH:mm:ssZ",
-            "yyyy-MM-dd'T'HH:mm:ss",
-            "yyyy-MM-dd HH:mm:ss",
-            "yyyy-MM-dd'T'HH:mm:ssXXXXX",
-        ] {
-            df.dateFormat = format
-            if let date = df.date(from: str) { return date }
+        // If the string itself looks like HH:mm or HH:mm:ss
+        if str.count >= 5, str.contains(":") {
+            return String(str.prefix(5))
         }
-        return nil
+        return str
     }
 }
 
