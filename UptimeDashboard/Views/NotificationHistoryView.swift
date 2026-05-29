@@ -9,11 +9,6 @@ import UserNotifications
 struct NotificationHistoryView: View {
     @State private var notifications: [NotificationRecord] = []
 
-    /// ID del primo elemento letto nell'array (per inserire l'header "Lette")
-    private var firstReadId: UUID? {
-        notifications.first(where: { $0.isRead })?.id
-    }
-
     var body: some View {
         Group {
             if notifications.isEmpty {
@@ -32,39 +27,46 @@ struct NotificationHistoryView: View {
             } else {
                 let unreadCount = notifications.filter { !$0.isRead }.count
                 let hasUnread = unreadCount > 0
+                let hasRead = notifications.contains { $0.isRead }
 
                 List {
-                    ForEach(notifications) { notif in
-                        // Header inline prima del primo elemento letto
-                        if notif.id == firstReadId && hasUnread {
-                            Text("Lette")
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
-                                .textCase(.uppercase)
-                                .listRowBackground(Color.clear)
-                                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 4, trailing: 16))
-                        }
-
-                        NotificationRow(notification: notif)
-                            .id(notif.id)
-                            .listRowBackground(notif.isRead ? Color.clear : Color.blue.opacity(0.08))
-                            .swipeActions(edge: .trailing) {
-                                if notif.isRead {
-                                    Button {
-                                        markAsUnread(notif)
-                                    } label: {
-                                        Label("Non letta", systemImage: "envelope.badge")
+                    // Non lette
+                    if hasUnread {
+                        Section {
+                            ForEach(notifications.filter { !$0.isRead }) { notif in
+                                NotificationRow(notification: notif)
+                                    .listRowBackground(Color.blue.opacity(0.08))
+                                    .swipeActions(edge: .trailing) {
+                                        Button {
+                                            markAsRead(notif)
+                                        } label: {
+                                            Label("Letta", systemImage: "envelope.open")
+                                        }
+                                        .tint(.blue)
                                     }
-                                    .tint(.blue)
-                                } else {
-                                    Button {
-                                        markAsRead(notif)
-                                    } label: {
-                                        Label("Letta", systemImage: "envelope.open")
-                                    }
-                                    .tint(.blue)
-                                }
                             }
+                        } header: {
+                            Text("Non lette (\(unreadCount))")
+                        }
+                    }
+
+                    // Lette
+                    if hasRead {
+                        Section {
+                            ForEach(notifications.filter { $0.isRead }) { notif in
+                                NotificationRow(notification: notif)
+                                    .swipeActions(edge: .trailing) {
+                                        Button {
+                                            markAsUnread(notif)
+                                        } label: {
+                                            Label("Non letta", systemImage: "envelope.badge")
+                                        }
+                                        .tint(.blue)
+                                    }
+                            }
+                        } header: {
+                            Text("Lette")
+                        }
                     }
                 }
                 .listStyle(.plain)
@@ -77,10 +79,6 @@ struct NotificationHistoryView: View {
                 .overlay(alignment: .top) {
                     if hasUnread {
                         HStack {
-                            Text("Non lette (\(unreadCount))")
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
-                                .textCase(.uppercase)
                             Spacer()
                             Text("↓ Segna tutte come lette")
                                 .font(.caption2)
@@ -133,9 +131,15 @@ struct NotificationHistoryView: View {
 
     private func markAsRead(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsRead(id: notif.id)
-        // Aspetta che lo swipe si chiuda, poi ricarica con animazione di move
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            withAnimation(.easeInOut(duration: 0.35)) {
+        // Step 1: rimuovi dalla sezione "Non lette" (fade out / collapse)
+        withAnimation(.easeOut(duration: 0.3)) {
+            if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+                notifications[idx].isRead = true
+            }
+        }
+        // Step 2: dopo che la riga è uscita, ricarica per inserirla in "Lette"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            withAnimation(.easeIn(duration: 0.3)) {
                 reloadNotifications()
             }
         }
@@ -143,8 +147,15 @@ struct NotificationHistoryView: View {
 
     private func markAsUnread(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsUnread(id: notif.id)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            withAnimation(.easeInOut(duration: 0.35)) {
+        // Step 1: rimuovi dalla sezione "Lette" (fade out / collapse)
+        withAnimation(.easeOut(duration: 0.3)) {
+            if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+                notifications[idx].isRead = false
+            }
+        }
+        // Step 2: dopo che la riga è uscita, ricarica per inserirla in "Non lette"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            withAnimation(.easeIn(duration: 0.3)) {
                 reloadNotifications()
             }
         }
