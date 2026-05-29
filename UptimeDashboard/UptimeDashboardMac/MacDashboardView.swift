@@ -77,21 +77,6 @@ struct MacDashboardView: View {
         VStack(spacing: 0) {
             // Toolbar
             HStack {
-                Circle()
-                    .fill(ledColor)
-                    .frame(width: 14, height: 14)
-                    .shadow(color: ledColor.opacity(0.6), radius: 4)
-
-                if problemCount > 0 {
-                    Text("\(problemCount)")
-                        .font(.caption.bold())
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.red)
-                        .clipShape(Capsule())
-                }
-
                 Text("Dashboard INVA")
                     .font(.headline)
 

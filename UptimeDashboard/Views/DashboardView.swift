@@ -12,9 +12,20 @@ struct DashboardView: View {
     @EnvironmentObject private var settingsVM: SettingsViewModel
 
     @State private var showLogoutAlert = false
+    @State private var isReorderingSections = false
+    @State private var sectionOrder: [String] = []
+
+    private let sectionOrderKey = "dashboard_section_order"
+    private let defaultOrder = ["portali", "temperatura", "potenza"]
 
     init(network: NetworkClientProtocol) {
         _viewModel = StateObject(wrappedValue: DashboardViewModel(network: network))
+    }
+
+    private var displayOrder: [String] {
+        if isReorderingSections { return sectionOrder }
+        let saved = UserDefaults.standard.stringArray(forKey: sectionOrderKey) ?? []
+        return saved.isEmpty ? defaultOrder : saved
     }
 
     // MARK: - Computed states
@@ -61,71 +72,83 @@ struct DashboardView: View {
             VStack(spacing: 0) {
                 if viewModel.isStale { staleBanner }
 
-                ScrollView {
-                    VStack(spacing: 16) {
-                        // MARK: - Portali
-                        NavigationLink {
-                            PortalsDetailView(viewModel: viewModel)
-                                .environmentObject(settingsVM)
-                        } label: {
-                            MacroAreaCard(
-                                title: "Portali",
-                                icon: "globe",
-                                statusColor: portalsColor,
-                                subtitle: portalsSubtitle,
-                                alertCount: viewModel.redCount + viewModel.mismatchCount
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        // MARK: - Temperature
-                        if !viewModel.temperatureSensors.isEmpty {
-                            NavigationLink {
-                                TemperatureDetailView(viewModel: viewModel)
-                            } label: {
-                                MacroAreaCard(
-                                    title: "Temperatura",
-                                    icon: "thermometer.medium",
-                                    statusColor: temperatureStatusColor,
-                                    subtitle: temperatureSubtitle,
-                                    alertCount: temperatureAlertCount
-                                )
+                List {
+                    ForEach(displayOrder, id: \.self) { section in
+                        switch section {
+                        case "portali":
+                            sectionPortali
+                                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                    if !isReorderingSections {
+                                        Button {
+                                            sectionOrder = displayOrder
+                                            withAnimation { isReorderingSections = true }
+                                        } label: {
+                                            Label("Riordina", systemImage: "arrow.up.arrow.down")
+                                        }
+                                        .tint(.green)
+                                    }
+                                }
+                        case "temperatura":
+                            if !viewModel.temperatureSensors.isEmpty {
+                                sectionTemperatura
+                                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                                    .listRowSeparator(.hidden)
+                                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                        if !isReorderingSections {
+                                            Button {
+                                                sectionOrder = displayOrder
+                                                withAnimation { isReorderingSections = true }
+                                            } label: {
+                                                Label("Riordina", systemImage: "arrow.up.arrow.down")
+                                            }
+                                            .tint(.orange)
+                                        }
+                                    }
                             }
-                            .buttonStyle(.plain)
-                        }
-
-                        // MARK: - Potenza
-                        if !viewModel.powerSensors.isEmpty {
-                            NavigationLink {
-                                PowerDetailView(viewModel: viewModel)
-                            } label: {
-                                MacroAreaCard(
-                                    title: "Potenza",
-                                    icon: "bolt.fill",
-                                    statusColor: powerStatusColor,
-                                    subtitle: powerSubtitle,
-                                    alertCount: powerAlertCount
-                                )
+                        case "potenza":
+                            if !viewModel.powerSensors.isEmpty {
+                                sectionPotenza
+                                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                                    .listRowSeparator(.hidden)
+                                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                        if !isReorderingSections {
+                                            Button {
+                                                sectionOrder = displayOrder
+                                                withAnimation { isReorderingSections = true }
+                                            } label: {
+                                                Label("Riordina", systemImage: "arrow.up.arrow.down")
+                                            }
+                                            .tint(.blue)
+                                        }
+                                    }
                             }
-                            .buttonStyle(.plain)
-                        }
-
-                        // Sensor error banner (only if no sensor data available)
-                        if let error = viewModel.sensorError, viewModel.sensors.isEmpty {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.orange)
-                                Text(error)
-                                    .font(.caption)
-                                    .foregroundColor(.orange)
-                            }
-                            .padding(8)
-                            .background(Color.orange.opacity(0.1))
-                            .cornerRadius(8)
+                        default:
+                            EmptyView()
                         }
                     }
-                    .padding()
+                    .onMove { from, to in
+                        sectionOrder.move(fromOffsets: from, toOffset: to)
+                    }
+
+                    // Sensor error banner (only if no sensor data available)
+                    if let error = viewModel.sensorError, viewModel.sensors.isEmpty {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
+                        .padding(8)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(8)
+                        .listRowSeparator(.hidden)
+                    }
                 }
+                .listStyle(.plain)
+                .environment(\.editMode, isReorderingSections ? .constant(.active) : .constant(.inactive))
                 .refreshable { await viewModel.refresh() }
 
                 // MARK: - Footer actions (fixed at bottom, centered)
@@ -184,6 +207,17 @@ struct DashboardView: View {
             .background(dashboardBackground.ignoresSafeArea())
             .navigationTitle("Dashboard INVA")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if isReorderingSections {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Termina") {
+                            UserDefaults.standard.set(sectionOrder, forKey: sectionOrderKey)
+                            withAnimation { isReorderingSections = false }
+                        }
+                        .bold()
+                    }
+                }
+            }
             .alert("Conferma logout", isPresented: $showLogoutAlert) {
                 Button("Annulla", role: .cancel) {}
                 Button("Logout", role: .destructive) {
@@ -209,6 +243,54 @@ struct DashboardView: View {
                 UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
             }
         }
+    }
+
+    // MARK: - Section Views
+
+    private var sectionPortali: some View {
+        NavigationLink {
+            PortalsDetailView(viewModel: viewModel)
+                .environmentObject(settingsVM)
+        } label: {
+            MacroAreaCard(
+                title: "Portali",
+                icon: "globe",
+                statusColor: portalsColor,
+                subtitle: portalsSubtitle,
+                alertCount: viewModel.redCount + viewModel.mismatchCount
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var sectionTemperatura: some View {
+        NavigationLink {
+            TemperatureDetailView(viewModel: viewModel)
+        } label: {
+            MacroAreaCard(
+                title: "Temperatura",
+                icon: "thermometer.medium",
+                statusColor: temperatureStatusColor,
+                subtitle: temperatureSubtitle,
+                alertCount: temperatureAlertCount
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var sectionPotenza: some View {
+        NavigationLink {
+            PowerDetailView(viewModel: viewModel)
+        } label: {
+            MacroAreaCard(
+                title: "Potenza",
+                icon: "bolt.fill",
+                statusColor: powerStatusColor,
+                subtitle: powerSubtitle,
+                alertCount: powerAlertCount
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Subtitles
