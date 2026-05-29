@@ -127,13 +127,13 @@ def maybe_send_global_push(new_state, monitor_details=None):
 
     previous_anomalous = get_anomalous_resources()
 
-    # 🔴 RED – finale DOWN (transizione da non-RED)
+    # ⛔ RED – finale DOWN (transizione da non-RED)
     if (
         PUSH_NOTIFY_ON.get("final_down", False)
         and previous != "RED"
         and new_state == "RED"
     ):
-        title = "🔴 Servizi DOWN"
+        title = "⛔ Servizi DOWN"
         body = _build_detail_body(details, "RED") or "Una o più risorse risultano DOWN."
         data = {"state": "RED"}
         max_down = _compute_max_down_probes(details)
@@ -145,7 +145,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
             logging.exception("Errore nell'invio notifica APNs per stato RED")
         set_last_max_down_probes(max_down)
 
-    # 🔴 RED → RED – nuove risorse DOWN
+    # ⛔ RED → RED – nuove risorse DOWN
     if (
         PUSH_NOTIFY_ON.get("final_down", False)
         and previous == "RED"
@@ -154,7 +154,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
         newly_anomalous = current_anomalous - previous_anomalous
         if newly_anomalous:
             new_details = [m for m in details if m["name"] in newly_anomalous]
-            title = "🔴 Nuova risorsa DOWN"
+            title = "⛔ Nuova risorsa DOWN"
             body = _build_detail_body(new_details, "RED") or "Nuove risorse risultano DOWN."
             data = {"state": "RED"}
             max_down = _compute_max_down_probes(new_details)
@@ -166,13 +166,13 @@ def maybe_send_global_push(new_state, monitor_details=None):
                 logging.exception("Errore nell'invio notifica APNs per same-state RED")
             set_last_max_down_probes(max_down)
 
-    # 🟡 YELLOW – mismatch (transizione da non-YELLOW)
+    # ⚠️ YELLOW – mismatch (transizione da non-YELLOW)
     if (
         PUSH_NOTIFY_ON.get("probe_mismatch", False)
         and previous != "YELLOW"
         and new_state == "YELLOW"
     ):
-        title = "🟡 Incongruenza tra sonde"
+        title = "⚠️ Incongruenza tra sonde"
         body = _build_detail_body(details, "YELLOW") or "Una o più risorse hanno stato diverso tra le sonde."
         data = {"state": "YELLOW"}
         max_down = _compute_max_down_probes(details)
@@ -184,7 +184,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
             logging.exception("Errore nell'invio notifica APNs per stato YELLOW")
         set_last_max_down_probes(max_down)
 
-    # 🟡 YELLOW → YELLOW – nuove risorse con mismatch
+    # ⚠️ YELLOW → YELLOW – nuove risorse con mismatch
     if (
         PUSH_NOTIFY_ON.get("probe_mismatch", False)
         and previous == "YELLOW"
@@ -193,7 +193,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
         newly_anomalous = current_anomalous - previous_anomalous
         if newly_anomalous:
             new_details = [m for m in details if m["name"] in newly_anomalous]
-            title = "🟡 Nuova incongruenza"
+            title = "⚠️ Nuova incongruenza"
             body = _build_detail_body(new_details, "YELLOW") or "Nuove risorse con incongruenza tra sonde."
             data = {"state": "YELLOW"}
             max_down = _compute_max_down_probes(new_details)
@@ -205,7 +205,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
                 logging.exception("Errore nell'invio notifica APNs per same-state YELLOW")
             set_last_max_down_probes(max_down)
 
-    # 🟡🔴 ESCALATION — stesso stato ma più sonde DOWN rispetto all'ultimo invio
+    # ⚠️⛔ ESCALATION — stesso stato ma più sonde DOWN rispetto all'ultimo invio
     # Permette a chi ha soglia alta di ricevere la notifica quando le sonde
     # peggiorano progressivamente (es. da 2 DOWN a 4 DOWN restando YELLOW)
     if (
@@ -217,11 +217,11 @@ def maybe_send_global_push(new_state, monitor_details=None):
 
         if max_down > last_max_down:
             if new_state == "RED":
-                title = "🔴 Peggioramento — più sonde DOWN"
+                title = "⛔ Peggioramento — più sonde DOWN"
                 body = _build_detail_body(details, "RED") or "Più sonde rilevano DOWN."
                 data = {"state": "RED"}
             else:
-                title = "🟡 Peggioramento — più sonde DOWN"
+                title = "⚠️ Peggioramento — più sonde DOWN"
                 body = _build_detail_body(details, "YELLOW") or "Più sonde rilevano incongruenze."
                 data = {"state": "YELLOW"}
 
@@ -236,11 +236,11 @@ def maybe_send_global_push(new_state, monitor_details=None):
         elif max_down < last_max_down and last_max_down > 0:
             # DE-ESCALATION — meno sonde DOWN rispetto all'ultimo invio
             if new_state == "RED":
-                title = "🔴 Miglioramento — meno sonde DOWN"
+                title = "⛔ Miglioramento — meno sonde DOWN"
                 body = _build_detail_body(details, "RED") or "Alcune sonde si sono riprese."
                 data = {"state": "RED"}
             else:
-                title = "🟡 Miglioramento — meno sonde DOWN"
+                title = "⚠️ Miglioramento — meno sonde DOWN"
                 body = _build_detail_body(details, "YELLOW") or "Alcune sonde si sono riprese."
                 data = {"state": "YELLOW"}
 
@@ -253,14 +253,14 @@ def maybe_send_global_push(new_state, monitor_details=None):
                 logging.exception("Errore nell'invio notifica APNs per de-escalation %s", new_state)
             set_last_max_down_probes(max_down)
 
-    # 🟢 GREEN – ritorno alla normalità
+    # ✅ GREEN – ritorno alla normalità
     if (
         PUSH_NOTIFY_ON.get("back_to_green", False)
         and previous in ("RED", "YELLOW")
         and new_state == "GREEN"
     ):
         now_str = datetime.now().strftime("%H:%M")
-        title = "🟢 Tutto OK"
+        title = "✅ Tutto OK"
         body = f"Tutte le risorse risultano UP su tutte le sonde.\nOre {now_str}"
         data = {"state": "GREEN"}
 
@@ -279,7 +279,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
             logging.exception("Errore nell'invio notifica APNs per stato GREEN")
         clear_last_max_down_probes()
 
-    # 🟢 Risorse tornate UP durante same-state (YELLOW→YELLOW o RED→RED)
+    # ✅ Risorse tornate UP durante same-state (YELLOW→YELLOW o RED→RED)
     if (
         PUSH_NOTIFY_ON.get("back_to_green", False)
         and previous == new_state
@@ -289,7 +289,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
         if recovered:
             now_str = datetime.now().strftime("%H:%M")
             names = ", ".join(sorted(recovered))
-            title = "🟢 Risorsa ripristinata"
+            title = "✅ Risorsa ripristinata"
             body = f"{names} — tornata UP\nOre {now_str}"
             data = {"state": new_state}
 
@@ -370,7 +370,7 @@ def check_inverter_alerts():
 
             # Transizione verso warning
             if new_state == "warning" and prev_state == "normal":
-                title = f"🟡 {name}"
+                title = f"⚠️ {name}"
                 if category == "temperature":
                     body = f"Temperatura {value} {unit} (soglia warning: >{INVERTER_TEMP_WARNING} {unit})\nOre {now_str}"
                 else:
@@ -379,7 +379,7 @@ def check_inverter_alerts():
 
             # Transizione verso critical
             elif new_state == "critical":
-                title = f"🔴 {name}"
+                title = f"⛔ {name}"
                 if category == "temperature":
                     body = f"Temperatura {value} {unit} (soglia critical: >{INVERTER_TEMP_CRITICAL} {unit})\nOre {now_str}"
                 else:
@@ -388,7 +388,7 @@ def check_inverter_alerts():
 
             # Ritorno a normal da warning/critical
             elif new_state == "normal" and prev_state in ("warning", "critical"):
-                title = f"🟢 {name}"
+                title = f"✅ {name}"
                 body = f"Valore rientrato nella norma: {value} {unit}\nOre {now_str}"
                 _send_inverter_push(title, body)
 
