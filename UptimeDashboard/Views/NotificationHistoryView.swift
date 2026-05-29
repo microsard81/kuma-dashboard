@@ -108,13 +108,15 @@ struct NotificationHistoryView: View {
 
     private func markAsRead(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsRead(id: notif.id)
-        // Fade out la riga, poi ricarica la lista nella nuova posizione
+        // Fade out la riga, poi ricarica con fade in
         withAnimation(.easeOut(duration: 0.2)) {
             fadingId = notif.id
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-            fadingId = nil
             reloadNotifications()
+            withAnimation(.easeIn(duration: 0.25)) {
+                fadingId = nil
+            }
         }
     }
 
@@ -124,8 +126,10 @@ struct NotificationHistoryView: View {
             fadingId = notif.id
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-            fadingId = nil
             reloadNotifications()
+            withAnimation(.easeIn(duration: 0.25)) {
+                fadingId = nil
+            }
         }
     }
 
