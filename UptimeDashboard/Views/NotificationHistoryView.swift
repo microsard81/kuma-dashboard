@@ -26,32 +26,53 @@ struct NotificationHistoryView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
-                    ForEach($notifications) { $notif in
-                        NotificationRow(notification: notif)
-                            .listRowBackground(notif.isRead ? Color.clear : Color.blue.opacity(0.08))
-                            .swipeActions(edge: .trailing) {
-                                if notif.isRead {
-                                    Button {
-                                        markAsUnread(notif)
-                                    } label: {
-                                        Label("Non letta", systemImage: "envelope.badge")
-                                    }
-                                    .tint(.blue)
-                                } else {
-                                    Button {
-                                        markAsRead(notif)
-                                    } label: {
-                                        Label("Letta", systemImage: "envelope.open")
-                                    }
-                                    .tint(.blue)
+                    // Non lette
+                    if notifications.contains(where: { !$0.isRead }) {
+                        Section {
+                            ForEach($notifications) { $notif in
+                                if !notif.isRead {
+                                    NotificationRow(notification: notif)
+                                        .listRowBackground(Color.blue.opacity(0.08))
+                                        .swipeActions(edge: .trailing) {
+                                            Button {
+                                                markAsRead(notif)
+                                            } label: {
+                                                Label("Letta", systemImage: "envelope.open")
+                                            }
+                                            .tint(.blue)
+                                        }
                                 }
                             }
+                        } header: {
+                            Text("Non lette (\(notifications.filter { !$0.isRead }.count))")
+                        }
+                    }
+
+                    // Lette
+                    if notifications.contains(where: { $0.isRead }) {
+                        Section {
+                            ForEach($notifications) { $notif in
+                                if notif.isRead {
+                                    NotificationRow(notification: notif)
+                                        .swipeActions(edge: .trailing) {
+                                            Button {
+                                                markAsUnread(notif)
+                                            } label: {
+                                                Label("Non letta", systemImage: "envelope.badge")
+                                            }
+                                            .tint(.blue)
+                                        }
+                                }
+                            }
+                        } header: {
+                            Text("Lette")
+                        }
                     }
                 }
                 .listStyle(.plain)
                 .refreshable {
                     NotificationStore.shared.markAllAsRead()
-                    notifications = NotificationStore.shared.loadAll()
+                    reloadNotifications()
                 }
                 .overlay(alignment: .top) {
                     if notifications.contains(where: { !$0.isRead }) {
@@ -69,12 +90,7 @@ struct NotificationHistoryView: View {
     }
 
     private func loadNotifications() {
-        let all = NotificationStore.shared.loadAll()
-        // Ordina: non lette prima, poi per data decrescente
-        notifications = all.sorted {
-            if $0.isRead != $1.isRead { return !$0.isRead }
-            return $0.date > $1.date
-        }
+        reloadNotifications()
         #if DEBUG
         // Seed 4 test notifications if empty
         if notifications.isEmpty {
@@ -82,30 +98,35 @@ struct NotificationHistoryView: View {
             NotificationStore.shared.save(title: "🔴 Portale DOWN", body: "www.regione.vda.it non raggiungibile da tutte le sonde")
             NotificationStore.shared.save(title: "⚡ Potenza bassa", body: "INV2 - Alimentazione sotto soglia warning (4.1 kW)")
             NotificationStore.shared.save(title: "✅ Ripristino servizio", body: "mail.cst.inva.it è tornato UP su tutte le sonde")
-            let seeded = NotificationStore.shared.loadAll()
-            notifications = seeded.sorted {
-                if $0.isRead != $1.isRead { return !$0.isRead }
-                return $0.date > $1.date
-            }
+            reloadNotifications()
         }
         #endif
     }
 
     private func markAsRead(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsRead(id: notif.id)
-        if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+        // Delay breve per far chiudere lo swipe, poi riordina
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             withAnimation(.easeInOut(duration: 0.25)) {
-                notifications[idx].isRead = true
+                reloadNotifications()
             }
         }
     }
 
     private func markAsUnread(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsUnread(id: notif.id)
-        if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             withAnimation(.easeInOut(duration: 0.25)) {
-                notifications[idx].isRead = false
+                reloadNotifications()
             }
+        }
+    }
+
+    private func reloadNotifications() {
+        let all = NotificationStore.shared.loadAll()
+        notifications = all.sorted {
+            if $0.isRead != $1.isRead { return !$0.isRead }
+            return $0.date > $1.date
         }
     }
 }
