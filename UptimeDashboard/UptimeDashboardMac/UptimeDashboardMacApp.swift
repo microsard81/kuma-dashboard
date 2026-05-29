@@ -164,16 +164,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let content = notification.request.content
-        NotificationStore.shared.save(title: content.title, body: content.body)
+        let requestId = notification.request.identifier
+        NotificationStore.shared.save(title: content.title, body: content.body, requestId: requestId)
         completionHandler([.banner, .sound, .badge])
     }
 
-    // Quando l'utente clicca la notifica — salva solo se non duplicata (caso background)
+    // Quando l'utente clicca la notifica — salva se non già presente
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
         let content = response.notification.request.content
-        NotificationStore.shared.saveIfNotDuplicate(title: content.title, body: content.body)
+        let requestId = response.notification.request.identifier
+        NotificationStore.shared.save(title: content.title, body: content.body, requestId: requestId)
         Task {
             await viewModel?.fetchDashboard()
         }

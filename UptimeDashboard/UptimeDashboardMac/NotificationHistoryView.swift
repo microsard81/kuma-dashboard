@@ -140,13 +140,15 @@ struct NotificationRecord: Identifiable, Codable {
     let body: String
     let date: Date
     var isRead: Bool
+    var requestId: String?
 
-    init(title: String, body: String, date: Date = Date(), isRead: Bool = false) {
+    init(title: String, body: String, date: Date = Date(), isRead: Bool = false, requestId: String? = nil) {
         self.id = UUID()
         self.title = title
         self.body = body
         self.date = date
         self.isRead = isRead
+        self.requestId = requestId
     }
 }
 
@@ -180,20 +182,21 @@ final class NotificationStore {
         }
     }
 
-    /// Save a new notification only if not a duplicate (same title+body within last 60 seconds).
-    func saveIfNotDuplicate(title: String, body: String) {
-        let recent = loadAll()
-        let cutoff = Date().addingTimeInterval(-60)
-        let isDuplicate = recent.contains { $0.title == title && $0.body == body && $0.date > cutoff }
-        if !isDuplicate {
-            save(title: title, body: body)
+    /// Save a new notification only if not a duplicate (same requestId).
+    func saveIfNotDuplicate(title: String, body: String, requestId: String? = nil) {
+        if let rid = requestId {
+            let existing = loadAll()
+            if existing.contains(where: { $0.requestId == rid }) { return }
         }
+        save(title: title, body: body, requestId: requestId)
     }
 
     /// Save a new notification to history.
-    func save(title: String, body: String) {
+    func save(title: String, body: String, requestId: String? = nil) {
         var records = loadAll()
-        records.insert(NotificationRecord(title: title, body: body), at: 0)
+        // Dedup by requestId
+        if let rid = requestId, records.contains(where: { $0.requestId == rid }) { return }
+        records.insert(NotificationRecord(title: title, body: body, requestId: requestId), at: 0)
         let cutoff = Date().addingTimeInterval(-maxAge)
         records = records.filter { $0.date > cutoff }
         persist(records)

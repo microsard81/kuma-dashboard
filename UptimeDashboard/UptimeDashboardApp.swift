@@ -43,18 +43,20 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         let content = notification.request.content
-        NotificationStore.shared.save(title: content.title, body: content.body)
+        let requestId = notification.request.identifier
+        NotificationStore.shared.save(title: content.title, body: content.body, requestId: requestId)
         completionHandler([.banner, .sound, .badge])
     }
 
-    /// Called when the user taps a notification — save only if not already saved (background case).
+    /// Called when the user taps a notification (background/closed app) — save if not already saved.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let content = response.notification.request.content
-        NotificationStore.shared.saveIfNotDuplicate(title: content.title, body: content.body)
+        let requestId = response.notification.request.identifier
+        NotificationStore.shared.save(title: content.title, body: content.body, requestId: requestId)
         completionHandler()
     }
 }
