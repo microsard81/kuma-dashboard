@@ -12,6 +12,7 @@ struct TemperatureDetailView: View {
     @State private var isCriticalCollapsed = false
     @State private var isWarningCollapsed = false
     @State private var isNormalCollapsed = false
+    @State private var showPinConfirmation = false
 
     private let orderKey = "sensor_order_temperature"
 
@@ -110,6 +111,7 @@ struct TemperatureDetailView: View {
         .refreshable { await viewModel.refresh() }
         .navigationTitle("Temperatura (°C)")
         .navigationBarTitleDisplayMode(.inline)
+        .overlay { CheckmarkPopup(isPresented: $showPinConfirmation) }
         .toolbar {
             if isReordering {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -149,6 +151,7 @@ struct TemperatureDetailView: View {
                 } else {
                     Button {
                         PinnedStore.shared.pin(id: sensor.id, type: .temperatura)
+                        withAnimation { showPinConfirmation = true }
                     } label: {
                         Label("Home", systemImage: "plus.circle")
                     }

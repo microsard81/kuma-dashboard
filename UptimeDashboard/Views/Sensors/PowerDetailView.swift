@@ -12,6 +12,7 @@ struct PowerDetailView: View {
     @State private var isCriticalCollapsed = false
     @State private var isWarningCollapsed = false
     @State private var isNormalCollapsed = false
+    @State private var showPinConfirmation = false
 
     private let orderKey = "sensor_order_power"
 
@@ -110,6 +111,7 @@ struct PowerDetailView: View {
         .refreshable { await viewModel.refresh() }
         .navigationTitle("Potenza (kW)")
         .navigationBarTitleDisplayMode(.inline)
+        .overlay { CheckmarkPopup(isPresented: $showPinConfirmation) }
         .toolbar {
             if isReordering {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -149,6 +151,7 @@ struct PowerDetailView: View {
                 } else {
                     Button {
                         PinnedStore.shared.pin(id: sensor.id, type: .potenza)
+                        withAnimation { showPinConfirmation = true }
                     } label: {
                         Label("Home", systemImage: "plus.circle")
                     }
