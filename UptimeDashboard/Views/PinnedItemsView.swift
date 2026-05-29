@@ -60,35 +60,78 @@ final class PinnedStore {
 
 struct PinnedCardView: View {
     let item: PinnedItem
-    let viewModel: DashboardViewModel
+    @ObservedObject var viewModel: DashboardViewModel
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             // Icon
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(cardColor.opacity(0.15))
-                    .frame(width: 40, height: 40)
-                Image(systemName: iconName)
-                    .font(.system(size: 16))
-                    .foregroundColor(cardColor)
-            }
+            Image(systemName: iconName)
+                .font(.system(size: 14))
+                .foregroundColor(textColor)
 
             // Name
             Text(displayName)
-                .font(.caption.bold())
+                .font(.system(size: 10, weight: .bold))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
+                .foregroundColor(textColor)
 
             // Status
             Text(statusText)
-                .font(.caption2.bold())
-                .foregroundColor(cardColor)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(textColor)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(10)
-        .background(.ultraThinMaterial)
-        .cornerRadius(12)
+        .padding(8)
+        .background(backgroundColor)
+        .cornerRadius(10)
+    }
+
+    private var isAlert: Bool {
+        switch item.type {
+        case .portale:
+            if let monitor = viewModel.items.first(where: { $0.name == item.id }) {
+                return monitor.rowColor == .red || monitor.rowColor == .yellow
+            }
+        case .temperatura, .potenza:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }),
+               let t = viewModel.sensorThresholds {
+                return sensor.alertStatus(thresholds: t) != .normal
+            }
+        }
+        return false
+    }
+
+    private var backgroundColor: Color {
+        switch item.type {
+        case .portale:
+            if let monitor = viewModel.items.first(where: { $0.name == item.id }) {
+                if monitor.rowColor == .red { return Color.red.opacity(0.85) }
+                if monitor.rowColor == .yellow { return Color.yellow.opacity(0.75) }
+            }
+            return Color(.systemGray6)
+        case .temperatura:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }),
+               let t = viewModel.sensorThresholds {
+                let status = sensor.alertStatus(thresholds: t)
+                if status == .critical { return Color.red.opacity(0.85) }
+                if status == .warning { return Color.yellow.opacity(0.75) }
+            }
+            return Color(.systemGray6)
+        case .potenza:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }),
+               let t = viewModel.sensorThresholds {
+                let status = sensor.alertStatus(thresholds: t)
+                if status == .critical { return Color.red.opacity(0.85) }
+                if status == .warning { return Color.yellow.opacity(0.75) }
+            }
+            return Color(.systemGray6)
+        }
+    }
+
+    private var textColor: Color {
+        if isAlert { return .white }
+        return cardColor
     }
 
     private var displayName: String {

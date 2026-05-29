@@ -95,7 +95,7 @@ struct DashboardView: View {
                                 .font(.headline)
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                 ForEach(pinnedItems) { item in
                                     NavigationLink {
                                         pinnedDestination(for: item)
