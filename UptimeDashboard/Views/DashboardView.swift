@@ -19,6 +19,7 @@ struct DashboardView: View {
     @State private var selectedPinnedItem: PinnedItem? = nil
     @State private var sectionOrder: [String] = UserDefaults.standard.stringArray(forKey: "ios_section_order") ?? ["portali", "temperatura", "potenza"]
     @State private var isReorderingSections = false
+    @State private var selectedSection: String? = nil
 
     init(network: NetworkClientProtocol) {
         _viewModel = StateObject(wrappedValue: DashboardViewModel(network: network))
@@ -101,44 +102,67 @@ struct DashboardView: View {
                             .environment(\.editMode, .constant(.active))
                             .frame(height: 180)
                         } else {
-                            // Normal mode: ordered sections with long press context menu
+                            // Normal mode: tap to navigate, long press to reorder
                             ForEach(sectionOrder, id: \.self) { section in
                                 switch section {
                                 case "portali":
-                                    sectionPortali
-                                        .contextMenu {
-                                            Button {
-                                                withAnimation { isReorderingSections = true }
-                                            } label: {
-                                                Label("Riordina sezioni", systemImage: "arrow.up.arrow.down")
-                                            }
-                                        }
+                                    MacroAreaCard(
+                                        title: "Portali",
+                                        icon: "globe",
+                                        statusColor: portalsColor,
+                                        subtitle: portalsSubtitle,
+                                        alertCount: viewModel.redCount + viewModel.mismatchCount
+                                    )
+                                    .onTapGesture { selectedSection = "portali" }
+                                    .onLongPressGesture(minimumDuration: 0.5) {
+                                        withAnimation { isReorderingSections = true }
+                                    }
                                 case "temperatura":
                                     if !viewModel.temperatureSensors.isEmpty {
-                                        sectionTemperatura
-                                            .contextMenu {
-                                                Button {
-                                                    withAnimation { isReorderingSections = true }
-                                                } label: {
-                                                    Label("Riordina sezioni", systemImage: "arrow.up.arrow.down")
-                                                }
-                                            }
+                                        MacroAreaCard(
+                                            title: "Temperatura",
+                                            icon: "thermometer.medium",
+                                            statusColor: temperatureStatusColor,
+                                            subtitle: temperatureSubtitle,
+                                            alertCount: temperatureAlertCount
+                                        )
+                                        .onTapGesture { selectedSection = "temperatura" }
+                                        .onLongPressGesture(minimumDuration: 0.5) {
+                                            withAnimation { isReorderingSections = true }
+                                        }
                                     }
                                 case "potenza":
                                     if !viewModel.powerSensors.isEmpty {
-                                        sectionPotenza
-                                            .contextMenu {
-                                                Button {
-                                                    withAnimation { isReorderingSections = true }
-                                                } label: {
-                                                    Label("Riordina sezioni", systemImage: "arrow.up.arrow.down")
-                                                }
-                                            }
+                                        MacroAreaCard(
+                                            title: "Potenza",
+                                            icon: "bolt.fill",
+                                            statusColor: powerStatusColor,
+                                            subtitle: powerSubtitle,
+                                            alertCount: powerAlertCount
+                                        )
+                                        .onTapGesture { selectedSection = "potenza" }
+                                        .onLongPressGesture(minimumDuration: 0.5) {
+                                            withAnimation { isReorderingSections = true }
+                                        }
                                     }
                                 default:
                                     EmptyView()
                                 }
                             }
+
+                            // Hidden NavigationLinks for programmatic navigation
+                            NavigationLink(
+                                destination: PortalsDetailView(viewModel: viewModel).environmentObject(settingsVM),
+                                isActive: Binding(get: { selectedSection == "portali" }, set: { if !$0 { selectedSection = nil } })
+                            ) { EmptyView() }.hidden()
+                            NavigationLink(
+                                destination: TemperatureDetailView(viewModel: viewModel),
+                                isActive: Binding(get: { selectedSection == "temperatura" }, set: { if !$0 { selectedSection = nil } })
+                            ) { EmptyView() }.hidden()
+                            NavigationLink(
+                                destination: PowerDetailView(viewModel: viewModel),
+                                isActive: Binding(get: { selectedSection == "potenza" }, set: { if !$0 { selectedSection = nil } })
+                            ) { EmptyView() }.hidden()
                         }
 
                         // Sensor error banner (only if no sensor data available)
