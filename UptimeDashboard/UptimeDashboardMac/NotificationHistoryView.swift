@@ -68,6 +68,10 @@ struct NotificationHistoryView: View {
                     }
                 }
                 .listStyle(.plain)
+                .refreshable {
+                    NotificationStore.shared.markAllAsRead()
+                    withAnimation { notifications = NotificationStore.shared.loadAll() }
+                }
             }
         }
         .navigationTitle("Notifiche")
