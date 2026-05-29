@@ -33,33 +33,65 @@ struct HelpWebView: NSViewRepresentable {
     <!DOCTYPE html>
     <html lang="it">
     <head><meta charset="utf-8"><title>Aiuto</title>
-    <style>body{font-family:-apple-system,sans-serif;max-width:600px;margin:40px auto;padding:0 20px;color:#333;line-height:1.6}h1{font-size:24px}h2{font-size:18px;margin-top:24px}</style>
+    <style>body{font-family:-apple-system,sans-serif;max-width:650px;margin:40px auto;padding:0 20px;color:#333;line-height:1.6}h1{font-size:24px}h2{font-size:18px;margin-top:24px}h3{font-size:15px;margin-top:16px}ul{padding-left:20px}li{margin-bottom:4px}.key{background:#eee;padding:2px 6px;border-radius:3px;font-family:monospace;font-size:13px}</style>
     </head><body>
     <h1>Dashboard INVA MAC</h1>
-    <p>Applicazione di monitoraggio uptime multi-sonda per i servizi IN.VA.</p>
+    <p>Applicazione di monitoraggio uptime multi-sonda e sensori datacenter per i servizi IN.VA.</p>
+
+    <h2>Schermata principale</h2>
+    <p>La dashboard mostra 3 sezioni (affiancate se la finestra è larga, impilate se stretta):</p>
+    <ul>
+    <li><strong>Portali</strong> — Stato dei servizi web monitorati da 5 sonde indipendenti</li>
+    <li><strong>Temperatura (°C)</strong> — Sensori di temperatura del datacenter</li>
+    <li><strong>Potenza (kW)</strong> — Sensori di potenza degli inverter</li>
+    </ul>
+
     <h2>Sonde</h2>
     <ul>
-    <li><strong>k1</strong> — Aruba Bergamo</li>
-    <li><strong>k2</strong> — TIM Sestu</li>
-    <li><strong>k3</strong> — ILIAD Sinnai</li>
-    <li><strong>n1</strong> — NodePing Europe</li>
-    <li><strong>u1</strong> — Uptime</li>
+    <li><strong>Aruba</strong> — Bergamo</li>
+    <li><strong>TIM</strong> — Sestu (CA)</li>
+    <li><strong>ILIAD</strong> — Sinnai (CA)</li>
+    <li><strong>NodePing</strong> — Europa</li>
+    <li><strong>Uptime</strong> — Globale</li>
     </ul>
+
     <h2>Stato globale</h2>
     <ul>
     <li>🟢 <strong>GREEN</strong> — Tutto UP</li>
     <li>🟡 <strong>YELLOW</strong> — Mismatch tra sonde</li>
     <li>🔴 <strong>RED</strong> — DOWN su tutte le sonde</li>
     </ul>
+
+    <h2>Sensori datacenter</h2>
+    <p>I sensori misurano temperatura e potenza. Ogni sensore ha soglie configurabili:</p>
+    <ul>
+    <li>🟠 <strong>Normale (temperatura)</strong> / 🔵 <strong>Normale (potenza)</strong> — Valori entro i limiti</li>
+    <li>🟡 <strong>Warning</strong> — Soglia di attenzione superata</li>
+    <li>🔴 <strong>Critical</strong> — Soglia critica superata</li>
+    </ul>
+    <p>Passa il mouse sul grafico per vedere valore e orario del punto.</p>
+
+    <h2>Notifiche</h2>
+    <p>Ricevi notifiche push quando lo stato cambia:</p>
+    <ul>
+    <li>🔴 Servizi DOWN</li>
+    <li>🟡 Incongruenza tra sonde</li>
+    <li>🟢 Tutto OK (ripristino)</li>
+    <li>🔴🟡🟢 Alert sensori (temperature/potenza fuori soglia o rientrate)</li>
+    </ul>
+    <p>Clicca l'icona 🔔 nella toolbar per vedere lo storico notifiche (ultimo mese).</p>
+
     <h2>Soglia notifica</h2>
     <p>Configura quante sonde devono essere DOWN prima di ricevere la notifica (1–5). Impostazioni → Soglia notifica.</p>
+
     <h2>Scorciatoie</h2>
     <ul>
-    <li><strong>⌘R</strong> — Aggiorna Dashboard</li>
-    <li><strong>⌘,</strong> — Impostazioni</li>
-    <li><strong>⌘Q</strong> — Nascondi nella menu bar</li>
-    <li><strong>⌥⌘Q</strong> — Esci definitivamente</li>
+    <li><span class="key">⌘R</span> — Aggiorna Dashboard</li>
+    <li><span class="key">⌘,</span> — Impostazioni</li>
+    <li><span class="key">⌘Q</span> — Nascondi nella menu bar</li>
+    <li><span class="key">⌥⌘Q</span> — Esci definitivamente</li>
     </ul>
+
     <h2>Supporto</h2>
     <p>Per assistenza contattare ABISSI S.r.l.</p>
     </body></html>

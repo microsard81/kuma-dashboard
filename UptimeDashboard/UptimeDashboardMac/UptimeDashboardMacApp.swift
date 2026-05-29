@@ -163,6 +163,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        let content = notification.request.content
+        NotificationStore.shared.save(title: content.title, body: content.body)
         completionHandler([.banner, .sound, .badge])
     }
 
@@ -170,6 +172,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
+        let content = response.notification.request.content
+        NotificationStore.shared.save(title: content.title, body: content.body)
         Task {
             await viewModel?.fetchDashboard()
         }

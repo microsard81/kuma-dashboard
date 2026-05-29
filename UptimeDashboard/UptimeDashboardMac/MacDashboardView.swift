@@ -29,6 +29,7 @@ struct MacDashboardView: View {
     @EnvironmentObject var viewModel: MacAppViewModel
     @Environment(\.colorScheme) var colorScheme
     @State private var showOnlyProblems = false
+    @State private var showNotificationHistory = false
 
     private var filteredMonitors: [MacMonitor] {
         var sorted: [MacMonitor]
@@ -108,6 +109,17 @@ struct MacDashboardView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .controlSize(.small)
+
+                Button {
+                    showNotificationHistory = true
+                } label: {
+                    Image(systemName: "bell")
+                }
+                .controlSize(.small)
+                .popover(isPresented: $showNotificationHistory) {
+                    MacNotificationHistoryPopover()
+                        .frame(width: 350, height: 400)
+                }
 
                 Button {
                     viewModel.logout()
@@ -533,4 +545,71 @@ private struct MacSparklineSegment: Identifiable {
     let n1: Int?
     let u1: Int?
     let timestamp: Date
+}
+
+// MARK: - Notification History Popover (macOS)
+
+private struct MacNotificationHistoryPopover: View {
+    @State private var notifications: [NotificationRecord] = []
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Notifiche")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding()
+
+            Divider()
+
+            if notifications.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "bell.slash")
+                        .font(.title)
+                        .foregroundColor(.secondary)
+                    Text("Nessuna notifica")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(notifications) { notif in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text(notif.title)
+                                .font(.caption.bold())
+                            Spacer()
+                            Text(formatDate(notif.date))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        if !notif.body.isEmpty {
+                            Text(notif.body)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .listStyle(.plain)
+            }
+        }
+        .onAppear { notifications = NotificationStore.shared.loadAll() }
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "it_IT")
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            formatter.dateFormat = "HH:mm"
+        } else if calendar.isDateInYesterday(date) {
+            formatter.dateFormat = "'Ieri' HH:mm"
+        } else {
+            formatter.dateFormat = "dd/MM HH:mm"
+        }
+        return formatter.string(from: date)
+    }
 }
