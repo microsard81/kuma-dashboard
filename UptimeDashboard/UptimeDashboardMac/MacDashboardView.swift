@@ -37,7 +37,7 @@ struct MacDashboardView: View {
             sorted = viewModel.monitors.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         case "globalState":
             sorted = viewModel.monitors.sorted { globalRank($0) > globalRank($1) }
-        default: // severity
+        default:
             sorted = viewModel.monitors.sorted { rank($0) > rank($1) }
         }
         if showOnlyProblems {
@@ -52,6 +52,24 @@ struct MacDashboardView: View {
 
     private var dashboardBackground: Color {
         colorScheme == .dark ? Color(hex: "#141c2b") : Color(.windowBackgroundColor)
+    }
+
+    // MARK: - Sensor status colors
+
+    private var temperatureStatusColor: Color {
+        guard let t = viewModel.sensorThresholds else { return .orange }
+        let sensors = viewModel.sensors.filter { $0.category == .temperature }
+        if sensors.contains(where: { $0.alertStatus(thresholds: t) == .critical }) { return .red }
+        if sensors.contains(where: { $0.alertStatus(thresholds: t) == .warning }) { return .yellow }
+        return .orange
+    }
+
+    private var powerStatusColor: Color {
+        guard let t = viewModel.sensorThresholds else { return .blue }
+        let sensors = viewModel.sensors.filter { $0.category == .power }
+        if sensors.contains(where: { $0.alertStatus(thresholds: t) == .critical }) { return .red }
+        if sensors.contains(where: { $0.alertStatus(thresholds: t) == .warning }) { return .yellow }
+        return .blue
     }
 
     var body: some View {
@@ -73,7 +91,7 @@ struct MacDashboardView: View {
                         .clipShape(Capsule())
                 }
 
-                Text("INVA Dashboard")
+                Text("Dashboard INVA")
                     .font(.headline)
 
                 Spacer()
@@ -82,16 +100,6 @@ struct MacDashboardView: View {
                     Text("Aggiornato: \(date, style: .time)")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                }
-
-                if problemCount > 0 {
-                    Toggle(isOn: $showOnlyProblems) {
-                        Label("Solo problemi", systemImage: showOnlyProblems
-                              ? "exclamationmark.triangle.fill"
-                              : "exclamationmark.triangle")
-                    }
-                    .toggleStyle(.button)
-                    .controlSize(.small)
                 }
 
                 Button {
@@ -113,7 +121,71 @@ struct MacDashboardView: View {
 
             Divider()
 
-            // Lista monitor
+            // Main content: 3 sections responsive
+            GeometryReader { geo in
+                let isWide = geo.size.width > 900
+
+                if isWide {
+                    // Side by side
+                    HStack(alignment: .top, spacing: 1) {
+                        portalsSection
+                            .frame(maxWidth: .infinity)
+                        Divider()
+                        temperatureSection
+                            .frame(maxWidth: .infinity)
+                        Divider()
+                        powerSection
+                            .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    // Stacked
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            portalsSection
+                            Divider().padding(.vertical, 4)
+                            temperatureSection
+                            Divider().padding(.vertical, 4)
+                            powerSection
+                        }
+                    }
+                }
+            }
+        }
+        .background(dashboardBackground)
+        .preferredColorScheme(.dark)
+        .onChange(of: problemCount) { newCount in
+            if newCount == 0 {
+                showOnlyProblems = false
+            }
+        }
+    }
+
+    // MARK: - Portals Section
+
+    private var portalsSection: some View {
+        VStack(spacing: 0) {
+            // Section header
+            HStack {
+                Image(systemName: "globe")
+                    .foregroundColor(ledColor)
+                Text("Portali")
+                    .font(.headline)
+                Spacer()
+                if problemCount > 0 {
+                    Toggle(isOn: $showOnlyProblems) {
+                        Label("Solo problemi", systemImage: showOnlyProblems
+                              ? "exclamationmark.triangle.fill"
+                              : "exclamationmark.triangle")
+                    }
+                    .toggleStyle(.button)
+                    .controlSize(.small)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(ledColor.opacity(0.05))
+
+            // Monitor list
             ScrollView {
                 LazyVStack(spacing: 0) {
                     let downItems = filteredMonitors.filter { $0.isDown }
@@ -146,31 +218,81 @@ struct MacDashboardView: View {
                         }
                     }
                 }
-
-                // Sensor section (displayed below uptime monitors)
-                if !viewModel.sensors.isEmpty || viewModel.sensorError != nil {
-                    Divider()
-                        .padding(.vertical, 8)
-
-                    SensorSectionView(
-                        sensors: viewModel.sensors,
-                        thresholds: viewModel.sensorThresholds,
-                        history: viewModel.sensorHistory,
-                        error: viewModel.sensorError
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
-                }
-            }
-        }
-        .background(dashboardBackground)
-        .preferredColorScheme(.dark)
-        .onChange(of: problemCount) { newCount in
-            if newCount == 0 {
-                showOnlyProblems = false
             }
         }
     }
+
+    // MARK: - Temperature Section
+
+    private var temperatureSection: some View {
+        let sensors = viewModel.sensors.filter { $0.category == .temperature }
+        return VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "thermometer.medium")
+                    .foregroundColor(temperatureStatusColor)
+                Text("Temperatura (°C)")
+                    .font(.headline)
+                Spacer()
+                Circle()
+                    .fill(temperatureStatusColor)
+                    .frame(width: 10, height: 10)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(temperatureStatusColor.opacity(0.05))
+
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(sensors) { sensor in
+                        SensorCardView(
+                            sensor: sensor,
+                            thresholds: viewModel.sensorThresholds,
+                            historyPoints: viewModel.sensorHistory[sensor.id] ?? []
+                        )
+                        .padding(.horizontal, 16)
+                        Divider().padding(.leading, 16)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Power Section
+
+    private var powerSection: some View {
+        let sensors = viewModel.sensors.filter { $0.category == .power }
+        return VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "bolt.fill")
+                    .foregroundColor(powerStatusColor)
+                Text("Potenza (kW)")
+                    .font(.headline)
+                Spacer()
+                Circle()
+                    .fill(powerStatusColor)
+                    .frame(width: 10, height: 10)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(powerStatusColor.opacity(0.05))
+
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(sensors) { sensor in
+                        SensorCardView(
+                            sensor: sensor,
+                            thresholds: viewModel.sensorThresholds,
+                            historyPoints: viewModel.sensorHistory[sensor.id] ?? []
+                        )
+                        .padding(.horizontal, 16)
+                        Divider().padding(.leading, 16)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Helpers
 
     private var ledColor: Color {
         switch viewModel.globalState {
@@ -187,7 +309,6 @@ struct MacDashboardView: View {
     }
 
     private func globalRank(_ m: MacMonitor) -> Int {
-        // red > yellow > green
         if m.isDown { return 2 }
         if m.isMismatch { return 1 }
         return 0
@@ -224,8 +345,7 @@ private struct MacMonitorRow: View {
     @State private var selectionLabel: String? = nil
     @State private var hoveredSegment: MacSparklineSegment? = nil
 
-    /// Override sonda durante hover su mismatch
-    private func probeOverride(k1: Int?, k2: Int?, k3: Int?, n1: Int?, probe: String) -> String? {
+    private func probeOverride(probe: String) -> String? {
         guard let seg = hoveredSegment, seg.severity == 1 else { return nil }
         let val: Int?
         switch probe {
@@ -262,11 +382,11 @@ private struct MacMonitorRow: View {
             }
 
             HStack(spacing: 10) {
-                ProbeIndicator(label: "Aruba", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "k1") ?? monitor.k1)
-                ProbeIndicator(label: "TIM", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "k2") ?? monitor.k2)
-                ProbeIndicator(label: "ILIAD", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "k3") ?? monitor.k3)
-                ProbeIndicator(label: "NodePing", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "n1") ?? monitor.n1)
-                ProbeIndicator(label: "Uptime", status: probeOverride(k1: nil, k2: nil, k3: nil, n1: nil, probe: "u1") ?? monitor.u1)
+                ProbeIndicator(label: "Aruba", status: probeOverride(probe: "k1") ?? monitor.k1)
+                ProbeIndicator(label: "TIM", status: probeOverride(probe: "k2") ?? monitor.k2)
+                ProbeIndicator(label: "ILIAD", status: probeOverride(probe: "k3") ?? monitor.k3)
+                ProbeIndicator(label: "NodePing", status: probeOverride(probe: "n1") ?? monitor.n1)
+                ProbeIndicator(label: "Uptime", status: probeOverride(probe: "u1") ?? monitor.u1)
                 Spacer()
                 if let label = selectionLabel {
                     Text(label)
@@ -310,7 +430,7 @@ private struct ProbeIndicator: View {
     }
 }
 
-// MARK: - Sparkline con effetto fisheye e tooltip (macOS)
+// MARK: - Sparkline con tooltip (macOS)
 
 private struct MacSparklineView: View {
     let history: [[String: Any]]
@@ -318,8 +438,6 @@ private struct MacSparklineView: View {
     @Binding var hoveredSegment: MacSparklineSegment?
 
     private let samplingInterval: TimeInterval = 60
-
-    @State private var hoverX: CGFloat? = nil
 
     private var segments: [MacSparklineSegment] {
         let pts = points
@@ -350,7 +468,6 @@ private struct MacSparklineView: View {
             .onContinuousHover { phase in
                 switch phase {
                 case .active(let location):
-                    hoverX = location.x
                     let idx = Int(location.x / cellWidth)
                     if idx >= 0, idx < count {
                         let seg = segments[idx]
@@ -358,18 +475,9 @@ private struct MacSparklineView: View {
                         let formatter = DateFormatter()
                         formatter.locale = Locale(identifier: "it-IT")
                         formatter.dateFormat = "HH:mm"
-                        let time = formatter.string(from: seg.timestamp)
-                        let status: String
-                        switch seg.severity {
-                        case 0: status = "UP"
-                        case 1: status = "Mismatch"
-                        case 2: status = "DOWN"
-                        default: status = "?"
-                        }
-                        selectionLabel = "\(time) · \(status)"
+                        selectionLabel = formatter.string(from: seg.timestamp)
                     }
                 case .ended:
-                    hoverX = nil
                     selectionLabel = nil
                     hoveredSegment = nil
                 }
