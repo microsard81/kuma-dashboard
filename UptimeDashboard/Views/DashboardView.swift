@@ -175,8 +175,12 @@ struct DashboardView: View {
         .onAppear {
             viewModel.bindSettings(settingsVM)
             viewModel.startAutoRefresh()
+            unreadNotifications = NotificationStore.shared.unreadCount
         }
         .onDisappear { viewModel.stopAutoRefresh() }
+        .onChange(of: viewModel.lastUpdated) { _ in
+            unreadNotifications = NotificationStore.shared.unreadCount
+        }
         .onChange(of: viewModel.downCount) { count in
             if settingsVM.badgeEnabled {
                 UNUserNotificationCenter.current().setBadgeCount(count) { _ in }
