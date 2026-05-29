@@ -55,11 +55,9 @@ struct SensorSparklineView: View {
                             Text(String(format: "%.1f", point.value))
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(color)
-                            if !point.rawTime.isEmpty {
-                                Text(point.rawTime)
-                                    .font(.system(size: 8))
-                                    .foregroundColor(.secondary)
-                            }
+                            Text(point.rawTime.isEmpty ? "—" : point.rawTime)
+                                .font(.system(size: 8))
+                                .foregroundColor(.secondary)
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
