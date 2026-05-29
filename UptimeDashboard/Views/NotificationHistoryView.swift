@@ -79,6 +79,16 @@ struct NotificationHistoryView: View {
 
     private func loadNotifications() {
         notifications = NotificationStore.shared.loadAll()
+        #if DEBUG
+        // Seed 4 test notifications if empty
+        if notifications.isEmpty {
+            NotificationStore.shared.save(title: "⚠️ Temperatura critica", body: "DCUR - Temperatura ha superato la soglia critica (47.2°C)")
+            NotificationStore.shared.save(title: "🔴 Portale DOWN", body: "www.regione.vda.it non raggiungibile da tutte le sonde")
+            NotificationStore.shared.save(title: "⚡ Potenza bassa", body: "INV2 - Alimentazione sotto soglia warning (4.1 kW)")
+            NotificationStore.shared.save(title: "✅ Ripristino servizio", body: "mail.cst.inva.it è tornato UP su tutte le sonde")
+            notifications = NotificationStore.shared.loadAll()
+        }
+        #endif
     }
 
     private func markAsRead(_ notif: NotificationRecord) {
