@@ -44,7 +44,6 @@ struct NotificationHistoryView: View {
                         ForEach(notifications.filter { !$0.isRead }) { notif in
                             NotificationSwipeRow(
                                 notification: notif,
-                                isUnread: true,
                                 onAction: { markAsRead(notif) }
                             )
                             .id(notif.id)
@@ -71,7 +70,6 @@ struct NotificationHistoryView: View {
                         ForEach(notifications.filter { $0.isRead }) { notif in
                             NotificationSwipeRow(
                                 notification: notif,
-                                isUnread: false,
                                 onAction: { markAsUnread(notif) }
                             )
                             .id(notif.id)
@@ -161,12 +159,13 @@ struct NotificationHistoryView: View {
 
 private struct NotificationSwipeRow: View {
     let notification: NotificationRecord
-    let isUnread: Bool
     let onAction: () -> Void
 
     @State private var offset: CGFloat = 0
 
     private let actionWidth: CGFloat = 80
+
+    private var isUnread: Bool { !notification.isRead }
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -207,7 +206,6 @@ private struct NotificationSwipeRow: View {
                             if value.translation.width < 0 {
                                 offset = max(value.translation.width, -actionWidth)
                             } else if offset < 0 {
-                                // Permetti di chiudere trascinando a destra
                                 offset = min(0, offset + value.translation.width)
                             }
                         }
@@ -224,7 +222,6 @@ private struct NotificationSwipeRow: View {
         }
         .frame(maxWidth: .infinity)
         .clipped()
-        // Reset offset quando l'elemento cambia stato (viene riusato)
         .onChange(of: notification.isRead) { _ in
             offset = 0
         }
