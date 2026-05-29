@@ -79,50 +79,17 @@ struct DashboardView: View {
                             sectionPortali
                                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                                 .listRowSeparator(.hidden)
-                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                    if !isReorderingSections {
-                                        Button {
-                                            sectionOrder = displayOrder
-                                            withAnimation { isReorderingSections = true }
-                                        } label: {
-                                            Label("Riordina", systemImage: "arrow.up.arrow.down")
-                                        }
-                                        .tint(.green)
-                                    }
-                                }
                         case "temperatura":
                             if !viewModel.temperatureSensors.isEmpty {
                                 sectionTemperatura
                                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                                     .listRowSeparator(.hidden)
-                                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                        if !isReorderingSections {
-                                            Button {
-                                                sectionOrder = displayOrder
-                                                withAnimation { isReorderingSections = true }
-                                            } label: {
-                                                Label("Riordina", systemImage: "arrow.up.arrow.down")
-                                            }
-                                            .tint(.orange)
-                                        }
-                                    }
                             }
                         case "potenza":
                             if !viewModel.powerSensors.isEmpty {
                                 sectionPotenza
                                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                                     .listRowSeparator(.hidden)
-                                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                        if !isReorderingSections {
-                                            Button {
-                                                sectionOrder = displayOrder
-                                                withAnimation { isReorderingSections = true }
-                                            } label: {
-                                                Label("Riordina", systemImage: "arrow.up.arrow.down")
-                                            }
-                                            .tint(.blue)
-                                        }
-                                    }
                             }
                         default:
                             EmptyView()
@@ -208,13 +175,20 @@ struct DashboardView: View {
             .navigationTitle("Dashboard INVA")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if isReorderingSections {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Termina") {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        if isReorderingSections {
+                            // Save and exit
                             UserDefaults.standard.set(sectionOrder, forKey: sectionOrderKey)
                             withAnimation { isReorderingSections = false }
+                        } else {
+                            // Enter reorder mode
+                            sectionOrder = displayOrder
+                            withAnimation { isReorderingSections = true }
                         }
-                        .bold()
+                    } label: {
+                        Image(systemName: isReorderingSections ? "lock.open" : "lock")
+                            .foregroundColor(isReorderingSections ? .orange : .secondary)
                     }
                 }
             }
