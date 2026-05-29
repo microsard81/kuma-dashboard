@@ -178,6 +178,16 @@ final class NotificationStore {
         }
     }
 
+    /// Save a new notification only if not a duplicate (same title+body within last 60 seconds).
+    func saveIfNotDuplicate(title: String, body: String) {
+        let recent = loadAll()
+        let cutoff = Date().addingTimeInterval(-60)
+        let isDuplicate = recent.contains { $0.title == title && $0.body == body && $0.date > cutoff }
+        if !isDuplicate {
+            save(title: title, body: body)
+        }
+    }
+
     /// Save a new notification to history.
     func save(title: String, body: String) {
         var records = loadAll()

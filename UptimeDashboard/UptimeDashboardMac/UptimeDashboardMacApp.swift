@@ -168,10 +168,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
         completionHandler([.banner, .sound, .badge])
     }
 
-    // Quando l'utente clicca la notifica, aggiorna la dashboard (non salva di nuovo)
+    // Quando l'utente clicca la notifica — salva solo se non duplicata (caso background)
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
+        let content = response.notification.request.content
+        NotificationStore.shared.saveIfNotDuplicate(title: content.title, body: content.body)
         Task {
             await viewModel?.fetchDashboard()
         }
