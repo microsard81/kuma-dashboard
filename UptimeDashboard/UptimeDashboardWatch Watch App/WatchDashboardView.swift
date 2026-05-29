@@ -6,7 +6,7 @@ struct WatchDashboardView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if viewModel.monitors.isEmpty {
+                if viewModel.monitors.isEmpty && viewModel.sensors.isEmpty {
                     VStack(spacing: 12) {
                         if viewModel.isLoading {
                             ProgressView()
@@ -33,16 +33,11 @@ struct WatchDashboardView: View {
                         }
                     }
                 } else {
-                    monitorList
+                    sectionList
                 }
             }
             .navigationTitle("INVA")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Circle()
-                        .fill(ledColor)
-                        .frame(width: 10, height: 10)
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         Task { await viewModel.fetchFromAPI() }
@@ -54,65 +49,131 @@ struct WatchDashboardView: View {
         }
     }
 
+    // MARK: - 3 Sections
+
     @ViewBuilder
-    private var monitorList: some View {
-        let downItems = viewModel.monitors.filter { $0.isDown }
-        let mismatchItems = viewModel.monitors.filter { $0.isMismatch }
-        let upItems = viewModel.monitors.filter { !$0.isDown && !$0.isMismatch }
-        let allUp = downItems.isEmpty && mismatchItems.isEmpty
-
+    private var sectionList: some View {
         List {
-            if !downItems.isEmpty {
-                Section {
-                    ForEach(downItems) { WatchMonitorCard(monitor: $0) }
-                } header: {
-                    Label("DOWN", systemImage: "xmark.circle.fill")
-                        .foregroundColor(.red)
+            // Portali
+            NavigationLink {
+                WatchPortalsDetailView()
+                    .environmentObject(viewModel)
+            } label: {
+                HStack {
+                    Circle()
+                        .fill(portalsColor)
+                        .frame(width: 8, height: 8)
+                    Image(systemName: "globe")
+                        .font(.caption2)
+                        .foregroundColor(portalsColor)
+                    Text("Portali")
+                        .font(.caption)
+                    Spacer()
+                    Text(portalsStatus)
+                        .font(.caption2)
+                        .foregroundColor(portalsColor)
                 }
             }
 
-            if !mismatchItems.isEmpty {
-                Section {
-                    ForEach(mismatchItems) { WatchMonitorCard(monitor: $0) }
-                } header: {
-                    Label("Mismatch", systemImage: "exclamationmark.triangle.fill")
-                        .foregroundColor(.yellow)
-                }
-            }
-
-            if !upItems.isEmpty {
-                if allUp {
-                    ForEach(upItems) { WatchMonitorCard(monitor: $0) }
-                } else {
-                    Section {
-                        ForEach(upItems) { WatchMonitorCard(monitor: $0) }
-                    } header: {
-                        Label("UP", systemImage: "checkmark.circle.fill")
-                            .foregroundColor(.green)
+            // Temperatura
+            if !temperatureSensors.isEmpty {
+                NavigationLink {
+                    WatchTemperatureDetailView()
+                        .environmentObject(viewModel)
+                } label: {
+                    HStack {
+                        Circle()
+                            .fill(temperatureColor)
+                            .frame(width: 8, height: 8)
+                        Image(systemName: "thermometer.medium")
+                            .font(.caption2)
+                            .foregroundColor(temperatureColor)
+                        Text("Temperatura")
+                            .font(.caption)
+                        Spacer()
+                        Text(temperatureStatus)
+                            .font(.caption2)
+                            .foregroundColor(temperatureColor)
                     }
                 }
             }
 
-            // Sensor section — hidden if no sensor data and no error
-            if !viewModel.sensors.isEmpty || viewModel.sensorError != nil {
-                Section {
-                    WatchSensorListView(
-                        sensors: viewModel.sensors,
-                        thresholds: viewModel.sensorThresholds,
-                        error: viewModel.sensorError
-                    )
-                } header: {
-                    Label("Sensori", systemImage: "thermometer.medium")
+            // Potenza
+            if !powerSensors.isEmpty {
+                NavigationLink {
+                    WatchPowerDetailView()
+                        .environmentObject(viewModel)
+                } label: {
+                    HStack {
+                        Circle()
+                            .fill(powerColor)
+                            .frame(width: 8, height: 8)
+                        Image(systemName: "bolt.fill")
+                            .font(.caption2)
+                            .foregroundColor(powerColor)
+                        Text("Potenza")
+                            .font(.caption)
+                        Spacer()
+                        Text(powerStatus)
+                            .font(.caption2)
+                            .foregroundColor(powerColor)
+                    }
                 }
             }
         }
     }
 
-    private var ledColor: Color {
+    // MARK: - Computed
+
+    private var temperatureSensors: [SensorReading] {
+        viewModel.sensors.filter { $0.category == .temperature }
+    }
+
+    private var powerSensors: [SensorReading] {
+        viewModel.sensors.filter { $0.category == .power }
+    }
+
+    private var portalsColor: Color {
         switch viewModel.globalState {
         case "RED": return .red
         case "YELLOW": return .yellow
         default: return .green
         }
+    }
+
+    private var portalsStatus: String {
+        let down = viewModel.monitors.filter { $0.isDown }.count
+        let mismatch = viewModel.monitors.filter { $0.isMismatch }.count
+        if down > 0 { return "\(down) DOWN" }
+        if mismatch > 0 { return "\(mismatch) ⚠" }
+        return "OK"
+    }
+
+    private var temperatureColor: Color {
+        guard let t = viewModel.sensorThresholds else { return .orange }
+        if temperatureSensors.contains(where: { $0.alertStatus(thresholds: t) == .critical }) { return .red }
+        if temperatureSensors.contains(where: { $0.alertStatus(thresholds: t) == .warning }) { return .yellow }
+        return .orange
+    }
+
+    private var temperatureStatus: String {
+        guard let t = viewModel.sensorThresholds else { return "—" }
+        let alerts = temperatureSensors.filter { $0.alertStatus(thresholds: t) != .normal }.count
+        if alerts > 0 { return "\(alerts) ⚠" }
+        return "OK"
+    }
+
+    private var powerColor: Color {
+        guard let t = viewModel.sensorThresholds else { return .blue }
+        if powerSensors.contains(where: { $0.alertStatus(thresholds: t) == .critical }) { return .red }
+        if powerSensors.contains(where: { $0.alertStatus(thresholds: t) == .warning }) { return .yellow }
+        return .blue
+    }
+
+    private var powerStatus: String {
+        guard let t = viewModel.sensorThresholds else { return "—" }
+        let alerts = powerSensors.filter { $0.alertStatus(thresholds: t) != .normal }.count
+        if alerts > 0 { return "\(alerts) ⚠" }
+        return "OK"
     }
 }
