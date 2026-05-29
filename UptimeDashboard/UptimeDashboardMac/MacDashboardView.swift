@@ -31,6 +31,7 @@ struct MacDashboardView: View {
     @Environment(\.textScale) var scale
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
+    @State private var unreadNotifications = NotificationStore.shared.unreadCount
     @State private var sectionOrder: [String] = UserDefaults.standard.stringArray(forKey: "mac_dashboard_section_order") ?? ["portali", "temperatura", "potenza"]
     @State private var isPortalsCollapsed = false
     @State private var isTemperatureCollapsed = false
@@ -174,8 +175,8 @@ struct MacDashboardView: View {
                             .font(.system(size: 13))
                             .frame(width: 28, height: 28)
                             .background(.ultraThinMaterial, in: Circle())
-                        if NotificationStore.shared.unreadCount > 0 {
-                            Text("\(NotificationStore.shared.unreadCount)")
+                        if unreadNotifications > 0 {
+                            Text("\(unreadNotifications)")
                                 .font(.system(size: 8, weight: .bold))
                                 .foregroundColor(.white)
                                 .padding(2)
@@ -189,6 +190,7 @@ struct MacDashboardView: View {
                 .popover(isPresented: $showNotificationHistory) {
                     MacNotificationHistoryPopover()
                         .frame(width: 350, height: 400)
+                        .onDisappear { unreadNotifications = 0 }
                 }
                 .help("Notifiche")
 

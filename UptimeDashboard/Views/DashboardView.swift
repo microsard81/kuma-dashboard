@@ -12,6 +12,7 @@ struct DashboardView: View {
     @EnvironmentObject private var settingsVM: SettingsViewModel
 
     @State private var showLogoutAlert = false
+    @State private var unreadNotifications = NotificationStore.shared.unreadCount
 
     init(network: NetworkClientProtocol) {
         _viewModel = StateObject(wrappedValue: DashboardViewModel(network: network))
@@ -99,8 +100,8 @@ struct DashboardView: View {
                             ZStack(alignment: .topTrailing) {
                                 Image(systemName: "bell")
                                     .font(.title3)
-                                if NotificationStore.shared.unreadCount > 0 {
-                                    Text("\(NotificationStore.shared.unreadCount)")
+                                if unreadNotifications > 0 {
+                                    Text("\(unreadNotifications)")
                                         .font(.system(size: 9, weight: .bold))
                                         .foregroundColor(.white)
                                         .padding(3)
@@ -114,6 +115,11 @@ struct DashboardView: View {
                         }
                         .foregroundColor(.secondary)
                     }
+                    .simultaneousGesture(TapGesture().onEnded {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            unreadNotifications = 0
+                        }
+                    })
 
                     NavigationLink {
                         SettingsView()
