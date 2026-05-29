@@ -28,12 +28,14 @@ private extension Color {
 struct MacDashboardView: View {
     @EnvironmentObject var viewModel: MacAppViewModel
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.textScale) var scale
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
     @State private var sectionOrder: [String] = UserDefaults.standard.stringArray(forKey: "mac_dashboard_section_order") ?? ["portali", "temperatura", "potenza"]
     @State private var isPortalsCollapsed = false
     @State private var isTemperatureCollapsed = false
     @State private var isPowerCollapsed = false
+    @State private var allCollapsed = false
 
     private let sectionOrderKey = "mac_dashboard_section_order"
 
@@ -88,13 +90,13 @@ struct MacDashboardView: View {
             // Toolbar
             HStack {
                 Text("Dashboard INVA")
-                    .font(.headline)
+                    .font(.scaled(.headline, scale: scale))
 
                 Spacer()
 
                 if let date = viewModel.lastUpdated {
                     Text("Aggiornato: \(date, style: .time)")
-                        .font(.caption)
+                        .font(.scaled(.caption, scale: scale))
                         .foregroundColor(.secondary)
                 }
 
@@ -133,6 +135,23 @@ struct MacDashboardView: View {
                 .menuStyle(.borderlessButton)
                 .fixedSize()
                 .help("Riordina sezioni")
+
+                // Collapse/Expand all
+                Button {
+                    withAnimation {
+                        allCollapsed.toggle()
+                        isPortalsCollapsed = allCollapsed
+                        isTemperatureCollapsed = allCollapsed
+                        isPowerCollapsed = allCollapsed
+                    }
+                } label: {
+                    Image(systemName: allCollapsed ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
+                        .font(.system(size: 13))
+                        .frame(width: 28, height: 28)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .help(allCollapsed ? "Espandi tutto" : "Comprimi tutto")
 
                 // Refresh
                 Button {
@@ -239,9 +258,9 @@ struct MacDashboardView: View {
                 Image(systemName: "globe")
                     .foregroundColor(ledColor)
                 Text("Portali")
-                    .font(.headline)
+                    .font(.scaled(.headline, scale: scale))
                 Image(systemName: isPortalsCollapsed ? "chevron.right" : "chevron.down")
-                    .font(.caption)
+                    .font(.scaled(.caption, scale: scale))
                     .foregroundColor(.secondary)
                 Spacer()
                 Circle()
@@ -311,9 +330,9 @@ struct MacDashboardView: View {
                 Image(systemName: "thermometer.medium")
                     .foregroundColor(temperatureStatusColor)
                 Text("Temperatura (°C)")
-                    .font(.headline)
+                    .font(.scaled(.headline, scale: scale))
                 Image(systemName: isTemperatureCollapsed ? "chevron.right" : "chevron.down")
-                    .font(.caption)
+                    .font(.scaled(.caption, scale: scale))
                     .foregroundColor(.secondary)
                 Spacer()
                 Circle()
@@ -354,9 +373,9 @@ struct MacDashboardView: View {
                 Image(systemName: "bolt.fill")
                     .foregroundColor(powerStatusColor)
                 Text("Potenza (kW)")
-                    .font(.headline)
+                    .font(.scaled(.headline, scale: scale))
                 Image(systemName: isPowerCollapsed ? "chevron.right" : "chevron.down")
-                    .font(.caption)
+                    .font(.scaled(.caption, scale: scale))
                     .foregroundColor(.secondary)
                 Spacer()
                 Circle()
@@ -640,7 +659,7 @@ private struct MacNotificationHistoryPopover: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Notifiche")
-                    .font(.headline)
+                    .font(.scaled(.headline, scale: scale))
                 Spacer()
             }
             .padding()
@@ -670,7 +689,7 @@ private struct MacNotificationHistoryPopover: View {
                         }
                         if !notif.body.isEmpty {
                             Text(notif.body)
-                                .font(.caption)
+                                .font(.scaled(.caption, scale: scale))
                                 .foregroundColor(.secondary)
                                 .lineLimit(2)
                         }
