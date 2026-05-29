@@ -24,6 +24,7 @@ struct PowerDetailView: View {
         // Base order: saved custom order or default
         let saved = loadSavedOrder()
         var baseOrder: [SensorReading]
+        let hasCustomOrder: Bool
         if !saved.isEmpty {
             var ordered: [SensorReading] = []
             let sensorMap = Dictionary(uniqueKeysWithValues: viewModel.powerSensors.map { ($0.id, $0) })
@@ -34,18 +35,28 @@ struct PowerDetailView: View {
                 ordered.append(s)
             }
             baseOrder = ordered
+            hasCustomOrder = true
         } else {
             baseOrder = viewModel.powerSensors
+            hasCustomOrder = false
         }
 
-        // Apply global sort order
+        // Se c'è ordine manuale, rispettalo (solo gravità in cima)
+        guard let t = viewModel.sensorThresholds else { return baseOrder }
+        if hasCustomOrder {
+            let critical = baseOrder.filter { $0.alertStatus(thresholds: t) == .critical }
+            let warning = baseOrder.filter { $0.alertStatus(thresholds: t) == .warning }
+            let normal = baseOrder.filter { $0.alertStatus(thresholds: t) == .normal }
+            return critical + warning + normal
+        }
+
+        // Nessun ordine manuale: applica sortOrder globale
         let sortOrder = UserDefaults.standard.string(forKey: "sortOrder") ?? "severity"
         if sortOrder == "alphabetical" {
             return baseOrder.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         }
 
-        // Stable sort: critical first, then warning, then normal
-        guard let t = viewModel.sensorThresholds else { return baseOrder }
+        // Default: per gravità
         let critical = baseOrder.filter { $0.alertStatus(thresholds: t) == .critical }
         let warning = baseOrder.filter { $0.alertStatus(thresholds: t) == .warning }
         let normal = baseOrder.filter { $0.alertStatus(thresholds: t) == .normal }
