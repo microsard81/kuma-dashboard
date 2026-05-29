@@ -59,6 +59,14 @@ struct NotificationHistoryView: View {
                         Section {
                             ForEach(readNotifications) { notif in
                                 NotificationRow(notification: notif)
+                                    .swipeActions(edge: .trailing) {
+                                        Button {
+                                            markAsUnread(notif)
+                                        } label: {
+                                            Label("Non letta", systemImage: "envelope.badge")
+                                        }
+                                        .tint(.blue)
+                                    }
                             }
                         } header: {
                             if !unreadNotifications.isEmpty {
@@ -98,6 +106,11 @@ struct NotificationHistoryView: View {
 
     private func markAsRead(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsRead(id: notif.id)
+        withAnimation { notifications = NotificationStore.shared.loadAll() }
+    }
+
+    private func markAsUnread(_ notif: NotificationRecord) {
+        NotificationStore.shared.markAsUnread(id: notif.id)
         withAnimation { notifications = NotificationStore.shared.loadAll() }
     }
 }
@@ -193,6 +206,15 @@ final class NotificationStore {
         var records = loadAll()
         if let idx = records.firstIndex(where: { $0.id == id }) {
             records[idx].isRead = true
+            persist(records)
+        }
+    }
+
+    /// Mark a single notification as unread.
+    func markAsUnread(id: UUID) {
+        var records = loadAll()
+        if let idx = records.firstIndex(where: { $0.id == id }) {
+            records[idx].isRead = false
             persist(records)
         }
     }
