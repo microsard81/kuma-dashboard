@@ -77,24 +77,22 @@ struct NotificationHistoryView: View {
                 }
                 .listStyle(.plain)
                 .refreshable {
+                    // La scritta "Segna tutte come lette" appare sopra lo spinner
                     NotificationStore.shared.markAllAsRead()
                     withAnimation { notifications = NotificationStore.shared.loadAll() }
+                }
+                .overlay(alignment: .top) {
+                    if !unreadNotifications.isEmpty {
+                        Text("↓ Segna tutte come lette")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.top, -20)
+                    }
                 }
             }
         }
         .navigationTitle("Notifiche")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if !unreadNotifications.isEmpty {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Segna tutte come lette") {
-                        NotificationStore.shared.markAllAsRead()
-                        withAnimation { notifications = NotificationStore.shared.loadAll() }
-                    }
-                    .font(.caption)
-                }
-            }
-        }
         .onAppear { loadNotifications() }
     }
 
