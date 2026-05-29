@@ -7,16 +7,22 @@ import Charts
 /// A compact line + area sparkline for sensor history data.
 /// Displays the last 60 data points using catmullRom interpolation.
 /// Supports interactive tooltip on touch/hover showing value and time (HH:mm).
+/// Y-axis uses fixed scale based on sensor category.
 struct SensorSparklineView: View {
     let historyPoints: [SensorHistoryPoint]
     let color: Color
+    var category: SensorCategory = .temperature
 
     @State private var selectedIndex: Int? = nil
 
+    /// Fixed Y scale based on category
+    private var yMin: Double { category == .power ? 1 : 10 }
+    private var yMax: Double { category == .power ? 100 : 65 }
+
     /// Parsed data points with Date for tooltip display.
-    private var dataPoints: [(date: Date, value: Double, index: Int)] {
-        historyPoints.suffix(60).enumerated().compactMap { index, point in
-            guard let date = parseISO(point.t) else { return nil }
+    private var dataPoints: [(date: Date?, value: Double, index: Int)] {
+        historyPoints.suffix(60).enumerated().map { index, point in
+            let date = parseISO(point.t)
             return (date: date, value: point.v, index: index)
         }
     }
@@ -49,9 +55,15 @@ struct SensorSparklineView: View {
                             Text(String(format: "%.1f", point.value))
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(color)
-                            Text(formatTime(point.date))
-                                .font(.system(size: 8))
-                                .foregroundColor(.secondary)
+                            if let date = point.date {
+                                Text(formatTime(date))
+                                    .font(.system(size: 8))
+                                    .foregroundColor(.secondary)
+                            } else if let raw = rawTimestamp(at: idx) {
+                                Text(extractTime(from: raw))
+                                    .font(.system(size: 8))
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
@@ -61,6 +73,7 @@ struct SensorSparklineView: View {
         }
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
+        .chartYScale(domain: yMin...yMax)
         .chartLegend(.hidden)
         .chartXSelection(value: $selectedIndex)
         .onChange(of: selectedIndex) { _ in
@@ -69,6 +82,26 @@ struct SensorSparklineView: View {
             generator.impactOccurred()
             #endif
         }
+    }
+
+    /// Get raw timestamp string at index for fallback display
+    private func rawTimestamp(at index: Int) -> String? {
+        let slice = Array(historyPoints.suffix(60))
+        guard index >= 0, index < slice.count else { return nil }
+        return slice[index].t
+    }
+
+    /// Extract HH:mm from a raw ISO timestamp string without full parsing
+    private func extractTime(from str: String) -> String {
+        // Look for T followed by HH:mm
+        if let tIndex = str.firstIndex(of: "T") {
+            let timeStart = str.index(after: tIndex)
+            let timeStr = String(str[timeStart...])
+            if timeStr.count >= 5 {
+                return String(timeStr.prefix(5)) // "HH:mm"
+            }
+        }
+        return ""
     }
 
     private func formatTime(_ date: Date) -> String {
@@ -80,14 +113,12 @@ struct SensorSparklineView: View {
     /// Parses an ISO 8601 timestamp string into a Date.
     private func parseISO(_ str: String?) -> Date? {
         guard let str = str else { return nil }
-        // Try ISO8601 with fractional seconds
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = iso.date(from: str) { return date }
-        // Try ISO8601 without fractional seconds
         iso.formatOptions = [.withInternetDateTime]
         if let date = iso.date(from: str) { return date }
-        // Fallback: no timezone (local time assumed)
+        // Fallback: no timezone
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         df.locale = Locale(identifier: "en_US_POSIX")
@@ -97,7 +128,6 @@ struct SensorSparklineView: View {
 
 // MARK: - Legacy convenience init (backward compatibility)
 extension SensorSparklineView {
-    /// Legacy initializer accepting raw [Double] points (no timestamps, index-based).
     init(points: [Double], color: Color) {
         let now = Date()
         let syntheticPoints = points.suffix(60).enumerated().map { index, value in
@@ -108,6 +138,7 @@ extension SensorSparklineView {
         }
         self.historyPoints = syntheticPoints
         self.color = color
+        self.category = .temperature
     }
 }
 
@@ -127,7 +158,8 @@ struct SensorSparklineView_Previews: PreviewProvider {
                 SensorHistoryPoint(t: "2024-01-15T10:26:00+00:00", v: 23.9),
                 SensorHistoryPoint(t: "2024-01-15T10:27:00+00:00", v: 24.2),
             ],
-            color: .green
+            color: .orange,
+            category: .temperature
         )
         .frame(height: 50)
         .padding()

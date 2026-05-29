@@ -47,6 +47,7 @@
 		B0070003 /* PortalsDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070004 /* PortalsDetailView.swift */; };
 		B0070005 /* TemperatureDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070006 /* TemperatureDetailView.swift */; };
 		B0070007 /* PowerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070008 /* PowerDetailView.swift */; };
+		B0080001 /* NotificationHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0080002 /* NotificationHistoryView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -168,6 +169,7 @@
 		B0070004 /* PortalsDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalsDetailView.swift; sourceTree = "<group>"; };
 		B0070006 /* TemperatureDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemperatureDetailView.swift; sourceTree = "<group>"; };
 		B0070008 /* PowerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerDetailView.swift; sourceTree = "<group>"; };
+		B0080002 /* NotificationHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationHistoryView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -374,6 +376,7 @@
 				B0020033 /* ChangePasswordView.swift */,
 				B0070002 /* MonitorRowView.swift */,
 				B0070004 /* PortalsDetailView.swift */,
+				B0080002 /* NotificationHistoryView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -685,6 +688,7 @@
 				B0070003 /* PortalsDetailView.swift in Sources */,
 				B0070005 /* TemperatureDetailView.swift in Sources */,
 				B0070007 /* PowerDetailView.swift in Sources */,
+				B0080001 /* NotificationHistoryView.swift in Sources */,
 				B0020003 /* KeychainStore.swift in Sources */,
 				B0020005 /* NetworkClient.swift in Sources */,
 				816E9C782F89397A004F93EF /* WCSessionDelegateHandler.swift in Sources */,
@@ -1261,7 +1265,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = UptimeDashboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1292,7 +1296,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = UptimeDashboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;

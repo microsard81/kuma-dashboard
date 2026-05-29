@@ -7,7 +7,15 @@ import WatchConnectivity
 
 // MARK: - AppDelegate
 
-final class AppDelegate: NSObject, UIApplicationDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
 
     func application(
         _ application: UIApplication,
@@ -24,6 +32,30 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) {
         UserDefaults.standard.set(true, forKey: "pendingAPNsRegistration")
         print("[AppDelegate] WARNING: APNs registration failed — \(error.localizedDescription)")
+    }
+
+    // MARK: - UNUserNotificationCenterDelegate
+
+    /// Called when a notification arrives while the app is in foreground — show it and save to history.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        let content = notification.request.content
+        NotificationStore.shared.save(title: content.title, body: content.body)
+        completionHandler([.banner, .sound, .badge])
+    }
+
+    /// Called when the user taps a notification — save to history.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let content = response.notification.request.content
+        NotificationStore.shared.save(title: content.title, body: content.body)
+        completionHandler()
     }
 }
 

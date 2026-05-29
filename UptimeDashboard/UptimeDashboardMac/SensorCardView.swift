@@ -46,7 +46,8 @@ struct SensorCardView: View {
             if !historyPoints.isEmpty {
                 SensorSparklineView(
                     historyPoints: Array(historyPoints.suffix(60)),
-                    color: displayColor
+                    color: displayColor,
+                    category: sensor.category
                 )
                 .frame(height: 50)
             }

@@ -132,6 +132,18 @@ struct DashboardView: View {
                 Divider()
                 HStack(spacing: 32) {
                     NavigationLink {
+                        NotificationHistoryView()
+                    } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: "bell")
+                                .font(.title3)
+                            Text("Notifiche")
+                                .font(.caption2)
+                        }
+                        .foregroundColor(.secondary)
+                    }
+
+                    NavigationLink {
                         SettingsView()
                             .environmentObject(settingsVM)
                     } label: {
