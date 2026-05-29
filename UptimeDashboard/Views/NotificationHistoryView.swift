@@ -8,6 +8,7 @@ import UserNotifications
 /// Swipe left to mark as read.
 struct NotificationHistoryView: View {
     @State private var notifications: [NotificationRecord] = []
+    @State private var fadingId: UUID? = nil
 
     var body: some View {
         Group {
@@ -32,6 +33,7 @@ struct NotificationHistoryView: View {
                             ForEach($notifications) { $notif in
                                 if !notif.isRead {
                                     NotificationRow(notification: notif)
+                                        .opacity(fadingId == notif.id ? 0 : 1)
                                         .listRowBackground(Color.blue.opacity(0.08))
                                         .swipeActions(edge: .trailing) {
                                             Button {
@@ -54,6 +56,7 @@ struct NotificationHistoryView: View {
                             ForEach($notifications) { $notif in
                                 if notif.isRead {
                                     NotificationRow(notification: notif)
+                                        .opacity(fadingId == notif.id ? 0 : 1)
                                         .swipeActions(edge: .trailing) {
                                             Button {
                                                 markAsUnread(notif)
@@ -105,20 +108,24 @@ struct NotificationHistoryView: View {
 
     private func markAsRead(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsRead(id: notif.id)
-        // Delay breve per far chiudere lo swipe, poi riordina
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            withAnimation(.easeInOut(duration: 0.25)) {
-                reloadNotifications()
-            }
+        // Fade out la riga, poi ricarica la lista nella nuova posizione
+        withAnimation(.easeOut(duration: 0.2)) {
+            fadingId = notif.id
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+            fadingId = nil
+            reloadNotifications()
         }
     }
 
     private func markAsUnread(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsUnread(id: notif.id)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            withAnimation(.easeInOut(duration: 0.25)) {
-                reloadNotifications()
-            }
+        withAnimation(.easeOut(duration: 0.2)) {
+            fadingId = notif.id
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+            fadingId = nil
+            reloadNotifications()
         }
     }
 
