@@ -8,7 +8,6 @@ import UserNotifications
 /// Swipe left to mark as read.
 struct NotificationHistoryView: View {
     @State private var notifications: [NotificationRecord] = []
-    @State private var fadingId: UUID? = nil
 
     var body: some View {
         Group {
@@ -26,46 +25,46 @@ struct NotificationHistoryView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                let unreadCount = notifications.filter { !$0.isRead }.count
+                let hasUnread = unreadCount > 0
+                let hasRead = notifications.contains { $0.isRead }
+
                 List {
-                    // Non lette
-                    if notifications.contains(where: { !$0.isRead }) {
+                    // Header "Non lette"
+                    if hasUnread {
                         Section {
-                            ForEach($notifications) { $notif in
-                                if !notif.isRead {
-                                    NotificationRow(notification: notif)
-                                        .opacity(fadingId == notif.id ? 0 : 1)
-                                        .listRowBackground(Color.blue.opacity(0.08))
-                                        .swipeActions(edge: .trailing) {
-                                            Button {
-                                                markAsRead(notif)
-                                            } label: {
-                                                Label("Letta", systemImage: "envelope.open")
-                                            }
-                                            .tint(.blue)
+                            ForEach(notifications.filter { !$0.isRead }) { notif in
+                                NotificationRow(notification: notif)
+                                    .id(notif.id)
+                                    .listRowBackground(Color.blue.opacity(0.08))
+                                    .swipeActions(edge: .trailing) {
+                                        Button {
+                                            markAsRead(notif)
+                                        } label: {
+                                            Label("Letta", systemImage: "envelope.open")
                                         }
-                                }
+                                        .tint(.blue)
+                                    }
                             }
                         } header: {
-                            Text("Non lette (\(notifications.filter { !$0.isRead }.count))")
+                            Text("Non lette (\(unreadCount))")
                         }
                     }
 
-                    // Lette
-                    if notifications.contains(where: { $0.isRead }) {
+                    // Header "Lette"
+                    if hasRead {
                         Section {
-                            ForEach($notifications) { $notif in
-                                if notif.isRead {
-                                    NotificationRow(notification: notif)
-                                        .opacity(fadingId == notif.id ? 0 : 1)
-                                        .swipeActions(edge: .trailing) {
-                                            Button {
-                                                markAsUnread(notif)
-                                            } label: {
-                                                Label("Non letta", systemImage: "envelope.badge")
-                                            }
-                                            .tint(.blue)
+                            ForEach(notifications.filter { $0.isRead }) { notif in
+                                NotificationRow(notification: notif)
+                                    .id(notif.id)
+                                    .swipeActions(edge: .trailing) {
+                                        Button {
+                                            markAsUnread(notif)
+                                        } label: {
+                                            Label("Non letta", systemImage: "envelope.badge")
                                         }
-                                }
+                                        .tint(.blue)
+                                    }
                             }
                         } header: {
                             Text("Lette")
@@ -75,10 +74,12 @@ struct NotificationHistoryView: View {
                 .listStyle(.plain)
                 .refreshable {
                     NotificationStore.shared.markAllAsRead()
-                    reloadNotifications()
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        reloadNotifications()
+                    }
                 }
                 .overlay(alignment: .top) {
-                    if notifications.contains(where: { !$0.isRead }) {
+                    if hasUnread {
                         Text("↓ Segna tutte come lette")
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -95,40 +96,52 @@ struct NotificationHistoryView: View {
     private func loadNotifications() {
         reloadNotifications()
         #if DEBUG
-        // Seed 4 test notifications if empty
+        // Seed 4 test notifications if empty (con orari diversi)
         if notifications.isEmpty {
-            NotificationStore.shared.save(title: "⚠️ Temperatura critica", body: "DCUR - Temperatura ha superato la soglia critica (47.2°C)")
-            NotificationStore.shared.save(title: "🔴 Portale DOWN", body: "www.regione.vda.it non raggiungibile da tutte le sonde")
-            NotificationStore.shared.save(title: "⚡ Potenza bassa", body: "INV2 - Alimentazione sotto soglia warning (4.1 kW)")
-            NotificationStore.shared.save(title: "✅ Ripristino servizio", body: "mail.cst.inva.it è tornato UP su tutte le sonde")
+            seedDebugNotifications()
             reloadNotifications()
         }
         #endif
     }
 
+    #if DEBUG
+    private func seedDebugNotifications() {
+        let now = Date()
+        let records: [(String, String, TimeInterval, Bool)] = [
+            ("⚠️ Temperatura critica", "DCUR - Temperatura ha superato la soglia critica (47.2°C)", -120, false),
+            ("⛔ Portale DOWN", "www.regione.vda.it non raggiungibile da tutte le sonde", -300, false),
+            ("⚡ Potenza bassa", "INV2 - Alimentazione sotto soglia warning (4.1 kW)", -1800, true),
+            ("✅ Ripristino servizio", "mail.cst.inva.it è tornato UP su tutte le sonde", -3600, true),
+        ]
+        // Salva direttamente con date custom
+        for (title, body, offset, isRead) in records {
+            var record = NotificationRecord(title: title, body: body, date: now.addingTimeInterval(offset), isRead: isRead)
+            _ = record // suppress warning
+            // Usa il metodo interno per salvare con data custom
+            var all = NotificationStore.shared.loadAll()
+            all.insert(NotificationRecord(title: title, body: body, date: now.addingTimeInterval(offset), isRead: isRead), at: 0)
+            if let data = try? JSONEncoder().encode(all) {
+                UserDefaults.standard.set(data, forKey: "notification_history")
+            }
+        }
+    }
+    #endif
+
     private func markAsRead(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsRead(id: notif.id)
-        // Fade out la riga, poi ricarica con fade in
-        withAnimation(.easeOut(duration: 0.2)) {
-            fadingId = notif.id
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-            reloadNotifications()
-            withAnimation(.easeIn(duration: 0.25)) {
-                fadingId = nil
+        // Aspetta che lo swipe si chiuda, poi ricarica con animazione di move
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            withAnimation(.easeInOut(duration: 0.35)) {
+                reloadNotifications()
             }
         }
     }
 
     private func markAsUnread(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsUnread(id: notif.id)
-        withAnimation(.easeOut(duration: 0.2)) {
-            fadingId = notif.id
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-            reloadNotifications()
-            withAnimation(.easeIn(duration: 0.25)) {
-                fadingId = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            withAnimation(.easeInOut(duration: 0.35)) {
+                reloadNotifications()
             }
         }
     }
