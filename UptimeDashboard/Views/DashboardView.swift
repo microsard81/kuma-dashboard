@@ -110,8 +110,8 @@ struct DashboardView: View {
                             .buttonStyle(.plain)
                         }
 
-                        // Sensor error banner
-                        if let error = viewModel.sensorError {
+                        // Sensor error banner (only if no sensor data available)
+                        if let error = viewModel.sensorError, viewModel.sensors.isEmpty {
                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundColor(.orange)
