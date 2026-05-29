@@ -534,7 +534,10 @@ UptimeDashboardTests/
 - **Sensori Temperatura** — lista sensori con sparkline, badge valore, colore arancione (normal), giallo (warning), rosso (critical); ordinati per gravità
 - **Sensori Potenza** — lista sensori con sparkline, badge valore, colore blu (normal), giallo (warning), rosso (critical); ordinati per gravità
 - **Tooltip interattivo** — tocca il grafico di un sensore per vedere valore e orario (HH:mm) del punto
-- **Riordino manuale** — swipe a destra su un elemento → "Riordina" → drag & drop → "Termina"; ordine salvato in UserDefaults
+- **Riordino sezioni** — long press su una macro-card per riordinare le 3 sezioni con drag & drop
+- **Riordino elementi** — swipe a destra su un elemento → drag & drop → "Termina"; ordine salvato
+- **Risorse in evidenza** — swipe a sinistra per pinnare risorse sulla home; card quadrate con stato in tempo reale; long press per riordinare/rimuovere; drag & drop tra card
+- **Storico notifiche** — icona campana con badge non lette; sezioni non lette/lette; swipe per segnare letta/non letta; pull-to-refresh segna tutte come lette
 - **Auto-refresh** — aggiornamento automatico configurabile (default 60s); pull-to-refresh in ogni scheda
 - **Filtro DOWN** — toggle per mostrare solo i monitor in stato DOWN o mismatch (nella scheda Portali)
 - **Badge icona app** — numero di risorse con problemi mostrato sull'icona dell'app (disattivabile)

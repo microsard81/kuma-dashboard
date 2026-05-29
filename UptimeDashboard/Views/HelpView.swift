@@ -93,11 +93,10 @@ struct HelpView: View {
 
                 // Riordino manuale
                 section("Riordino manuale") {
-                    infoRow(icon: "lock", text: "Nella schermata principale, tocca l'icona lucchetto in alto a destra per sbloccare il riordino delle sezioni.")
-                    infoRow(icon: "lock.open", text: "Quando il lucchetto è aperto (arancione), trascina le sezioni per riordinarle. Tocca di nuovo per salvare e bloccare.")
-                    infoRow(icon: "arrow.up.arrow.down", text: "Nelle schede Portali, Temperatura e Potenza, scorri verso destra su un elemento per riordinare i singoli elementi.")
+                    infoRow(icon: "hand.press", text: "Tieni premuto su una delle 3 sezioni principali (Portali, Temperatura, Potenza) per riordinarle con drag & drop.")
+                    infoRow(icon: "arrow.up.arrow.down", text: "Nelle schede di dettaglio, scorri verso destra su un elemento per riordinare i singoli elementi.")
                     infoRow(icon: "hand.draw", text: "In modalità riordino, trascina gli elementi nell'ordine desiderato.")
-                    infoRow(icon: "checkmark.circle", text: "L'ordine viene mantenuto anche chiudendo l'app.")
+                    infoRow(icon: "checkmark.circle", text: "Tocca 'Fine' per salvare. L'ordine viene mantenuto anche chiudendo l'app.")
                 }
 
                 // Risorse in evidenza
