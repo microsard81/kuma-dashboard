@@ -47,14 +47,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         completionHandler([.banner, .sound, .badge])
     }
 
-    /// Called when the user taps a notification — save to history.
+    /// Called when the user taps a notification — don't save again (already saved in willPresent or on arrival).
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        let content = response.notification.request.content
-        NotificationStore.shared.save(title: content.title, body: content.body)
         completionHandler()
     }
 }

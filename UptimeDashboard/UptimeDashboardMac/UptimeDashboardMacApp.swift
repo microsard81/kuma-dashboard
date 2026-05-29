@@ -168,12 +168,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
         completionHandler([.banner, .sound, .badge])
     }
 
-    // Quando l'utente clicca la notifica, aggiorna la dashboard
+    // Quando l'utente clicca la notifica, aggiorna la dashboard (non salva di nuovo)
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
-        let content = response.notification.request.content
-        NotificationStore.shared.save(title: content.title, body: content.body)
         Task {
             await viewModel?.fetchDashboard()
         }
