@@ -4,9 +4,18 @@ import SwiftUI
 import UserNotifications
 
 /// View showing notification history (last 30 days).
-/// Notifications are stored locally in UserDefaults when received.
+/// Unread notifications appear at the top with blue background.
+/// Swipe left to mark as read.
 struct NotificationHistoryView: View {
     @State private var notifications: [NotificationRecord] = []
+
+    private var unreadNotifications: [NotificationRecord] {
+        notifications.filter { !$0.isRead }
+    }
+
+    private var readNotifications: [NotificationRecord] {
+        notifications.filter { $0.isRead }
+    }
 
     var body: some View {
         Group {
@@ -25,22 +34,54 @@ struct NotificationHistoryView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
-                    ForEach(notifications) { notif in
-                        NotificationRow(notification: notif)
+                    // Unread first
+                    if !unreadNotifications.isEmpty {
+                        Section {
+                            ForEach(unreadNotifications) { notif in
+                                NotificationRow(notification: notif)
+                                    .listRowBackground(Color.blue.opacity(0.08))
+                                    .swipeActions(edge: .trailing) {
+                                        Button {
+                                            markAsRead(notif)
+                                        } label: {
+                                            Label("Letta", systemImage: "envelope.open")
+                                        }
+                                        .tint(.blue)
+                                    }
+                            }
+                        } header: {
+                            Text("Non lette (\(unreadNotifications.count))")
+                        }
+                    }
+
+                    // Read
+                    if !readNotifications.isEmpty {
+                        Section {
+                            ForEach(readNotifications) { notif in
+                                NotificationRow(notification: notif)
+                            }
+                        } header: {
+                            if !unreadNotifications.isEmpty {
+                                Text("Lette")
+                            }
+                        }
                     }
                 }
                 .listStyle(.plain)
             }
         }
         .navigationTitle("Notifiche")
-        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        #endif
         .onAppear { loadNotifications() }
     }
 
     private func loadNotifications() {
         notifications = NotificationStore.shared.loadAll()
+    }
+
+    private func markAsRead(_ notif: NotificationRecord) {
+        NotificationStore.shared.markAsRead(id: notif.id)
+        withAnimation { notifications = NotificationStore.shared.loadAll() }
     }
 }
 
@@ -52,6 +93,11 @@ private struct NotificationRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
+                if !notification.isRead {
+                    Circle()
+                        .fill(Color.blue)
+                        .frame(width: 8, height: 8)
+                }
                 Text(notification.title)
                     .font(.subheadline.bold())
                 Spacer()
@@ -91,12 +137,14 @@ struct NotificationRecord: Identifiable, Codable {
     let title: String
     let body: String
     let date: Date
+    var isRead: Bool
 
-    init(title: String, body: String, date: Date = Date()) {
+    init(title: String, body: String, date: Date = Date(), isRead: Bool = false) {
         self.id = UUID()
         self.title = title
         self.body = body
         self.date = date
+        self.isRead = isRead
     }
 }
 
@@ -105,27 +153,35 @@ struct NotificationRecord: Identifiable, Codable {
 final class NotificationStore {
     static let shared = NotificationStore()
     private let key = "notification_history"
-    private let lastReadKey = "notification_last_read_date"
     private let maxAge: TimeInterval = 30 * 24 * 3600 // 30 days
 
     private init() {}
 
-    /// Number of unread notifications (received after last read date).
+    /// Number of unread notifications.
     var unreadCount: Int {
-        let lastRead = UserDefaults.standard.object(forKey: lastReadKey) as? Date ?? Date.distantPast
-        return loadAll().filter { $0.date > lastRead }.count
+        loadAll().filter { !$0.isRead }.count
     }
 
     /// Mark all notifications as read.
     func markAllAsRead() {
-        UserDefaults.standard.set(Date(), forKey: lastReadKey)
+        var records = loadAll()
+        for i in records.indices { records[i].isRead = true }
+        persist(records)
+    }
+
+    /// Mark a single notification as read.
+    func markAsRead(id: UUID) {
+        var records = loadAll()
+        if let idx = records.firstIndex(where: { $0.id == id }) {
+            records[idx].isRead = true
+            persist(records)
+        }
     }
 
     /// Save a new notification to history.
     func save(title: String, body: String) {
         var records = loadAll()
         records.insert(NotificationRecord(title: title, body: body), at: 0)
-        // Prune older than 30 days
         let cutoff = Date().addingTimeInterval(-maxAge)
         records = records.filter { $0.date > cutoff }
         persist(records)
