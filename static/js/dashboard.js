@@ -458,7 +458,7 @@ const sparklineCharts = {};
 function categoriseSensors(sensors) {
     return {
         temperature: sensors.filter(s => s.category === "temperature"),
-        power: sensors.filter(s => s.category === "power" || s.category === "other"),
+        power: sensors.filter(s => s.category === "power"),
     };
 }
 

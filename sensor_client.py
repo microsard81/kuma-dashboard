@@ -106,6 +106,7 @@ def fetch_inverter_data():
 _TYPE_MAP = {
     "TEMPERATURE": "temperature",
     "POWER_KWATTS": "power",
+    "OTHER": "power",  # sensori "OTHER" sono di alimentazione, vanno nella sezione potenza
 }
 
 
