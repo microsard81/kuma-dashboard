@@ -9,6 +9,11 @@ import UserNotifications
 struct NotificationHistoryView: View {
     @State private var notifications: [NotificationRecord] = []
 
+    /// ID del primo elemento letto nell'array (per inserire l'header "Lette")
+    private var firstReadId: UUID? {
+        notifications.first(where: { $0.isRead })?.id
+    }
+
     var body: some View {
         Group {
             if notifications.isEmpty {
@@ -27,48 +32,39 @@ struct NotificationHistoryView: View {
             } else {
                 let unreadCount = notifications.filter { !$0.isRead }.count
                 let hasUnread = unreadCount > 0
-                let hasRead = notifications.contains { $0.isRead }
 
                 List {
-                    // Header "Non lette"
-                    if hasUnread {
-                        Section {
-                            ForEach(notifications.filter { !$0.isRead }) { notif in
-                                NotificationRow(notification: notif)
-                                    .id(notif.id)
-                                    .listRowBackground(Color.blue.opacity(0.08))
-                                    .swipeActions(edge: .trailing) {
-                                        Button {
-                                            markAsRead(notif)
-                                        } label: {
-                                            Label("Letta", systemImage: "envelope.open")
-                                        }
-                                        .tint(.blue)
-                                    }
-                            }
-                        } header: {
-                            Text("Non lette (\(unreadCount))")
-                        }
-                    }
-
-                    // Header "Lette"
-                    if hasRead {
-                        Section {
-                            ForEach(notifications.filter { $0.isRead }) { notif in
-                                NotificationRow(notification: notif)
-                                    .id(notif.id)
-                                    .swipeActions(edge: .trailing) {
-                                        Button {
-                                            markAsUnread(notif)
-                                        } label: {
-                                            Label("Non letta", systemImage: "envelope.badge")
-                                        }
-                                        .tint(.blue)
-                                    }
-                            }
-                        } header: {
+                    ForEach(notifications) { notif in
+                        // Header inline prima del primo elemento letto
+                        if notif.id == firstReadId && hasUnread {
                             Text("Lette")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .textCase(.uppercase)
+                                .listRowBackground(Color.clear)
+                                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 4, trailing: 16))
                         }
+
+                        NotificationRow(notification: notif)
+                            .id(notif.id)
+                            .listRowBackground(notif.isRead ? Color.clear : Color.blue.opacity(0.08))
+                            .swipeActions(edge: .trailing) {
+                                if notif.isRead {
+                                    Button {
+                                        markAsUnread(notif)
+                                    } label: {
+                                        Label("Non letta", systemImage: "envelope.badge")
+                                    }
+                                    .tint(.blue)
+                                } else {
+                                    Button {
+                                        markAsRead(notif)
+                                    } label: {
+                                        Label("Letta", systemImage: "envelope.open")
+                                    }
+                                    .tint(.blue)
+                                }
+                            }
                     }
                 }
                 .listStyle(.plain)
@@ -80,10 +76,18 @@ struct NotificationHistoryView: View {
                 }
                 .overlay(alignment: .top) {
                     if hasUnread {
-                        Text("↓ Segna tutte come lette")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .padding(.top, -20)
+                        HStack {
+                            Text("Non lette (\(unreadCount))")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .textCase(.uppercase)
+                            Spacer()
+                            Text("↓ Segna tutte come lette")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, -20)
                     }
                 }
             }
