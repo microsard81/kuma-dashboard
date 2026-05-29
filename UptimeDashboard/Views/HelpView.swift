@@ -98,6 +98,14 @@ struct HelpView: View {
                     infoRow(icon: "checkmark.circle", text: "L'ordine viene mantenuto anche chiudendo l'app.")
                 }
 
+                // Risorse in evidenza
+                section("Risorse in evidenza") {
+                    infoRow(icon: "plus.circle", text: "Nelle schede Portali, Temperatura o Potenza, scorri verso sinistra su un elemento per aggiungerlo alla pagina principale.")
+                    infoRow(icon: "square.grid.2x2", text: "Le risorse in evidenza appaiono come quadrati nella home, sotto le 3 sezioni principali.")
+                    infoRow(icon: "hand.tap", text: "Tocca una risorsa in evidenza per aprire la scheda corrispondente.")
+                    infoRow(icon: "minus.circle", text: "Per rimuovere: tieni premuto sulla card nella home, oppure scorri verso sinistra nella scheda di dettaglio.")
+                }
+
                 // Aggiornamento
                 section("Aggiornamento dati") {
                     infoRow(icon: "arrow.clockwise", text: "I dati si aggiornano automaticamente. Puoi anche trascinare verso il basso in qualsiasi scheda per forzare l'aggiornamento.")

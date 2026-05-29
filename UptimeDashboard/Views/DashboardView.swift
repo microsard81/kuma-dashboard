@@ -97,16 +97,21 @@ struct DashboardView: View {
 
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                                 ForEach(pinnedItems) { item in
-                                    PinnedCardView(item: item, viewModel: viewModel)
-                                        .aspectRatio(1, contentMode: .fit)
-                                        .contextMenu {
-                                            Button(role: .destructive) {
-                                                PinnedStore.shared.unpin(id: item.id)
-                                                withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
-                                            } label: {
-                                                Label("Rimuovi dalla home", systemImage: "minus.circle")
-                                            }
+                                    NavigationLink {
+                                        pinnedDestination(for: item)
+                                    } label: {
+                                        PinnedCardView(item: item, viewModel: viewModel)
+                                            .aspectRatio(1, contentMode: .fit)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .contextMenu {
+                                        Button(role: .destructive) {
+                                            PinnedStore.shared.unpin(id: item.id)
+                                            withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
+                                        } label: {
+                                            Label("Rimuovi dalla home", systemImage: "minus.circle")
                                         }
+                                    }
                                 }
                             }
                         }
@@ -219,6 +224,21 @@ struct DashboardView: View {
             if !enabled {
                 UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
             }
+        }
+    }
+
+    // MARK: - Pinned Destination
+
+    @ViewBuilder
+    private func pinnedDestination(for item: PinnedItem) -> some View {
+        switch item.type {
+        case .portale:
+            PortalsDetailView(viewModel: viewModel)
+                .environmentObject(settingsVM)
+        case .temperatura:
+            TemperatureDetailView(viewModel: viewModel)
+        case .potenza:
+            PowerDetailView(viewModel: viewModel)
         }
     }
 
