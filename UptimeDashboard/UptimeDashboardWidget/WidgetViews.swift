@@ -116,90 +116,19 @@ struct SmallWidgetView: View {
     }
 }
 
-// MARK: - Medium Widget: 3 macro areas with more detail
+// MARK: - Medium Widget: lista monitor con sonde
 
 struct MediumWidgetView: View {
     let entry: DashboardEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Header
-            HStack {
-                Text("Dashboard INVA")
-                    .font(.caption.bold())
-                    .foregroundColor(.white)
-                Spacer()
-                if !entry.isPlaceholder {
-                    Text(entry.date, style: .time)
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            if entry.isPlaceholder {
-                Spacer()
-                HStack { Spacer(); Text("Caricamento...").font(.caption).foregroundColor(.secondary); Spacer() }
-                Spacer()
-            } else {
-                Spacer(minLength: 4)
-
-                // 3 macro areas
-                HStack(spacing: 12) {
-                    MacroCard(icon: "globe", title: "Portali", color: portalsColor, subtitle: portalsSubtitle)
-                    MacroCard(icon: "thermometer.medium", title: "Temperatura", color: temperatureColor, subtitle: temperatureSubtitle)
-                    MacroCard(icon: "bolt.fill", title: "Potenza", color: powerColor, subtitle: powerSubtitle)
-                }
-
-                Spacer(minLength: 0)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var portalsColor: Color {
-        if entry.downCount > 0 { return .red }
-        if entry.mismatchCount > 0 { return .yellow }
-        return .green
-    }
-
-    private var portalsSubtitle: String {
-        let total = entry.monitors.count
-        if entry.downCount > 0 { return "\(entry.downCount) DOWN / \(total)" }
-        if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠ / \(total)" }
-        return "Tutto OK (\(total))"
-    }
-
-    private var temperatureColor: Color {
-        guard let alerts = entry.sensorAlerts else { return .orange }
-        if alerts.hasCritical { return .red }
-        if alerts.hasAlerts { return .yellow }
-        return .orange
-    }
-
-    private var temperatureSubtitle: String {
-        guard let alerts = entry.sensorAlerts else { return "—" }
-        if alerts.hasAlerts { return "\(alerts.totalCount) in allarme" }
-        return "Tutto OK"
-    }
-
-    private var powerColor: Color { .blue }
-
-    private var powerSubtitle: String {
-        if entry.sensorError { return "Errore" }
-        return "Tutto OK"
-    }
-}
-
-// MARK: - Large Widget: 3 macro areas + top monitors
-
-struct LargeWidgetView: View {
-    let entry: DashboardEntry
-
-    var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            // Header
             HStack {
-                Text("Dashboard INVA")
+                Circle()
+                    .fill(ledColor)
+                    .frame(width: 14, height: 14)
+                    .shadow(color: ledColor.opacity(0.6), radius: 4)
+                Text("INVA Dashboard")
                     .font(.caption.bold())
                     .foregroundColor(.white)
                 Spacer()
@@ -209,24 +138,13 @@ struct LargeWidgetView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .padding(.bottom, 4)
+            .padding(.bottom, 2)
 
             if entry.isPlaceholder {
                 Spacer()
                 HStack { Spacer(); Text("Caricamento...").font(.caption).foregroundColor(.secondary); Spacer() }
                 Spacer()
             } else {
-                // 3 macro areas
-                HStack(spacing: 12) {
-                    MacroCard(icon: "globe", title: "Portali", color: portalsColor, subtitle: portalsSubtitle)
-                    MacroCard(icon: "thermometer.medium", title: "Temp", color: temperatureColor, subtitle: temperatureSubtitle)
-                    MacroCard(icon: "bolt.fill", title: "Potenza", color: powerColor, subtitle: powerSubtitle)
-                }
-                .padding(.bottom, 4)
-
-                Divider().background(Color.white.opacity(0.2))
-
-                // Top monitors with issues (or first few if all OK)
                 ForEach(sortedMonitors.prefix(5)) { monitor in
                     HStack(spacing: 6) {
                         Text(shortName(monitor.name))
@@ -234,9 +152,7 @@ struct LargeWidgetView: View {
                             .foregroundColor(.white)
                             .lineLimit(1)
                             .frame(maxWidth: .infinity, alignment: .leading)
-
                         ProbeDotsView(monitor: monitor)
-
                         Text(monitor.finalStatus)
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(statusColor(monitor))
@@ -246,12 +162,29 @@ struct LargeWidgetView: View {
                 }
 
                 if entry.monitors.count > 5 {
-                    Text("+\(entry.monitors.count - 5) altri")
+                    Text("+\(entry.monitors.count - 5) altri servizi")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
                 }
-            }
 
+                if !entry.sensorError {
+                    if let alerts = entry.sensorAlerts, alerts.hasAlerts {
+                        HStack(spacing: 4) {
+                            Circle().fill(alerts.hasCritical ? Color.red : Color.yellow).frame(width: 6, height: 6)
+                            Text("\(alerts.totalCount) sensori in allarme")
+                                .font(.system(size: 9))
+                                .foregroundColor(alerts.hasCritical ? .red : .yellow)
+                        }
+                        .padding(.top, 2)
+                    } else if entry.sensorAlerts != nil {
+                        HStack(spacing: 4) {
+                            Circle().fill(Color.green).frame(width: 6, height: 6)
+                            Text("Sensori OK").font(.system(size: 9)).foregroundColor(.green)
+                        }
+                        .padding(.top, 2)
+                    }
+                }
+            }
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -273,37 +206,111 @@ struct LargeWidgetView: View {
         return .green
     }
 
-    private var portalsColor: Color {
-        if entry.downCount > 0 { return .red }
-        if entry.mismatchCount > 0 { return .yellow }
+    private var ledColor: Color {
+        switch entry.globalState {
+        case "RED": return .red
+        case "YELLOW": return .yellow
+        default: return .green
+        }
+    }
+}
+
+// MARK: - Large Widget: tutti i servizi con sonde
+
+struct LargeWidgetView: View {
+    let entry: DashboardEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Circle()
+                    .fill(ledColor)
+                    .frame(width: 14, height: 14)
+                    .shadow(color: ledColor.opacity(0.6), radius: 4)
+                Text("INVA Dashboard")
+                    .font(.caption.bold())
+                    .foregroundColor(.white)
+                Spacer()
+                if !entry.isPlaceholder {
+                    Text(entry.date, style: .time)
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.bottom, 2)
+
+            if entry.isPlaceholder {
+                Spacer()
+                HStack { Spacer(); Text("Caricamento...").font(.caption).foregroundColor(.secondary); Spacer() }
+                Spacer()
+            } else {
+                ForEach(sortedMonitors.prefix(8)) { monitor in
+                    HStack(spacing: 6) {
+                        Text(shortName(monitor.name))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        ProbeDotsView(monitor: monitor)
+                        Text(monitor.finalStatus)
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(statusColor(monitor))
+                            .frame(width: 32)
+                    }
+                    .padding(.vertical, 1)
+                }
+
+                if entry.monitors.count > 8 {
+                    Text("+\(entry.monitors.count - 8) altri servizi")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+
+                if !entry.sensorError {
+                    if let alerts = entry.sensorAlerts, alerts.hasAlerts {
+                        HStack(spacing: 4) {
+                            Circle().fill(alerts.hasCritical ? Color.red : Color.yellow).frame(width: 6, height: 6)
+                            Text("\(alerts.totalCount) sensori in allarme")
+                                .font(.system(size: 9))
+                                .foregroundColor(alerts.hasCritical ? .red : .yellow)
+                        }
+                        .padding(.top, 2)
+                    } else if entry.sensorAlerts != nil {
+                        HStack(spacing: 4) {
+                            Circle().fill(Color.green).frame(width: 6, height: 6)
+                            Text("Sensori OK").font(.system(size: 9)).foregroundColor(.green)
+                        }
+                        .padding(.top, 2)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var sortedMonitors: [WidgetMonitor] {
+        entry.monitors.sorted { rank($0) > rank($1) }
+    }
+
+    private func rank(_ m: WidgetMonitor) -> Int {
+        if m.isDown { return 2 }
+        if m.isMismatch { return 1 }
+        return 0
+    }
+
+    private func statusColor(_ m: WidgetMonitor) -> Color {
+        if m.isDown { return .red }
+        if m.isMismatch { return .yellow }
         return .green
     }
 
-    private var portalsSubtitle: String {
-        let total = entry.monitors.count
-        if entry.downCount > 0 { return "\(entry.downCount) DOWN" }
-        if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠" }
-        return "OK (\(total))"
-    }
-
-    private var temperatureColor: Color {
-        guard let alerts = entry.sensorAlerts else { return .orange }
-        if alerts.hasCritical { return .red }
-        if alerts.hasAlerts { return .yellow }
-        return .orange
-    }
-
-    private var temperatureSubtitle: String {
-        guard let alerts = entry.sensorAlerts else { return "—" }
-        if alerts.hasAlerts { return "\(alerts.totalCount) ⚠" }
-        return "OK"
-    }
-
-    private var powerColor: Color { .blue }
-
-    private var powerSubtitle: String {
-        if entry.sensorError { return "Errore" }
-        return "OK"
+    private var ledColor: Color {
+        switch entry.globalState {
+        case "RED": return .red
+        case "YELLOW": return .yellow
+        default: return .green
+        }
     }
 }
 
@@ -331,34 +338,6 @@ private struct MacroRow: View {
                 .font(.system(size: 9, weight: .bold))
                 .foregroundColor(color)
         }
-    }
-}
-
-// MARK: - MacroCard (for medium/large widget)
-
-private struct MacroCard: View {
-    let icon: String
-    let title: String
-    let color: Color
-    let subtitle: String
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundColor(color)
-            Text(title)
-                .font(.system(size: 9, weight: .bold))
-                .foregroundColor(.white)
-            Text(subtitle)
-                .font(.system(size: 8))
-                .foregroundColor(color)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 6)
-        .background(color.opacity(0.1))
-        .cornerRadius(8)
     }
 }
 
