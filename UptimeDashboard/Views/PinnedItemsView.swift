@@ -75,19 +75,19 @@ struct PinnedCardView: View {
         VStack(spacing: 6) {
             // Icon
             Image(systemName: iconName)
-                .font(.system(size: 14))
+                .font(.system(size: 18))
                 .foregroundColor(textColor)
 
             // Name
             Text(displayName)
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: 12, weight: .bold))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .foregroundColor(.primary)
 
             // Status
             Text(statusText)
-                .font(.system(size: 9, weight: .bold))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundColor(textColor)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
