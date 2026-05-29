@@ -102,12 +102,20 @@ struct NotificationHistoryView: View {
 
     private func markAsRead(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsRead(id: notif.id)
-        withAnimation { notifications = NotificationStore.shared.loadAll() }
+        if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                notifications[idx].isRead = true
+            }
+        }
     }
 
     private func markAsUnread(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsUnread(id: notif.id)
-        withAnimation { notifications = NotificationStore.shared.loadAll() }
+        if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                notifications[idx].isRead = false
+            }
+        }
     }
 }
 
