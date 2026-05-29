@@ -89,6 +89,12 @@ struct DashboardView: View {
 
                         // Pinned items (square cards)
                         if !pinnedItems.isEmpty {
+                            Divider()
+                                .padding(.vertical, 4)
+                            Text("In evidenza")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                                 ForEach(pinnedItems) { item in
                                     PinnedCardView(item: item, viewModel: viewModel)
