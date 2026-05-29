@@ -9,6 +9,9 @@ struct PowerDetailView: View {
     @ObservedObject var viewModel: DashboardViewModel
     @State private var isReordering = false
     @State private var manualOrder: [SensorReading] = []
+    @State private var isCriticalCollapsed = false
+    @State private var isWarningCollapsed = false
+    @State private var isNormalCollapsed = false
 
     private let orderKey = "sensor_order_power"
 
@@ -50,30 +53,59 @@ struct PowerDetailView: View {
 
     var body: some View {
         List {
-            ForEach(displaySensors) { sensor in
-                SensorCardView(
-                    sensor: sensor,
-                    thresholds: viewModel.sensorThresholds,
-                    historyPoints: viewModel.sensorHistory[sensor.id] ?? []
-                )
-                .listRowSeparator(.visible)
-                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    if !isReordering {
-                        Button {
-                            manualOrder = displaySensors
-                            withAnimation { isReordering = true }
-                        } label: {
-                            Label("Riordina", systemImage: "arrow.up.arrow.down")
+            if isReordering {
+                ForEach(manualOrder) { sensor in
+                    SensorCardView(sensor: sensor, thresholds: viewModel.sensorThresholds, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
+                        .listRowSeparator(.visible)
+                }
+                .onMove { from, to in manualOrder.move(fromOffsets: from, toOffset: to) }
+            } else {
+                let criticalSensors = displaySensors.filter { viewModel.sensorThresholds != nil && $0.alertStatus(thresholds: viewModel.sensorThresholds!) == .critical }
+                let warningSensors = displaySensors.filter { viewModel.sensorThresholds != nil && $0.alertStatus(thresholds: viewModel.sensorThresholds!) == .warning }
+                let normalSensors = displaySensors.filter { viewModel.sensorThresholds == nil || $0.alertStatus(thresholds: viewModel.sensorThresholds!) == .normal }
+                let allNormal = criticalSensors.isEmpty && warningSensors.isEmpty
+
+                if !criticalSensors.isEmpty {
+                    Section(isExpanded: Binding(get: { !isCriticalCollapsed }, set: { isCriticalCollapsed = !$0 })) {
+                        ForEach(criticalSensors) { sensor in
+                            sensorRow(sensor)
                         }
-                        .tint(.blue)
+                    } header: {
+                        Label("Critical (\(criticalSensors.count))", systemImage: "exclamationmark.octagon.fill")
+                            .foregroundColor(.red)
+                    }
+                }
+
+                if !warningSensors.isEmpty {
+                    Section(isExpanded: Binding(get: { !isWarningCollapsed }, set: { isWarningCollapsed = !$0 })) {
+                        ForEach(warningSensors) { sensor in
+                            sensorRow(sensor)
+                        }
+                    } header: {
+                        Label("Warning (\(warningSensors.count))", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundColor(.yellow)
+                    }
+                }
+
+                if !normalSensors.isEmpty {
+                    if allNormal {
+                        ForEach(normalSensors) { sensor in
+                            sensorRow(sensor)
+                        }
+                    } else {
+                        Section(isExpanded: Binding(get: { !isNormalCollapsed }, set: { isNormalCollapsed = !$0 })) {
+                            ForEach(normalSensors) { sensor in
+                                sensorRow(sensor)
+                            }
+                        } header: {
+                            Label("Normale (\(normalSensors.count))", systemImage: "checkmark.circle.fill")
+                                .foregroundColor(.blue)
+                        }
                     }
                 }
             }
-            .onMove { from, to in
-                manualOrder.move(fromOffsets: from, toOffset: to)
-            }
         }
-        .listStyle(.plain)
+        .listStyle(.sidebar)
         .environment(\.editMode, isReordering ? .constant(.active) : .constant(.inactive))
         .refreshable { await viewModel.refresh() }
         .navigationTitle("Potenza (kW)")
@@ -89,6 +121,23 @@ struct PowerDetailView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func sensorRow(_ sensor: SensorReading) -> some View {
+        SensorCardView(sensor: sensor, thresholds: viewModel.sensorThresholds, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
+            .listRowSeparator(.visible)
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                if !isReordering {
+                    Button {
+                        manualOrder = displaySensors
+                        withAnimation { isReordering = true }
+                    } label: {
+                        Label("Riordina", systemImage: "arrow.up.arrow.down")
+                    }
+                    .tint(.blue)
+                }
+            }
     }
 
     // MARK: - Persistence

@@ -10,6 +10,9 @@ struct PortalsDetailView: View {
     @EnvironmentObject private var settingsVM: SettingsViewModel
     @State private var isReordering = false
     @State private var manualOrder: [MonitorItem] = []
+    @State private var isDownCollapsed = false
+    @State private var isMismatchCollapsed = false
+    @State private var isUpCollapsed = false
 
     private let orderKey = "monitor_order_portals"
 
@@ -63,24 +66,24 @@ struct PortalsDetailView: View {
                     let allUp = downItems.isEmpty && mismatchItems.isEmpty
 
                     if !downItems.isEmpty {
-                        Section {
+                        Section(isExpanded: Binding(get: { !isDownCollapsed }, set: { isDownCollapsed = !$0 })) {
                             ForEach(downItems) { item in
                                 monitorRow(item)
                             }
                         } header: {
-                            Label("DOWN", systemImage: "xmark.circle.fill")
+                            Label("DOWN (\(downItems.count))", systemImage: "xmark.circle.fill")
                                 .foregroundColor(.red)
                                 .font(DeviceAdaptive.sectionHeaderFont)
                         }
                     }
 
                     if !mismatchItems.isEmpty {
-                        Section {
+                        Section(isExpanded: Binding(get: { !isMismatchCollapsed }, set: { isMismatchCollapsed = !$0 })) {
                             ForEach(mismatchItems) { item in
                                 monitorRow(item)
                             }
                         } header: {
-                            Label("Mismatch", systemImage: "exclamationmark.triangle.fill")
+                            Label("Mismatch (\(mismatchItems.count))", systemImage: "exclamationmark.triangle.fill")
                                 .foregroundColor(.yellow)
                                 .font(DeviceAdaptive.sectionHeaderFont)
                         }
@@ -92,12 +95,12 @@ struct PortalsDetailView: View {
                                 monitorRow(item)
                             }
                         } else {
-                            Section {
+                            Section(isExpanded: Binding(get: { !isUpCollapsed }, set: { isUpCollapsed = !$0 })) {
                                 ForEach(upItems) { item in
                                     monitorRow(item)
                                 }
                             } header: {
-                                Label("UP", systemImage: "checkmark.circle.fill")
+                                Label("UP (\(upItems.count))", systemImage: "checkmark.circle.fill")
                                     .foregroundColor(.green)
                                     .font(DeviceAdaptive.sectionHeaderFont)
                             }
@@ -105,7 +108,7 @@ struct PortalsDetailView: View {
                     }
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.sidebar)
             .environment(\.editMode, isReordering ? .constant(.active) : .constant(.inactive))
             .refreshable { await viewModel.refresh() }
         }
