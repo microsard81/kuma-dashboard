@@ -25,52 +25,68 @@ struct NotificationHistoryView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List {
-                    ForEach(notifications) { notif in
-                        NotificationRow(notification: notif)
-                            .id(notif.id)
-                            .listRowBackground(notif.isRead ? Color.clear : Color.blue.opacity(0.08))
-                            .swipeActions(edge: .trailing) {
-                                if notif.isRead {
-                                    Button {
-                                        markAsUnread(notif)
-                                    } label: {
-                                        Label("Non letta", systemImage: "envelope.badge")
-                                    }
-                                    .tint(.blue)
-                                } else {
-                                    Button {
-                                        markAsRead(notif)
-                                    } label: {
-                                        Label("Letta", systemImage: "envelope.open")
-                                    }
-                                    .tint(.blue)
-                                }
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        // Header "Non lette"
+                        if notifications.contains(where: { !$0.isRead }) {
+                            HStack {
+                                Text("Non lette (\(notifications.filter { !$0.isRead }.count))")
+                                    .font(.footnote)
+                                    .foregroundColor(.secondary)
+                                    .textCase(.uppercase)
+                                Spacer()
                             }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                            .padding(.bottom, 4)
+                        }
+
+                        ForEach(notifications.filter { !$0.isRead }) { notif in
+                            NotificationSwipeRow(
+                                notification: notif,
+                                isUnread: true,
+                                onAction: { markAsRead(notif) }
+                            )
+                            .id(notif.id)
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .top).combined(with: .opacity),
+                                removal: .move(edge: .bottom).combined(with: .opacity)
+                            ))
+                        }
+
+                        // Header "Lette"
+                        if notifications.contains(where: { $0.isRead }) {
+                            HStack {
+                                Text("Lette")
+                                    .font(.footnote)
+                                    .foregroundColor(.secondary)
+                                    .textCase(.uppercase)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+                            .padding(.bottom, 4)
+                        }
+
+                        ForEach(notifications.filter { $0.isRead }) { notif in
+                            NotificationSwipeRow(
+                                notification: notif,
+                                isUnread: false,
+                                onAction: { markAsUnread(notif) }
+                            )
+                            .id(notif.id)
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .bottom).combined(with: .opacity),
+                                removal: .move(edge: .top).combined(with: .opacity)
+                            ))
+                        }
                     }
+                    .padding(.bottom, 16)
                 }
-                .listStyle(.insetGrouped)
                 .refreshable {
                     NotificationStore.shared.markAllAsRead()
                     withAnimation(.easeInOut(duration: 0.35)) {
                         reloadNotifications()
-                    }
-                }
-                .safeAreaInset(edge: .top) {
-                    if notifications.contains(where: { !$0.isRead }) {
-                        HStack {
-                            let unreadCount = notifications.filter { !$0.isRead }.count
-                            Text("Non lette: \(unreadCount)")
-                                .font(.footnote.bold())
-                                .foregroundColor(.blue)
-                            Spacer()
-                            Text("↓ Segna tutte come lette")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 6)
-                        .background(.ultraThinMaterial)
                     }
                 }
             }
@@ -116,27 +132,18 @@ struct NotificationHistoryView: View {
 
     private func markAsRead(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsRead(id: notif.id)
-        if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
-            withAnimation(.easeInOut(duration: 0.4)) {
+        withAnimation(.easeInOut(duration: 0.35)) {
+            if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
                 notifications[idx].isRead = true
-                // Riordina: non lette prima (per data desc), poi lette (per data desc)
-                notifications.sort {
-                    if $0.isRead != $1.isRead { return !$0.isRead }
-                    return $0.date > $1.date
-                }
             }
         }
     }
 
     private func markAsUnread(_ notif: NotificationRecord) {
         NotificationStore.shared.markAsUnread(id: notif.id)
-        if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
-            withAnimation(.easeInOut(duration: 0.4)) {
+        withAnimation(.easeInOut(duration: 0.35)) {
+            if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
                 notifications[idx].isRead = false
-                notifications.sort {
-                    if $0.isRead != $1.isRead { return !$0.isRead }
-                    return $0.date > $1.date
-                }
             }
         }
     }
@@ -147,6 +154,72 @@ struct NotificationHistoryView: View {
             if $0.isRead != $1.isRead { return !$0.isRead }
             return $0.date > $1.date
         }
+    }
+}
+
+// MARK: - NotificationSwipeRow (custom swipe senza List)
+
+private struct NotificationSwipeRow: View {
+    let notification: NotificationRecord
+    let isUnread: Bool
+    let onAction: () -> Void
+
+    @State private var offset: CGFloat = 0
+    @State private var showAction = false
+
+    private let actionWidth: CGFloat = 80
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            // Action button (revealed on swipe)
+            HStack {
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { offset = 0 }
+                    onAction()
+                } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: isUnread ? "envelope.open" : "envelope.badge")
+                            .font(.system(size: 16))
+                        Text(isUnread ? "Letta" : "Non letta")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.white)
+                    .frame(width: actionWidth, height: .infinity)
+                }
+                .frame(width: actionWidth)
+                .background(Color.blue)
+            }
+
+            // Main content
+            NotificationRow(notification: notification)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(isUnread ? Color.blue.opacity(0.08) : Color(.systemBackground))
+                .offset(x: offset)
+                .gesture(
+                    DragGesture(minimumDistance: 20)
+                        .onChanged { value in
+                            if value.translation.width < 0 {
+                                offset = max(value.translation.width, -actionWidth)
+                            }
+                        }
+                        .onEnded { value in
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                if value.translation.width < -actionWidth / 2 {
+                                    offset = -actionWidth
+                                } else {
+                                    offset = 0
+                                }
+                            }
+                        }
+                )
+        }
+        .frame(maxWidth: .infinity)
+        .clipped()
+
+        Divider()
+            .padding(.leading, 16)
     }
 }
 
