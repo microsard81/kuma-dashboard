@@ -9,14 +9,6 @@ import UserNotifications
 struct NotificationHistoryView: View {
     @State private var notifications: [NotificationRecord] = []
 
-    private var unreadNotifications: [NotificationRecord] {
-        notifications.filter { !$0.isRead }
-    }
-
-    private var readNotifications: [NotificationRecord] {
-        notifications.filter { $0.isRead }
-    }
-
     var body: some View {
         Group {
             if notifications.isEmpty {
@@ -34,55 +26,36 @@ struct NotificationHistoryView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
-                    // Unread first
-                    if !unreadNotifications.isEmpty {
-                        Section {
-                            ForEach(unreadNotifications) { notif in
-                                NotificationRow(notification: notif)
-                                    .listRowBackground(Color.blue.opacity(0.08))
-                                    .swipeActions(edge: .trailing) {
-                                        Button {
-                                            markAsRead(notif)
-                                        } label: {
-                                            Label("Letta", systemImage: "envelope.open")
-                                        }
-                                        .tint(.blue)
+                    ForEach(sortedNotifications) { notif in
+                        NotificationRow(notification: notif)
+                            .listRowBackground(notif.isRead ? Color.clear : Color.blue.opacity(0.08))
+                            .swipeActions(edge: .trailing) {
+                                if notif.isRead {
+                                    Button {
+                                        markAsUnread(notif)
+                                    } label: {
+                                        Label("Non letta", systemImage: "envelope.badge")
                                     }
-                            }
-                        } header: {
-                            Text("Non lette (\(unreadNotifications.count))")
-                        }
-                    }
-
-                    // Read
-                    if !readNotifications.isEmpty {
-                        Section {
-                            ForEach(readNotifications) { notif in
-                                NotificationRow(notification: notif)
-                                    .swipeActions(edge: .trailing) {
-                                        Button {
-                                            markAsUnread(notif)
-                                        } label: {
-                                            Label("Non letta", systemImage: "envelope.badge")
-                                        }
-                                        .tint(.blue)
+                                    .tint(.blue)
+                                } else {
+                                    Button {
+                                        markAsRead(notif)
+                                    } label: {
+                                        Label("Letta", systemImage: "envelope.open")
                                     }
+                                    .tint(.blue)
+                                }
                             }
-                        } header: {
-                            if !unreadNotifications.isEmpty {
-                                Text("Lette")
-                            }
-                        }
                     }
                 }
                 .listStyle(.plain)
+                .animation(.easeInOut(duration: 0.3), value: notifications)
                 .refreshable {
-                    // La scritta "Segna tutte come lette" appare sopra lo spinner
                     NotificationStore.shared.markAllAsRead()
-                    withAnimation { notifications = NotificationStore.shared.loadAll() }
+                    notifications = NotificationStore.shared.loadAll()
                 }
                 .overlay(alignment: .top) {
-                    if !unreadNotifications.isEmpty {
+                    if notifications.contains(where: { !$0.isRead }) {
                         Text("↓ Segna tutte come lette")
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -94,6 +67,14 @@ struct NotificationHistoryView: View {
         .navigationTitle("Notifiche")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { loadNotifications() }
+    }
+
+    /// Sorted: unread first (by date desc), then read (by date desc).
+    private var sortedNotifications: [NotificationRecord] {
+        notifications.sorted {
+            if $0.isRead != $1.isRead { return !$0.isRead }
+            return $0.date > $1.date
+        }
     }
 
     private func loadNotifications() {
