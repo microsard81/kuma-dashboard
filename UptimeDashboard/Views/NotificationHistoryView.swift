@@ -110,15 +110,12 @@ struct NotificationHistoryView: View {
             ("⚡ Potenza bassa", "INV2 - Alimentazione sotto soglia warning (4.1 kW)", -1800, true),
             ("✅ Ripristino servizio", "mail.cst.inva.it è tornato UP su tutte le sonde", -3600, true),
         ]
-        // Salva direttamente con date custom
+        let defaults = UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? UserDefaults.standard
         for (title, body, offset, isRead) in records {
-            var record = NotificationRecord(title: title, body: body, date: now.addingTimeInterval(offset), isRead: isRead)
-            _ = record // suppress warning
-            // Usa il metodo interno per salvare con data custom
             var all = NotificationStore.shared.loadAll()
             all.insert(NotificationRecord(title: title, body: body, date: now.addingTimeInterval(offset), isRead: isRead), at: 0)
             if let data = try? JSONEncoder().encode(all) {
-                UserDefaults.standard.set(data, forKey: "notification_history")
+                defaults.set(data, forKey: "notification_history")
             }
         }
     }
@@ -314,8 +311,29 @@ final class NotificationStore {
     private let key = "notification_history"
     private let maxAge: TimeInterval = 30 * 24 * 3600 // 30 days
     private let queue = DispatchQueue(label: "notificationStore", qos: .userInitiated)
+    private let appGroupId = "group.cloud.sundata.uptimeDashboard"
 
-    private init() {}
+    /// Shared UserDefaults (App Group) — usato sia dall'app che dalla Notification Service Extension
+    private var defaults: UserDefaults {
+        UserDefaults(suiteName: appGroupId) ?? UserDefaults.standard
+    }
+
+    private init() {
+        // Migrazione: se ci sono dati nel vecchio UserDefaults.standard, spostali nell'App Group
+        migrateFromStandardIfNeeded()
+    }
+
+    /// Migra i dati dal vecchio UserDefaults.standard all'App Group (una tantum)
+    private func migrateFromStandardIfNeeded() {
+        let standard = UserDefaults.standard
+        guard let oldData = standard.data(forKey: key) else { return }
+        // Se l'App Group non ha ancora dati, copia quelli vecchi
+        let groupDefaults = UserDefaults(suiteName: appGroupId) ?? standard
+        if groupDefaults.data(forKey: key) == nil {
+            groupDefaults.set(oldData, forKey: key)
+            standard.removeObject(forKey: key)
+        }
+    }
 
     /// Number of unread notifications.
     var unreadCount: Int {
@@ -404,7 +422,7 @@ final class NotificationStore {
     }
 
     private func loadAllInternal() -> [NotificationRecord] {
-        guard let data = UserDefaults.standard.data(forKey: key),
+        guard let data = defaults.data(forKey: key),
               var records = try? JSONDecoder().decode([NotificationRecord].self, from: data) else {
             return []
         }
@@ -415,7 +433,7 @@ final class NotificationStore {
 
     private func persistInternal(_ records: [NotificationRecord]) {
         guard let data = try? JSONEncoder().encode(records) else { return }
-        UserDefaults.standard.set(data, forKey: key)
+        defaults.set(data, forKey: key)
     }
 }
 

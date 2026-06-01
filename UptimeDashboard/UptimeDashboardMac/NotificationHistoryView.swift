@@ -185,8 +185,26 @@ final class NotificationStore {
     private let key = "notification_history"
     private let maxAge: TimeInterval = 30 * 24 * 3600 // 30 days
     private let queue = DispatchQueue(label: "notificationStore", qos: .userInitiated)
+    private let appGroupId = "group.cloud.sundata.uptimeDashboard"
 
-    private init() {}
+    /// Shared UserDefaults (App Group)
+    private var defaults: UserDefaults {
+        UserDefaults(suiteName: appGroupId) ?? UserDefaults.standard
+    }
+
+    private init() {
+        migrateFromStandardIfNeeded()
+    }
+
+    private func migrateFromStandardIfNeeded() {
+        let standard = UserDefaults.standard
+        guard let oldData = standard.data(forKey: key) else { return }
+        let groupDefaults = UserDefaults(suiteName: appGroupId) ?? standard
+        if groupDefaults.data(forKey: key) == nil {
+            groupDefaults.set(oldData, forKey: key)
+            standard.removeObject(forKey: key)
+        }
+    }
 
     /// Number of unread notifications.
     var unreadCount: Int {
@@ -256,7 +274,7 @@ final class NotificationStore {
     }
 
     private func loadAllInternal() -> [NotificationRecord] {
-        guard let data = UserDefaults.standard.data(forKey: key),
+        guard let data = defaults.data(forKey: key),
               var records = try? JSONDecoder().decode([NotificationRecord].self, from: data) else {
             return []
         }
@@ -267,6 +285,6 @@ final class NotificationStore {
 
     private func persistInternal(_ records: [NotificationRecord]) {
         guard let data = try? JSONEncoder().encode(records) else { return }
-        UserDefaults.standard.set(data, forKey: key)
+        defaults.set(data, forKey: key)
     }
 }

@@ -4,6 +4,10 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.cloud.sundata.uptimeDashboard</string>
+	</array>
 	<!-- Decommentare dopo approvazione Apple per Critical Alerts -->
 	<!-- <key>com.apple.developer.usernotifications.critical-alerts</key> -->
 	<!-- <true/> -->
