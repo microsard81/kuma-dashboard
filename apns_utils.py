@@ -137,6 +137,7 @@ def send_apns_to_all(title: str, body: str, data: dict,
             "name": "default",
             "volume": 1.0,
         },
+        "mutable-content": 1,
     }
     is_green = data.get("state") == "GREEN" if data else False
     if not is_green:
