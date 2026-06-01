@@ -32,5 +32,8 @@ struct WatchTemperatureDetailView: View {
             }
         }
         .navigationTitle("Temperatura")
+        .refreshable {
+            await viewModel.fetchFromAPI()
+        }
     }
 }

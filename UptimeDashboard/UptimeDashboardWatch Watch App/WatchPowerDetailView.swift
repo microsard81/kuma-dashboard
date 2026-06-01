@@ -32,5 +32,8 @@ struct WatchPowerDetailView: View {
             }
         }
         .navigationTitle("Potenza")
+        .refreshable {
+            await viewModel.fetchFromAPI()
+        }
     }
 }

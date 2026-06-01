@@ -37,14 +37,8 @@ struct WatchDashboardView: View {
                 }
             }
             .navigationTitle("INVA")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await viewModel.fetchFromAPI() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                }
+            .refreshable {
+                await viewModel.fetchFromAPI()
             }
         }
     }

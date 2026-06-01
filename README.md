@@ -646,7 +646,8 @@ App companion watchOS che mostra lo stato dei servizi con card compatte. Funzion
 - Raggruppamento per stato (DOWN / Mismatch / UP)
 - Colore sonde verde/rosso per identificare subito i problemi
 - LED globale nella toolbar
-- Refresh automatico ogni 60 secondi + refresh manuale
+- Pull-to-refresh in tutte le schermate (dashboard, Portali, Temperatura, Potenza)
+- Refresh automatico ogni 60 secondi
 - Aggiornamento immediato quando l'app torna in primo piano
 - Dati cached tra i riavvii via WatchConnectivity
 - Notifiche push APNs (arrivano sul watch quando l'iPhone è bloccato)

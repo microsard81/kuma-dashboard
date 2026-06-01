@@ -45,5 +45,8 @@ struct WatchPortalsDetailView: View {
             }
         }
         .navigationTitle("Portali")
+        .refreshable {
+            await viewModel.fetchFromAPI()
+        }
     }
 }
