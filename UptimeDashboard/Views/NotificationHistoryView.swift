@@ -9,18 +9,56 @@ private struct SyncServerEvent: Codable, Identifiable {
     let id: String
     let ts: String
     let type: String
-    let title: String
-    let body: String
-    let state: String
     let name: String
     let from: String
     let to: String
+    let detail: String?
     let severity: Int
+
+    // Campi legacy (presenti in eventi salvati prima del fix)
+    let title_legacy: String?
+    let body_legacy: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, ts, type, name, from, to, detail, severity
+        case title_legacy = "title"
+        case body_legacy = "body"
+    }
 
     var date: Date {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.date(from: ts) ?? Date.distantPast
+    }
+
+    /// Genera il titolo dalla struttura dell'evento.
+    var title: String {
+        if let legacy = title_legacy, !legacy.isEmpty { return legacy }
+        switch type {
+        case "global":
+            switch to {
+            case "RED": return "⛔ Servizi DOWN"
+            case "YELLOW": return "⚠️ Incongruenza tra sonde"
+            case "GREEN": return "✅ Tutto OK"
+            default: return "Stato: \(to)"
+            }
+        case "monitor":
+            if to == "UP" {
+                return "✅ \(name)"
+            } else {
+                return to == "DOWN" ? "⛔ \(name)" : "⚠️ \(name)"
+            }
+        case "sensor":
+            return name
+        default:
+            return name
+        }
+    }
+
+    /// Genera il body dalla struttura dell'evento.
+    var body: String {
+        if let legacy = body_legacy, !legacy.isEmpty { return legacy }
+        return detail ?? ""
     }
 }
 
