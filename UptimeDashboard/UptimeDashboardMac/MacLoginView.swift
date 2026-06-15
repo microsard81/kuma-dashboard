@@ -5,7 +5,6 @@ struct MacLoginView: View {
 
     @State private var username = ""
     @State private var password = ""
-    @State private var rememberMe = false
 
     private var isFormValid: Bool {
         !username.isEmpty && !password.isEmpty
@@ -32,9 +31,6 @@ struct MacLoginView: View {
                     .textContentType(.password)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 300)
-
-                Toggle("Ricordami", isOn: $rememberMe)
-                    .frame(maxWidth: 300)
             }
 
             if let error = viewModel.errorMessage {
@@ -45,7 +41,7 @@ struct MacLoginView: View {
 
             Button {
                 Task {
-                    await viewModel.login(username: username, password: password, rememberMe: rememberMe)
+                    await viewModel.login(username: username, password: password)
                 }
             } label: {
                 if viewModel.isLoading {

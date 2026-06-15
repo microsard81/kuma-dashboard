@@ -227,20 +227,11 @@ final class MacAppViewModel: ObservableObject {
 
         // Check biometric state first
         evaluateBiometricState()
-
-        // Only check "remember me" if biometric didn't set the state
-        if authState == .login {
-            if defaults.bool(forKey: "mac_remember_me"),
-               let _ = defaults.string(forKey: "mac_session_active") {
-                authState = .authenticated
-                restoreCookies()
-            }
-        }
     }
 
     // MARK: - Login
 
-    func login(username: String, password: String, rememberMe: Bool) async {
+    func login(username: String, password: String) async {
         isLoading = true
         errorMessage = nil
         lastLoginUsername = username
@@ -269,11 +260,8 @@ final class MacAppViewModel: ObservableObject {
                 return
             }
 
-            if rememberMe {
-                defaults.set(true, forKey: "mac_remember_me")
-                defaults.set("active", forKey: "mac_session_active")
-                persistCookies()
-            }
+            // Always persist cookies (biometric auth replaces "remember me")
+            persistCookies()
 
             if let next = json["next"] as? String {
                 switch next {
@@ -583,8 +571,6 @@ final class MacAppViewModel: ObservableObject {
         stopAutoRefresh()
         monitors = []
         biometricManager.removeToken()  // Clear biometric token on logout
-        defaults.removeObject(forKey: "mac_remember_me")
-        defaults.removeObject(forKey: "mac_session_active")
         defaults.removeObject(forKey: "mac_cookies")
         HTTPCookieStorage.shared.cookies?.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
         sessionCookies = []
@@ -594,11 +580,13 @@ final class MacAppViewModel: ObservableObject {
     // MARK: - Biometric Authentication
 
     /// Called during init to determine if biometric gate should be shown.
+    /// Called during init to determine if biometric gate should be shown.
     /// If biometrics available AND token exists → .biometricGate
-    /// Otherwise → .login (caller may override with "remember me")
+    /// Otherwise → .login
     func evaluateBiometricState() {
         let method = biometricManager.checkAvailability()
         if method != .none && biometricManager.hasEnrolledToken() {
+            restoreCookies()
             authState = .biometricGate
         }
         // If method is .none or no token, leave as .login
