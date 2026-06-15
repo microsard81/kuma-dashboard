@@ -157,3 +157,123 @@ def set_last_max_down_probes(value: int):
 def clear_last_max_down_probes():
     """Cancella il valore dopo l'invio della notifica GREEN."""
     r.delete(_LAST_MAX_DOWN_KEY)
+
+
+# ------------------ EVENT LOG PER APP iOS/macOS ------------------ #
+
+import json
+import uuid
+from datetime import datetime, timezone
+
+_EVENTS_KEY = "events:log"
+_MAX_EVENTS = 500
+
+
+def push_event(
+    event_type: str,
+    title: str,
+    body: str,
+    state: str = "",
+    name: str = "",
+    from_state: str = "",
+    to_state: str = "",
+    severity: int = 0,
+) -> str:
+    """
+    Salva un evento nello storico globale (Redis List, più recenti in testa).
+    Ritorna l'event_id generato.
+    """
+    event_id = str(uuid.uuid4())
+    event = {
+        "id": event_id,
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "type": event_type,
+        "title": title,
+        "body": body,
+        "state": state,
+        "name": name,
+        "from": from_state,
+        "to": to_state,
+        "severity": severity,
+    }
+    r.lpush(_EVENTS_KEY, json.dumps(event))
+    r.ltrim(_EVENTS_KEY, 0, _MAX_EVENTS - 1)
+    return event_id
+
+
+def load_events(limit: int = 50, before: str | None = None) -> list[dict]:
+    """
+    Carica gli ultimi N eventi. Se 'before' è fornito (timestamp ISO),
+    restituisce solo eventi precedenti a quel timestamp.
+    """
+    # Carica tutti e filtra (max 500, accettabile)
+    raw = r.lrange(_EVENTS_KEY, 0, _MAX_EVENTS - 1)
+    events = [json.loads(item) for item in (raw or [])]
+
+    if before:
+        events = [e for e in events if e["ts"] < before]
+
+    return events[:limit]
+
+
+# ------------------ EVENT LOG (STORICO EVENTI) ------------------ #
+
+import json as _json
+from datetime import datetime as _datetime, timezone as _timezone
+
+_EVENTS_LOG_KEY = "events:log"
+_EVENTS_MAX = 500  # Max eventi conservati
+
+
+def push_event(
+    event_type: str,
+    name: str,
+    from_state: str,
+    to_state: str,
+    detail: str = "",
+    severity: int = 0,
+) -> None:
+    """
+    Registra un evento di transizione nel log Redis.
+
+    event_type: 'global' | 'monitor' | 'sensor'
+    name: nome della risorsa (es. 'www.regione.vda.it', 'Temperatura Media', 'global')
+    from_state: stato precedente
+    to_state: stato corrente
+    detail: dettaglio opzionale (es. "DOWN su TIM, NodePing")
+    severity: 0 (normal), 1 (warning), 2 (critical)
+    """
+    import uuid
+
+    event = {
+        "id": str(uuid.uuid4()),
+        "ts": _datetime.now(_timezone.utc).isoformat(),
+        "type": event_type,
+        "name": name,
+        "from": from_state,
+        "to": to_state,
+        "detail": detail,
+        "severity": severity,
+    }
+    r.lpush(_EVENTS_LOG_KEY, _json.dumps(event))
+    r.ltrim(_EVENTS_LOG_KEY, 0, _EVENTS_MAX - 1)
+
+
+def get_events(limit: int = 50, before: str | None = None) -> list[dict]:
+    """
+    Recupera gli ultimi eventi dal log Redis.
+
+    limit: numero massimo di eventi da restituire (max 200)
+    before: timestamp ISO 8601 — restituisce solo eventi precedenti a questa data
+    """
+    limit = min(max(limit, 1), 200)
+
+    # Carica tutti gli eventi (fino a _EVENTS_MAX)
+    raw_events = r.lrange(_EVENTS_LOG_KEY, 0, _EVENTS_MAX - 1)
+    events = [_json.loads(e) for e in raw_events]
+
+    # Filtra per timestamp se richiesto
+    if before:
+        events = [e for e in events if e["ts"] < before]
+
+    return events[:limit]

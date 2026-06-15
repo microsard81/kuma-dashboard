@@ -36,6 +36,7 @@ from redis_history import (
     get_last_max_down_probes,
     set_last_max_down_probes,
     clear_last_max_down_probes,
+    push_event,
 )
 from push_utils import send_push_to_all
 from apns_utils import send_apns_to_all
@@ -118,6 +119,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
     # Primo avvio → niente notifiche, ma persisti il set anomalo
     if previous is None:
         set_anomalous_resources(current_anomalous)
+        push_event("global", "global", "UNKNOWN", new_state, detail="Primo avvio worker")
         return
 
     # Push disabilitate
@@ -306,6 +308,38 @@ def maybe_send_global_push(new_state, monitor_details=None):
     # Persisti il set anomalo corrente per il prossimo ciclo
     set_anomalous_resources(current_anomalous)
 
+    # Registra evento di transizione stato globale (indipendente dalle push)
+    if new_state != previous:
+        detail_lines = []
+        if new_state == "RED":
+            down_resources = [m["name"] for m in details if m["severity"] == 2]
+            if down_resources:
+                detail_lines.append(f"DOWN: {', '.join(down_resources)}")
+        elif new_state == "YELLOW":
+            mismatch_resources = [m["name"] for m in details if m["severity"] == 1]
+            if mismatch_resources:
+                detail_lines.append(f"Mismatch: {', '.join(mismatch_resources)}")
+        sev = 2 if new_state == "RED" else (1 if new_state == "YELLOW" else 0)
+        push_event("global", "global", previous, new_state,
+                   detail="; ".join(detail_lines), severity=sev)
+
+    # Registra eventi per singoli monitor che hanno cambiato stato
+    for m in details:
+        m_name = m["name"]
+        was_anomalous = m_name in previous_anomalous
+        is_anomalous = m_name in current_anomalous
+
+        if is_anomalous and not was_anomalous:
+            # Monitor entrato in stato anomalo
+            down_probes = [PROBE_NAMES[k] for k in ("bg", "tim", "iliad", "nodeping", "uptime") if m[k] == 0]
+            push_event("monitor", m_name, "UP", "DOWN" if m["severity"] == 2 else "MISMATCH",
+                       detail=f"DOWN su {', '.join(down_probes)}" if down_probes else "",
+                       severity=m["severity"])
+        elif was_anomalous and not is_anomalous:
+            # Monitor tornato UP
+            push_event("monitor", m_name, "DOWN", "UP",
+                       detail="Ripristinato", severity=0)
+
 
 # ------------------------------------------------------
 # INVERTER SENSOR ALERTS
@@ -367,6 +401,12 @@ def check_inverter_alerts():
         # Invia push solo alle transizioni (non a ogni ciclo)
         if new_state != prev_state:
             _set_sensor_alert_state(name, new_state)
+
+            # Registra evento nel log (indipendente dalle push)
+            sev = 2 if new_state == "critical" else (1 if new_state == "warning" else 0)
+            detail = f"{value} {unit}" if value is not None else ""
+            push_event("sensor", name, prev_state, new_state,
+                       detail=detail, severity=sev)
 
             # Transizione verso warning
             if new_state == "warning" and prev_state == "normal":

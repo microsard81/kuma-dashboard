@@ -176,6 +176,7 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 | `GET` | `/` | ✅ | Dashboard web |
 | `GET` | `/api/dashboard-data` | ✅ | Dati dashboard in JSON |
 | `GET` | `/api/inverter-data` | ✅ | Dati sensori inverter in JSON |
+| `GET` | `/api/events` | ✅/Token | Storico eventi (transizioni stato globale, monitor, sensori). Auth: sessione Flask o `X-Watch-Token` |
 | `POST` | `/api/login` | — | Login JSON (app iOS) |
 | `POST` | `/api/2fa` | — | Verifica 2FA JSON (app iOS) |
 | `POST` | `/api/change-password` | — | Cambio password JSON (app iOS) |
@@ -263,6 +264,46 @@ La dashboard integra dati in tempo reale da un endpoint locale `invadcstatus` ch
 
 **Configurazione:** la variabile `INVERTER_STATUS_URL` nel `.env` permette di puntare a un endpoint diverso (default: `http://127.0.0.1:9000/invadcstatus`). Il token di autenticazione è lo stesso `STATUS_TOKEN` già usato per l'uptime.
 
+### Event Log (Storico Eventi)
+
+Il `history_worker.py` registra ogni transizione di stato (globale, per-monitor, per-sensore) in una lista Redis. Le app iOS e macOS possono interrogare il backend per ottenere lo storico completo degli eventi, indipendentemente dalle notifiche push ricevute.
+
+**Endpoint:** `GET /api/events` (autenticato con sessione Flask o header `X-Watch-Token`)
+
+**Query params:**
+- `limit` (int, default 50, max 200) — numero massimo di eventi
+- `before` (ISO 8601 timestamp) — per paginazione, restituisce solo eventi precedenti
+
+**Formato risposta:**
+```json
+{
+  "events": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "ts": "2026-06-15T14:32:00+00:00",
+      "type": "monitor",
+      "name": "www.regione.vda.it",
+      "from": "UP",
+      "to": "MISMATCH",
+      "detail": "DOWN su TIM, NodePing",
+      "severity": 1
+    }
+  ],
+  "count": 1
+}
+```
+
+**Tipi evento (`type`):**
+- `global` — transizione dello stato globale (GREEN/YELLOW/RED)
+- `monitor` — singolo monitor entrato/uscito da stato anomalo
+- `sensor` — sensore inverter che cambia stato (normal/warning/critical)
+
+**Note:**
+- Gli eventi vengono registrati indipendentemente da `PUSH_ENABLED` e dalla soglia notifica
+- Massimo 500 eventi conservati in Redis (FIFO)
+- Lo stato letto/non letto è gestito localmente sui device (non dal backend)
+- Le app usano `event.id` (UUID) per tracciare lo stato di lettura in locale
+
 **Soglie e notifiche push:**
 
 Il sistema invia notifiche push (VAPID + APNs) quando un sensore supera le soglie configurate:
@@ -306,6 +347,7 @@ Ore 14:35
 | `user:<username>` | Hash | Credenziali utente (`password_hash`, `totp_secret`, `totp_enrolled`, `must_change_password`, `password_history`) |
 | `biometric:<username>:<token>` | String | Token biometrico con TTL 90 giorni |
 | `inverter:alert_state:<sensor_name>` | String | Stato alert sensore inverter (`normal`/`warning`/`critical`) |
+| `events:log` | List | Event log con le ultime 500 transizioni di stato (JSON, più recenti in testa) |
 
 ### Gestione utenti
 

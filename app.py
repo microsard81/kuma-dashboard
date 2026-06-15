@@ -752,6 +752,32 @@ def api_inverter_data():
     return jsonify(data)
 
 
+@app.route("/api/events")
+def api_events():
+    """Storico eventi (transizioni di stato globale, monitor, sensori).
+
+    Autenticazione: sessione Flask (@login_required) OPPURE header X-Watch-Token.
+    Query params:
+      - limit (int, default 50, max 200)
+      - before (ISO 8601 timestamp per paginazione)
+    """
+    # Auth: accetta sessione Flask o token API
+    is_session_auth = current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False
+    token = request.headers.get("X-Watch-Token", "")
+    is_token_auth = bool(WATCH_API_TOKEN) and hmac.compare_digest(token, WATCH_API_TOKEN)
+
+    if not is_session_auth and not is_token_auth:
+        return {"ok": False, "error": "unauthorized"}, 401
+
+    from redis_history import get_events
+
+    limit = request.args.get("limit", 50, type=int)
+    before = request.args.get("before", None, type=str)
+
+    events = get_events(limit=limit, before=before)
+    return jsonify({"events": events, "count": len(events)})
+
+
 @app.route("/api/watch-data")
 def api_watch_data():
     """Endpoint leggero per l'Apple Watch. Autenticato con token statico via header."""
