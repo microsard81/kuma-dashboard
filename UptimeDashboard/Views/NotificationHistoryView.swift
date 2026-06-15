@@ -432,7 +432,7 @@ final class NotificationStore {
 
     /// Sync from backend: merge server events with local NSE records.
     /// Server events are authoritative — local duplicates (by requestId match) are skipped.
-    func syncFromServer(baseURL: URL, watchToken: String? = nil, session: URLSession? = nil) async {
+    func syncFromServer(baseURL: URL, session: URLSession? = nil) async {
         let url = baseURL.appendingPathComponent("api/events")
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         components?.queryItems = [URLQueryItem(name: "limit", value: "200")]
@@ -441,9 +441,6 @@ final class NotificationStore {
 
         var request = URLRequest(url: requestURL)
         request.httpMethod = "GET"
-        if let token = watchToken {
-            request.setValue(token, forHTTPHeaderField: "X-Watch-Token")
-        }
 
         let urlSession = session ?? URLSession.shared
 

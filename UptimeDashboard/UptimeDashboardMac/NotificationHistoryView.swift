@@ -117,7 +117,6 @@ struct NotificationHistoryView: View {
         guard let baseURL = viewModel.baseURL else { return }
         await eventLog.fetchEvents(
             baseURL: baseURL,
-            watchToken: viewModel.watchToken,
             session: viewModel.urlSession
         )
     }

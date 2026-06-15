@@ -191,7 +191,7 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 | `POST` | `/push/apns/unsubscribe` | ✅ | Rimuove device token APNs (iOS) |
 | `POST` | `/push/apns/threshold` | ✅ | Aggiorna soglia notifica APNs (iOS) |
 | `POST` | `/auth/biometric/login` | — | Login con token biometrico (Face ID / Touch ID) |
-| `GET` | `/api/events` | ✅/Token | Storico eventi (transizioni stato, alert sensori) con paginazione |
+| `GET` | `/api/events` | ✅ | Storico eventi (transizioni stato, alert sensori) con paginazione |
 | `GET` | `/api/watch-data` | Token | Dati dashboard per Apple Watch (header `X-Watch-Token`) |
 
 **Formato risposta `/api/dashboard-data`:**

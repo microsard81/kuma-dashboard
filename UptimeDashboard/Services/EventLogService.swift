@@ -71,8 +71,8 @@ final class EventLogService: ObservableObject {
 
     // MARK: - Fetch from Backend
 
-    /// Fetches events from the server. Call with the app's base URL and auth token/cookies.
-    func fetchEvents(baseURL: URL, watchToken: String? = nil, session: URLSession? = nil) async {
+    /// Fetches events from the server using session cookies (same auth as dashboard).
+    func fetchEvents(baseURL: URL, session: URLSession? = nil) async {
         isLoading = true
         lastError = nil
 
@@ -88,9 +88,6 @@ final class EventLogService: ObservableObject {
 
         var request = URLRequest(url: requestURL)
         request.httpMethod = "GET"
-        if let token = watchToken {
-            request.setValue(token, forHTTPHeaderField: "X-Watch-Token")
-        }
 
         let urlSession = session ?? URLSession.shared
 
