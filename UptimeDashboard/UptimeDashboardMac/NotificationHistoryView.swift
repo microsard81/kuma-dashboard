@@ -263,3 +263,73 @@ private struct MacEventRow: View {
         return formatter.string(from: date)
     }
 }
+
+
+// MARK: - NotificationRecord (compatibilità con MacDashboardView popover)
+
+struct NotificationRecord: Identifiable, Codable {
+    let id: UUID
+    let title: String
+    let body: String
+    let date: Date
+    var isRead: Bool
+    var requestId: String?
+
+    init(title: String, body: String, date: Date = Date(), isRead: Bool = false, requestId: String? = nil) {
+        self.id = UUID()
+        self.title = title
+        self.body = body
+        self.date = date
+        self.isRead = isRead
+        self.requestId = requestId
+    }
+}
+
+// MARK: - NotificationStore (compatibilità con MacDashboardView popover)
+
+final class NotificationStore {
+    static let shared = NotificationStore()
+    private let key = "notification_history"
+    private let maxAge: TimeInterval = 30 * 24 * 3600
+    private let appGroupId = "group.cloud.sundata.uptimeDashboard"
+
+    private var defaults: UserDefaults {
+        UserDefaults(suiteName: appGroupId) ?? UserDefaults.standard
+    }
+
+    private init() {}
+
+    var unreadCount: Int {
+        loadAll().filter { !$0.isRead }.count
+    }
+
+    /// Save a new notification to history.
+    func save(title: String, body: String, requestId: String? = nil) {
+        var records = loadAll()
+        records.insert(NotificationRecord(title: title, body: body, requestId: requestId), at: 0)
+        let cutoff = Date().addingTimeInterval(-maxAge)
+        records = records.filter { $0.date > cutoff }
+        persist(records)
+    }
+
+    func markAllAsRead() {
+        var records = loadAll()
+        for i in records.indices { records[i].isRead = true }
+        persist(records)
+    }
+
+    func loadAll() -> [NotificationRecord] {
+        guard let data = defaults.data(forKey: key),
+              var records = try? JSONDecoder().decode([NotificationRecord].self, from: data) else {
+            return []
+        }
+        let cutoff = Date().addingTimeInterval(-maxAge)
+        records = records.filter { $0.date > cutoff }
+        return records.sorted { $0.date > $1.date }
+    }
+
+    private func persist(_ records: [NotificationRecord]) {
+        guard let data = try? JSONEncoder().encode(records) else { return }
+        defaults.set(data, forKey: key)
+    }
+}
