@@ -1,33 +1,41 @@
 // Feature: native-apps-sensor-integration
 
 import SwiftUI
-import UserNotifications
 
-/// View showing notification history (last 30 days).
-/// Unread notifications appear at the top with blue background.
-/// Swipe left to mark as read.
+/// View showing event history fetched from the backend (last 30 days).
+/// Unread events appear at the top with blue background.
+/// Swipe left to toggle read/unread state (local per-device).
 struct NotificationHistoryView: View {
-    @State private var notifications: [NotificationRecord] = []
+    @StateObject private var eventLog = EventLogService.shared
+    @EnvironmentObject var viewModel: MacAppViewModel
 
-    private var unreadNotifications: [NotificationRecord] {
-        notifications.filter { !$0.isRead }
+    private var unreadEvents: [EventRecord] {
+        eventLog.events.filter { !$0.isRead }
     }
 
-    private var readNotifications: [NotificationRecord] {
-        notifications.filter { $0.isRead }
+    private var readEvents: [EventRecord] {
+        eventLog.events.filter { $0.isRead }
     }
 
     var body: some View {
         Group {
-            if notifications.isEmpty {
+            if eventLog.isLoading && eventLog.events.isEmpty {
+                VStack(spacing: 16) {
+                    ProgressView()
+                    Text("Caricamento eventi...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if eventLog.events.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "bell.slash")
                         .font(.largeTitle)
                         .foregroundColor(.secondary)
-                    Text("Nessuna notifica")
+                    Text("Nessun evento")
                         .font(.headline)
                         .foregroundColor(.secondary)
-                    Text("Le notifiche ricevute appariranno qui")
+                    Text("Gli eventi di stato appariranno qui")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -35,14 +43,14 @@ struct NotificationHistoryView: View {
             } else {
                 List {
                     // Unread first
-                    if !unreadNotifications.isEmpty {
+                    if !unreadEvents.isEmpty {
                         Section {
-                            ForEach(unreadNotifications) { notif in
-                                NotificationRow(notification: notif)
+                            ForEach(unreadEvents) { event in
+                                EventRow(event: event)
                                     .listRowBackground(Color.blue.opacity(0.08))
                                     .swipeActions(edge: .trailing) {
                                         Button {
-                                            markAsRead(notif)
+                                            eventLog.markAsRead(id: event.id)
                                         } label: {
                                             Label("Letta", systemImage: "envelope.open")
                                         }
@@ -50,18 +58,18 @@ struct NotificationHistoryView: View {
                                     }
                             }
                         } header: {
-                            Text("Non lette (\(unreadNotifications.count))")
+                            Text("Non lette (\(unreadEvents.count))")
                         }
                     }
 
                     // Read
-                    if !readNotifications.isEmpty {
+                    if !readEvents.isEmpty {
                         Section {
-                            ForEach(readNotifications) { notif in
-                                NotificationRow(notification: notif)
+                            ForEach(readEvents) { event in
+                                EventRow(event: event)
                                     .swipeActions(edge: .trailing) {
                                         Button {
-                                            markAsUnread(notif)
+                                            eventLog.markAsUnread(id: event.id)
                                         } label: {
                                             Label("Non letta", systemImage: "envelope.badge")
                                         }
@@ -69,7 +77,7 @@ struct NotificationHistoryView: View {
                                     }
                             }
                         } header: {
-                            if !unreadNotifications.isEmpty {
+                            if !unreadEvents.isEmpty {
                                 Text("Lette")
                             }
                         }
@@ -77,13 +85,11 @@ struct NotificationHistoryView: View {
                 }
                 .listStyle(.plain)
                 .refreshable {
-                    // La scritta "Segna tutte come lette" appare sopra lo spinner
-                    NotificationStore.shared.markAllAsRead()
-                    withAnimation { notifications = NotificationStore.shared.loadAll() }
+                    await refreshEvents()
                 }
                 .overlay(alignment: .top) {
-                    if !unreadNotifications.isEmpty {
-                        Text("↓ Segna tutte come lette")
+                    if !unreadEvents.isEmpty {
+                        Text("↓ Tira per aggiornare")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                             .padding(.top, -20)
@@ -91,50 +97,54 @@ struct NotificationHistoryView: View {
                 }
             }
         }
-        .navigationTitle("Notifiche")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
-        .onAppear { loadNotifications() }
+        .navigationTitle("Eventi")
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                if !unreadEvents.isEmpty {
+                    Button {
+                        eventLog.markAllAsRead()
+                    } label: {
+                        Image(systemName: "envelope.open")
+                    }
+                    .help("Segna tutte come lette")
+                }
+            }
+        }
+        .task { await refreshEvents() }
     }
 
-    private func loadNotifications() {
-        notifications = NotificationStore.shared.loadAll()
-    }
-
-    private func markAsRead(_ notif: NotificationRecord) {
-        NotificationStore.shared.markAsRead(id: notif.id)
-        withAnimation { notifications = NotificationStore.shared.loadAll() }
-    }
-
-    private func markAsUnread(_ notif: NotificationRecord) {
-        NotificationStore.shared.markAsUnread(id: notif.id)
-        withAnimation { notifications = NotificationStore.shared.loadAll() }
+    private func refreshEvents() async {
+        guard let baseURL = viewModel.baseURL else { return }
+        await eventLog.fetchEvents(
+            baseURL: baseURL,
+            watchToken: viewModel.watchToken,
+            session: viewModel.urlSession
+        )
     }
 }
 
-// MARK: - NotificationRow
+// MARK: - EventRow
 
-private struct NotificationRow: View {
-    let notification: NotificationRecord
+private struct EventRow: View {
+    let event: EventRecord
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                if !notification.isRead {
+                if !event.isRead {
                     Circle()
                         .fill(Color.blue)
                         .frame(width: 8, height: 8)
                 }
-                Text(notification.title)
+                Text(event.title)
                     .font(.subheadline.bold())
                 Spacer()
-                Text(formatDate(notification.date))
+                Text(formatDate(event.date))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
-            if !notification.body.isEmpty {
-                Text(notification.body)
+            if !event.body.isEmpty {
+                Text(event.body)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(3)
@@ -155,136 +165,5 @@ private struct NotificationRow: View {
             formatter.dateFormat = "dd/MM HH:mm"
         }
         return formatter.string(from: date)
-    }
-}
-
-// MARK: - NotificationRecord
-
-struct NotificationRecord: Identifiable, Codable {
-    let id: UUID
-    let title: String
-    let body: String
-    let date: Date
-    var isRead: Bool
-    var requestId: String?
-
-    init(title: String, body: String, date: Date = Date(), isRead: Bool = false, requestId: String? = nil) {
-        self.id = UUID()
-        self.title = title
-        self.body = body
-        self.date = date
-        self.isRead = isRead
-        self.requestId = requestId
-    }
-}
-
-// MARK: - NotificationStore
-
-final class NotificationStore {
-    static let shared = NotificationStore()
-    private let key = "notification_history"
-    private let maxAge: TimeInterval = 30 * 24 * 3600 // 30 days
-    private let queue = DispatchQueue(label: "notificationStore", qos: .userInitiated)
-    private let appGroupId = "group.cloud.sundata.uptimeDashboard"
-
-    /// Shared UserDefaults (App Group)
-    private var defaults: UserDefaults {
-        UserDefaults(suiteName: appGroupId) ?? UserDefaults.standard
-    }
-
-    private init() {
-        migrateFromStandardIfNeeded()
-    }
-
-    private func migrateFromStandardIfNeeded() {
-        let standard = UserDefaults.standard
-        guard let oldData = standard.data(forKey: key) else { return }
-        let groupDefaults = UserDefaults(suiteName: appGroupId) ?? standard
-        if groupDefaults.data(forKey: key) == nil {
-            groupDefaults.set(oldData, forKey: key)
-            standard.removeObject(forKey: key)
-        }
-    }
-
-    /// Number of unread notifications.
-    var unreadCount: Int {
-        queue.sync { loadAllInternal().filter { !$0.isRead }.count }
-    }
-
-    /// Mark all notifications as read.
-    func markAllAsRead() {
-        queue.sync {
-            var records = loadAllInternal()
-            for i in records.indices { records[i].isRead = true }
-            persistInternal(records)
-        }
-    }
-
-    /// Mark a single notification as read.
-    func markAsRead(id: UUID) {
-        queue.sync {
-            var records = loadAllInternal()
-            if let idx = records.firstIndex(where: { $0.id == id }) {
-                records[idx].isRead = true
-                persistInternal(records)
-            }
-        }
-    }
-
-    /// Mark a single notification as unread.
-    func markAsUnread(id: UUID) {
-        queue.sync {
-            var records = loadAllInternal()
-            if let idx = records.firstIndex(where: { $0.id == id }) {
-                records[idx].isRead = false
-                persistInternal(records)
-            }
-        }
-    }
-
-    /// Save a new notification only if not a duplicate (same requestId).
-    func saveIfNotDuplicate(title: String, body: String, requestId: String? = nil) {
-        queue.sync {
-            if let rid = requestId {
-                let existing = loadAllInternal()
-                if existing.contains(where: { $0.requestId == rid }) { return }
-            }
-            saveInternal(title: title, body: body, requestId: requestId)
-        }
-    }
-
-    /// Save a new notification to history (always saves, no dedup).
-    func save(title: String, body: String, requestId: String? = nil) {
-        queue.sync {
-            saveInternal(title: title, body: body, requestId: requestId)
-        }
-    }
-
-    private func saveInternal(title: String, body: String, requestId: String?) {
-        var records = loadAllInternal()
-        records.insert(NotificationRecord(title: title, body: body, requestId: requestId), at: 0)
-        let cutoff = Date().addingTimeInterval(-maxAge)
-        records = records.filter { $0.date > cutoff }
-        persistInternal(records)
-    }
-
-    /// Load all notifications (newest first), pruning old ones.
-    func loadAll() -> [NotificationRecord] {
-        queue.sync { loadAllInternal() }
-    }
-
-    private func loadAllInternal() -> [NotificationRecord] {
-        guard let data = defaults.data(forKey: key),
-              var records = try? JSONDecoder().decode([NotificationRecord].self, from: data) else {
-            return []
-        }
-        let cutoff = Date().addingTimeInterval(-maxAge)
-        records = records.filter { $0.date > cutoff }
-        return records.sorted { $0.date > $1.date }
-    }
-
-    private func persistInternal(_ records: [NotificationRecord]) {
-        guard let data = try? JSONEncoder().encode(records) else { return }
-        defaults.set(data, forKey: key)
     }
 }

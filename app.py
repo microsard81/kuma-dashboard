@@ -769,12 +769,15 @@ def api_events():
     if not is_session_auth and not is_token_auth:
         return {"ok": False, "error": "unauthorized"}, 401
 
-    from redis_history import get_events
+    from redis_history import load_events
 
     limit = request.args.get("limit", 50, type=int)
     before = request.args.get("before", None, type=str)
 
-    events = get_events(limit=limit, before=before)
+    # Limita a max 200
+    limit = min(limit, 200)
+
+    events = load_events(limit=limit, before=before)
     return jsonify({"events": events, "count": len(events)})
 
 

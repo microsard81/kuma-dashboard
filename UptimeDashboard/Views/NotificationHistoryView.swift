@@ -78,6 +78,10 @@ struct NotificationHistoryView: View {
                     .padding(.bottom, 16)
                 }
                 .refreshable {
+                    // Sync dal backend, poi segna tutte come lette
+                    await NotificationStore.shared.syncFromServer(
+                        baseURL: AppConfig.baseURL
+                    )
                     NotificationStore.shared.markAllAsRead()
                     withAnimation(.easeInOut(duration: 0.35)) {
                         reloadNotifications()
@@ -92,6 +96,11 @@ struct NotificationHistoryView: View {
 
     private func loadNotifications() {
         reloadNotifications()
+        // Fetch dal backend per avere lo storico completo
+        Task {
+            await NotificationStore.shared.syncFromServer(baseURL: AppConfig.baseURL)
+            reloadNotifications()
+        }
         #if DEBUG
         // Seed 4 test notifications if empty (con orari diversi)
         if notifications.isEmpty {
@@ -419,6 +428,58 @@ final class NotificationStore {
     /// Load all notifications (newest first), pruning old ones.
     func loadAll() -> [NotificationRecord] {
         queue.sync { loadAllInternal() }
+    }
+
+    /// Sync from backend: merge server events with local NSE records.
+    /// Server events are authoritative — local duplicates (by requestId match) are skipped.
+    func syncFromServer(baseURL: URL, watchToken: String? = nil, session: URLSession? = nil) async {
+        let url = baseURL.appendingPathComponent("api/events")
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        components?.queryItems = [URLQueryItem(name: "limit", value: "200")]
+
+        guard let requestURL = components?.url else { return }
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "GET"
+        if let token = watchToken {
+            request.setValue(token, forHTTPHeaderField: "X-Watch-Token")
+        }
+
+        let urlSession = session ?? URLSession.shared
+
+        do {
+            let (data, response) = try await urlSession.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+
+            let eventsResponse = try JSONDecoder().decode(EventsResponse.self, from: data)
+
+            queue.sync {
+                var records = loadAllInternal()
+                let existingIds = Set(records.compactMap { $0.requestId })
+
+                for event in eventsResponse.events {
+                    // Skip if already present (matched by server event ID stored as requestId)
+                    if existingIds.contains(event.id) { continue }
+
+                    let record = NotificationRecord(
+                        title: event.title,
+                        body: event.body,
+                        date: event.date,
+                        isRead: false,
+                        requestId: event.id
+                    )
+                    records.append(record)
+                }
+
+                // Sort and prune
+                let cutoff = Date().addingTimeInterval(-maxAge)
+                records = records.filter { $0.date > cutoff }
+                records.sort { $0.date > $1.date }
+                persistInternal(records)
+            }
+        } catch {
+            // Silently fail — local data is still available
+        }
     }
 
     private func loadAllInternal() -> [NotificationRecord] {

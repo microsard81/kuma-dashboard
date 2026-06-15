@@ -191,6 +191,7 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 | `POST` | `/push/apns/unsubscribe` | ✅ | Rimuove device token APNs (iOS) |
 | `POST` | `/push/apns/threshold` | ✅ | Aggiorna soglia notifica APNs (iOS) |
 | `POST` | `/auth/biometric/login` | — | Login con token biometrico (Face ID / Touch ID) |
+| `GET` | `/api/events` | ✅/Token | Storico eventi (transizioni stato, alert sensori) con paginazione |
 | `GET` | `/api/watch-data` | Token | Dati dashboard per Apple Watch (header `X-Watch-Token`) |
 
 **Formato risposta `/api/dashboard-data`:**
@@ -339,6 +340,7 @@ Ore 14:35
 
 | Chiave | Tipo | Descrizione |
 |---|---|---|
+| `events:log` | List | Storico eventi (transizioni stato, alert sensori) — max 500 record, JSON |
 | `history:<nome_monitor>` | List | Storico severity (max 60 punti, formato `severity:k1:k2:k3:n1:u1`) |
 | `global_state` | String | Stato globale corrente (`GREEN`/`YELLOW`/`RED`) |
 | `push:subs_by_endpoint` | Hash | Subscription Web Push VAPID (con campo `threshold` opzionale, default 1) |
@@ -579,7 +581,8 @@ UptimeDashboardTests/
 - **Riordino sezioni** — long press su una macro-card per riordinare le 3 sezioni con drag & drop
 - **Riordino elementi** — swipe a destra su un elemento → drag & drop → "Termina"; ordine salvato
 - **Risorse in evidenza** — swipe a sinistra per pinnare risorse sulla home; card quadrate con stato in tempo reale; long press per riordinare/rimuovere; drag & drop tra card
-- **Storico notifiche** — icona campana con badge non lette; sezioni non lette/lette; swipe per segnare letta/non letta; pull-to-refresh segna tutte come lette
+- **Storico notifiche** — icona campana con badge non lette; sezioni non lette/lette; swipe per segnare letta/non letta; pull-to-refresh sincronizza dal backend e segna tutte come lette
+- **Event log server-side** — lo storico completo degli eventi (transizioni di stato, alert sensori) è servito dal backend via `/api/events`; le app fanno fetch all'apertura e al pull-to-refresh; lo stato letto/non letto è locale per dispositivo
 - **Auto-refresh** — aggiornamento automatico configurabile (default 60s); pull-to-refresh in ogni scheda
 - **Filtro DOWN** — toggle per mostrare solo i monitor in stato DOWN o mismatch (nella scheda Portali)
 - **Badge icona app** — numero di risorse con problemi mostrato sull'icona dell'app (disattivabile)
