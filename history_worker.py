@@ -140,7 +140,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
         data = {"state": "RED"}
         max_down = _compute_max_down_probes(details)
         logging.info("Notifica RED: max_down_probes=%d", max_down)
-        push_event("global", title, body, state="RED", from_state=previous, to_state="RED", severity=2)
+        push_event("global", "global", previous, "RED", detail=body, severity=2)
         send_push_to_all(title, body, data, max_down_probes=max_down)
         try:
             send_apns_to_all(title, body, data, max_down_probes=max_down)
@@ -162,7 +162,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
             data = {"state": "RED"}
             max_down = _compute_max_down_probes(new_details)
 
-            push_event("global", title, body, state="RED", from_state="RED", to_state="RED", severity=2)
+            push_event("global", "global", "RED", "RED", detail=body, severity=2)
             send_push_to_all(title, body, data, max_down_probes=max_down)
             try:
                 send_apns_to_all(title, body, data, max_down_probes=max_down)
@@ -181,7 +181,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
         data = {"state": "YELLOW"}
         max_down = _compute_max_down_probes(details)
         logging.info("Notifica YELLOW: max_down_probes=%d", max_down)
-        push_event("global", title, body, state="YELLOW", from_state=previous, to_state="YELLOW", severity=1)
+        push_event("global", "global", previous, "YELLOW", detail=body, severity=1)
         send_push_to_all(title, body, data, max_down_probes=max_down)
         try:
             send_apns_to_all(title, body, data, max_down_probes=max_down)
@@ -203,7 +203,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
             data = {"state": "YELLOW"}
             max_down = _compute_max_down_probes(new_details)
 
-            push_event("global", title, body, state="YELLOW", from_state="YELLOW", to_state="YELLOW", severity=1)
+            push_event("global", "global", "YELLOW", "YELLOW", detail=body, severity=1)
             send_push_to_all(title, body, data, max_down_probes=max_down)
             try:
                 send_apns_to_all(title, body, data, max_down_probes=max_down)
@@ -232,7 +232,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
                 data = {"state": "YELLOW"}
 
             logging.info("Notifica ESCALATION %s: max_down_probes=%d (precedente=%d)", new_state, max_down, last_max_down)
-            push_event("global", title, body, state=new_state, from_state=new_state, to_state=new_state, severity=2 if new_state == "RED" else 1)
+            push_event("global", "global", new_state, new_state, detail=body, severity=2 if new_state == "RED" else 1)
             send_push_to_all(title, body, data, max_down_probes=max_down)
             try:
                 send_apns_to_all(title, body, data, max_down_probes=max_down)
@@ -252,7 +252,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
                 data = {"state": "YELLOW"}
 
             logging.info("Notifica DE-ESCALATION %s: max_down_probes=%d (precedente=%d)", new_state, max_down, last_max_down)
-            push_event("global", title, body, state=new_state, from_state=new_state, to_state=new_state, severity=2 if new_state == "RED" else 1)
+            push_event("global", "global", new_state, new_state, detail=body, severity=2 if new_state == "RED" else 1)
             # Invia a chi aveva ricevuto la notifica precedente (last_max_down)
             send_push_to_all(title, body, data, max_down_probes=last_max_down)
             try:
@@ -280,7 +280,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
         if last_max_down is None:
             last_max_down = 5
         logging.info("Notifica GREEN: last_max_down_probes=%s", last_max_down)
-        push_event("global", title, body, state="GREEN", from_state=previous, to_state="GREEN", severity=0)
+        push_event("global", "global", previous, "GREEN", detail=body, severity=0)
         send_push_to_all(title, body, data, max_down_probes=last_max_down)
         try:
             send_apns_to_all(title, body, data, max_down_probes=last_max_down)
@@ -302,7 +302,7 @@ def maybe_send_global_push(new_state, monitor_details=None):
             body = f"{names} — tornata UP\nOre {now_str}"
             data = {"state": new_state}
 
-            push_event("global", title, body, state=new_state, from_state=new_state, to_state=new_state, severity=0)
+            push_event("global", "global", new_state, new_state, detail=body, severity=0)
             # Usa lo stesso max_down dell'ultima notifica anomala
             last_max_down = get_last_max_down_probes()
             if last_max_down is None:
@@ -446,7 +446,7 @@ def _send_inverter_push(title, body):
     data = {"type": "inverter_alert"}
     logging.info("Notifica inverter: %s — %s", title, body.replace('\n', ' | '))
     # Registra evento nello storico
-    push_event("sensor", title, body, state="", severity=0)
+    push_event("sensor", title, "", "", detail=body, severity=0)
     # max_down_probes=None bypassa il filtro soglia: tutti ricevono la notifica
     send_push_to_all(title, body, data, max_down_probes=None)
     try:
