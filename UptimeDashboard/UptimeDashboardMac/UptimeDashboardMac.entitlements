@@ -8,9 +8,5 @@
 	<array>
 		<string>group.cloud.sundata.uptimeDashboard</string>
 	</array>
-	<key>com.apple.security.keychain-access-groups</key>
-	<array>
-		<string>$(AppIdentifierPrefix)com.inva.uptimeDashboard.mac.biometricToken</string>
-	</array>
 </dict>
 </plist>
