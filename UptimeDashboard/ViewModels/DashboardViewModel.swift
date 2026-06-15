@@ -110,6 +110,11 @@ final class DashboardViewModel: ObservableObject {
             items = sorted
             applySortOrder(currentSortOrder)
             globalState = response.globalState
+
+            // Auto-reset "Solo DOWN" filter when no items are down anymore
+            if isOnlyDownFilter && downCount == 0 {
+                isOnlyDownFilter = false
+            }
             lastUpdated = Date()
             isStale = false
             sendToWatch(items: sorted, globalState: response.globalState)
