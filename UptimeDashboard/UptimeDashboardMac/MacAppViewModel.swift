@@ -203,6 +203,9 @@ final class MacAppViewModel: ObservableObject {
     // Session cookie storage
     private var sessionCookies: [HTTPCookie] = []
 
+    // Stores the username during the login flow for biometric enrollment
+    private var lastLoginUsername: String = ""
+
     init() {
         self.baseURL = "https://kuma-dashboard.sundata.cloud"
         self.themeMode = defaults.string(forKey: "mac_theme") ?? "dark"
@@ -240,6 +243,7 @@ final class MacAppViewModel: ObservableObject {
     func login(username: String, password: String, rememberMe: Bool) async {
         isLoading = true
         errorMessage = nil
+        lastLoginUsername = username
         defer { isLoading = false }
 
         guard let url = URL(string: "\(baseURL)/api/login") else { return }
@@ -283,9 +287,11 @@ final class MacAppViewModel: ObservableObject {
                     authState = .twoFA
                 default:
                     authState = .authenticated
+                    Task { await enrollBiometricToken(username: lastLoginUsername) }
                 }
             } else {
                 authState = .authenticated
+                Task { await enrollBiometricToken(username: lastLoginUsername) }
             }
         } catch {
             errorMessage = "Errore di connessione"
@@ -354,6 +360,7 @@ final class MacAppViewModel: ObservableObject {
 
             persistCookies()
             authState = .authenticated
+            Task { await enrollBiometricToken(username: lastLoginUsername) }
         } catch {
             errorMessage = "Errore di connessione"
         }
@@ -386,6 +393,7 @@ final class MacAppViewModel: ObservableObject {
 
             persistCookies()
             authState = .authenticated
+            Task { await enrollBiometricToken(username: lastLoginUsername) }
         } catch {
             errorMessage = "Errore di connessione"
         }

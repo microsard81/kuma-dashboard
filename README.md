@@ -649,6 +649,30 @@ App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
 - Widget macOS (small/medium/large) con stato servizi, LED globale, 5 pallini sonde per monitor
 - Icona nella barra dei menu con pallino stato globale e menu a tendina (risorse anomale, azioni rapide)
 - Help macOS nativo (menu Help → Aiuto Dashboard INVA MAC)
+- **Autenticazione biometrica** — Touch ID e Apple Watch unlock per accesso rapido senza digitare credenziali
+
+### Autenticazione Biometrica (Touch ID / Apple Watch)
+
+L'app Mac supporta lo sblocco rapido tramite Touch ID e/o Apple Watch, eliminando la necessità di inserire username, password e codice 2FA ad ogni avvio.
+
+**Come funziona:**
+1. Al primo login manuale (username + password + 2FA), l'app richiede un token biometrico al backend e lo salva nel Keychain macOS
+2. Agli avvii successivi, se il token è presente, viene mostrata una schermata di sblocco biometrico (Biometric Gate)
+3. L'utente sblocca con Touch ID o Apple Watch → il token viene inviato al backend → accesso immediato
+4. Se la biometria fallisce o non è disponibile, è sempre possibile accedere con username e password
+
+**Sicurezza:**
+- Token firmato HMAC-SHA256 dal backend, con scadenza 90 giorni (TTL Redis)
+- Salvato nel Keychain macOS con access control `biometryCurrentSet` — invalidato se cambiano le impronte registrate
+- Protetto da `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — inaccessibile a dispositivo bloccato
+- Refresh automatico tra il giorno 80 e 90; superati i 90 giorni il token scade e si torna al login manuale
+- Il logout cancella il token dal Keychain
+- Mai salvato in UserDefaults o storage non cifrato
+
+**Metodi supportati:**
+- Touch ID (Mac con sensore integrato o Magic Keyboard con Touch ID)
+- Apple Watch (Mac senza Touch ID con Apple Watch abbinato e sbloccato)
+- Entrambi (il sistema sceglie automaticamente)
 
 ### Setup
 
@@ -664,12 +688,15 @@ App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
 ```
 UptimeDashboardMac/
 ├── UptimeDashboardMacApp.swift     # @main, AppDelegate, gestione finestra
-├── MacAppViewModel.swift           # Auth, fetch, preferenze, badge Dock
-├── MacRootView.swift               # Router per stato auth
+├── MacAppViewModel.swift           # Auth, fetch, preferenze, badge Dock, biometria
+├── MacRootView.swift               # Router per stato auth (incl. biometricGate)
 ├── MacLoginView.swift              # Login con 1Password
 ├── MacChangePasswordView.swift     # Cambio password obbligatorio
 ├── MacTOTPSetupView.swift          # Enrollment TOTP con QR code
 ├── MacTwoFAView.swift              # Verifica 2FA
+├── MacBiometricGateView.swift      # Schermata sblocco Touch ID / Apple Watch
+├── MacBiometricManager.swift       # Manager autenticazione biometrica e lifecycle token
+├── MacKeychainStore.swift          # Keychain wrapper con biometric access control
 ├── MacDashboardView.swift          # Dashboard con sparkline e sonde
 ├── MacSettingsView.swift           # Impostazioni (Cmd+,)
 └── TextScaleModifier.swift         # Font scalati custom
@@ -805,6 +832,7 @@ Ore 14:32
 - Autenticazione multi-utente con credenziali in Redis (namespace `user:`)
 - Token biometrici firmati con HMAC-SHA256, salvati in Redis con TTL 90 giorni
 - Session token iOS conservato nel Keychain con `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
+- Token biometrico macOS nel Keychain con `biometryCurrentSet` + `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — service `com.inva.uptimeDashboard.mac.biometricToken`
 - Comunicazione backend esclusivamente via HTTPS (validata lato app)
 - Credenziali e token mai scritti nei log
 - Namespace Redis separati per VAPID (`push:`), APNs (`apns:`), utenti (`user:`), biometria (`biometric:`)

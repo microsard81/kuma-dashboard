@@ -17,8 +17,7 @@ struct MacRootView: View {
             case .login:
                 MacLoginView()
             case .biometricGate:
-                // Placeholder until MacBiometricGateView is implemented (Task 4.2)
-                MacLoginView()
+                MacBiometricGateView()
             case .changePassword:
                 MacChangePasswordView()
             case .totpSetup(let secret, let uri):
