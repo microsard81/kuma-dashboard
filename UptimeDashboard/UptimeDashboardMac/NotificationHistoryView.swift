@@ -2,24 +2,69 @@
 
 import SwiftUI
 
-/// View showing event history fetched from the backend (last 30 days).
-/// Unread events appear at the top with blue background.
-/// Swipe left to toggle read/unread state (local per-device).
-struct NotificationHistoryView: View {
-    @StateObject private var eventLog = EventLogService.shared
-    @EnvironmentObject var viewModel: MacAppViewModel
+// MARK: - Server Event Models (inline per target macOS)
 
-    private var unreadEvents: [EventRecord] {
-        eventLog.events.filter { !$0.isRead }
+private struct MacServerEvent: Codable, Identifiable {
+    let id: String
+    let ts: String
+    let type: String
+    let title: String
+    let body: String
+    let state: String
+    let name: String
+    let from: String
+    let to: String
+    let severity: Int
+
+    var date: Date {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: ts) ?? Date.distantPast
+    }
+}
+
+private struct MacEventsResponse: Codable {
+    let events: [MacServerEvent]
+    let count: Int
+}
+
+// MARK: - Display Record
+
+private struct MacEventRecord: Identifiable {
+    let id: String
+    let title: String
+    let body: String
+    let date: Date
+    let severity: Int
+    var isRead: Bool
+}
+
+// MARK: - NotificationHistoryView
+
+/// Storico eventi completo dal backend. Stato letto/non letto locale per dispositivo.
+struct NotificationHistoryView: View {
+    @State private var events: [MacEventRecord] = []
+    @State private var isLoading = false
+
+    private let appGroupId = "group.cloud.sundata.uptimeDashboard"
+    private let readStateKey = "mac_event_read_state"
+    private let baseURL = "https://kuma-dashboard.sundata.cloud"
+
+    private var defaults: UserDefaults {
+        UserDefaults(suiteName: appGroupId) ?? UserDefaults.standard
     }
 
-    private var readEvents: [EventRecord] {
-        eventLog.events.filter { $0.isRead }
+    private var unreadEvents: [MacEventRecord] {
+        events.filter { !$0.isRead }
+    }
+
+    private var readEvents: [MacEventRecord] {
+        events.filter { $0.isRead }
     }
 
     var body: some View {
         Group {
-            if eventLog.isLoading && eventLog.events.isEmpty {
+            if isLoading && events.isEmpty {
                 VStack(spacing: 16) {
                     ProgressView()
                     Text("Caricamento eventi...")
@@ -27,7 +72,7 @@ struct NotificationHistoryView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if eventLog.events.isEmpty {
+            } else if events.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "bell.slash")
                         .font(.largeTitle)
@@ -42,15 +87,14 @@ struct NotificationHistoryView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
-                    // Unread first
                     if !unreadEvents.isEmpty {
                         Section {
                             ForEach(unreadEvents) { event in
-                                EventRow(event: event)
+                                MacEventRow(event: event)
                                     .listRowBackground(Color.blue.opacity(0.08))
                                     .swipeActions(edge: .trailing) {
                                         Button {
-                                            eventLog.markAsRead(id: event.id)
+                                            markAsRead(id: event.id)
                                         } label: {
                                             Label("Letta", systemImage: "envelope.open")
                                         }
@@ -62,14 +106,13 @@ struct NotificationHistoryView: View {
                         }
                     }
 
-                    // Read
                     if !readEvents.isEmpty {
                         Section {
                             ForEach(readEvents) { event in
-                                EventRow(event: event)
+                                MacEventRow(event: event)
                                     .swipeActions(edge: .trailing) {
                                         Button {
-                                            eventLog.markAsUnread(id: event.id)
+                                            markAsUnread(id: event.id)
                                         } label: {
                                             Label("Non letta", systemImage: "envelope.badge")
                                         }
@@ -85,15 +128,7 @@ struct NotificationHistoryView: View {
                 }
                 .listStyle(.plain)
                 .refreshable {
-                    await refreshEvents()
-                }
-                .overlay(alignment: .top) {
-                    if !unreadEvents.isEmpty {
-                        Text("↓ Tira per aggiornare")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .padding(.top, -20)
-                    }
+                    await fetchEvents()
                 }
             }
         }
@@ -102,7 +137,7 @@ struct NotificationHistoryView: View {
             ToolbarItem(placement: .automatic) {
                 if !unreadEvents.isEmpty {
                     Button {
-                        eventLog.markAllAsRead()
+                        markAllAsRead()
                     } label: {
                         Image(systemName: "envelope.open")
                     }
@@ -110,22 +145,84 @@ struct NotificationHistoryView: View {
                 }
             }
         }
-        .task { await refreshEvents() }
+        .task { await fetchEvents() }
     }
 
-    private func refreshEvents() async {
-        guard let baseURL = viewModel.baseURL else { return }
-        await eventLog.fetchEvents(
-            baseURL: baseURL,
-            session: viewModel.urlSession
-        )
+    // MARK: - Fetch
+
+    private func fetchEvents() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        guard let url = URL(string: "\(baseURL)/api/events?limit=200") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+
+            let decoded = try JSONDecoder().decode(MacEventsResponse.self, from: data)
+            let readState = loadReadState()
+
+            events = decoded.events.map { serverEvent in
+                MacEventRecord(
+                    id: serverEvent.id,
+                    title: serverEvent.title,
+                    body: serverEvent.body,
+                    date: serverEvent.date,
+                    severity: serverEvent.severity,
+                    isRead: readState.contains(serverEvent.id)
+                )
+            }
+        } catch {
+            // Silently fail — show existing data
+        }
+    }
+
+    // MARK: - Read State (locale per dispositivo)
+
+    private func markAsRead(id: String) {
+        var state = loadReadState()
+        state.insert(id)
+        saveReadState(state)
+        if let idx = events.firstIndex(where: { $0.id == id }) {
+            events[idx].isRead = true
+        }
+    }
+
+    private func markAsUnread(id: String) {
+        var state = loadReadState()
+        state.remove(id)
+        saveReadState(state)
+        if let idx = events.firstIndex(where: { $0.id == id }) {
+            events[idx].isRead = false
+        }
+    }
+
+    private func markAllAsRead() {
+        var state = loadReadState()
+        for event in events { state.insert(event.id) }
+        saveReadState(state)
+        for idx in events.indices { events[idx].isRead = true }
+    }
+
+    private func loadReadState() -> Set<String> {
+        guard let array = defaults.stringArray(forKey: readStateKey) else { return [] }
+        return Set(array)
+    }
+
+    private func saveReadState(_ state: Set<String>) {
+        let validIds = Set(events.map { $0.id })
+        let pruned = state.intersection(validIds)
+        defaults.set(Array(pruned), forKey: readStateKey)
     }
 }
 
-// MARK: - EventRow
+// MARK: - MacEventRow
 
-private struct EventRow: View {
-    let event: EventRecord
+private struct MacEventRow: View {
+    let event: MacEventRecord
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {

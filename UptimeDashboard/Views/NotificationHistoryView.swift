@@ -3,6 +3,32 @@
 import SwiftUI
 import UserNotifications
 
+// MARK: - Server Event Models (per syncFromServer)
+
+private struct SyncServerEvent: Codable, Identifiable {
+    let id: String
+    let ts: String
+    let type: String
+    let title: String
+    let body: String
+    let state: String
+    let name: String
+    let from: String
+    let to: String
+    let severity: Int
+
+    var date: Date {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: ts) ?? Date.distantPast
+    }
+}
+
+private struct SyncEventsResponse: Codable {
+    let events: [SyncServerEvent]
+    let count: Int
+}
+
 /// View showing notification history (last 30 days).
 /// Unread notifications appear at the top with blue background.
 /// Swipe left to mark as read.
@@ -448,7 +474,7 @@ final class NotificationStore {
             let (data, response) = try await urlSession.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
 
-            let eventsResponse = try JSONDecoder().decode(EventsResponse.self, from: data)
+            let eventsResponse = try JSONDecoder().decode(SyncEventsResponse.self, from: data)
 
             queue.sync {
                 var records = loadAllInternal()
