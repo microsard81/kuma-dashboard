@@ -63,6 +63,14 @@ struct MacSettingsView: View {
                 set: { viewModel.setBadgeEnabled($0) }
             ))
 
+            // Autenticazione biometrica
+            if viewModel.biometricManager.checkAvailability() != .none {
+                Toggle(biometricToggleLabel, isOn: Binding(
+                    get: { viewModel.biometricEnabled },
+                    set: { viewModel.setBiometricEnabled($0) }
+                ))
+            }
+
             // Notifiche push
             Toggle("Notifiche push", isOn: Binding(
                 get: { viewModel.notificationsEnabled },
@@ -92,12 +100,25 @@ struct MacSettingsView: View {
             .foregroundColor(.secondary)
         }
         .formStyle(.grouped)
-        .frame(width: 400, height: 420)
+        .frame(width: 400, height: 460)
         .padding()
     }
 
     private var textScaleLabel: String {
         "\(Int(viewModel.textScale * 100))%"
+    }
+
+    private var biometricToggleLabel: String {
+        switch viewModel.biometricManager.availableMethod {
+        case .touchID:
+            return "Sblocco con Touch ID"
+        case .appleWatch:
+            return "Sblocco con Apple Watch"
+        case .both:
+            return "Sblocco con Touch ID / Apple Watch"
+        case .none:
+            return "Sblocco biometrico"
+        }
     }
 
     private func thresholdLabel(_ value: Int) -> String {

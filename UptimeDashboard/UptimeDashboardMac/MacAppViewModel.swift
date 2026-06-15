@@ -77,6 +77,7 @@ final class MacAppViewModel: ObservableObject {
     @Published var badgeEnabled: Bool
     @Published var notificationsEnabled: Bool
     @Published var notificationThreshold: Int
+    @Published var biometricEnabled: Bool
 
     func setTheme(_ mode: String) {
         themeMode = mode
@@ -196,6 +197,14 @@ final class MacAppViewModel: ObservableObject {
         }
     }
 
+    func setBiometricEnabled(_ enabled: Bool) {
+        biometricEnabled = enabled
+        defaults.set(enabled, forKey: "mac_biometric_enabled")
+        if !enabled {
+            biometricManager.removeToken()
+        }
+    }
+
     private var refreshTimer: Timer?
     private let baseURL: String
     private let defaults = UserDefaults.standard
@@ -218,6 +227,9 @@ final class MacAppViewModel: ObservableObject {
         // Read notificationThreshold with safe fallback (default: 1)
         let storedThreshold = defaults.object(forKey: "mac_notification_threshold") as? Int ?? 1
         self.notificationThreshold = (1...5).contains(storedThreshold) ? storedThreshold : 1
+
+        // Biometric enabled (default: true)
+        self.biometricEnabled = defaults.object(forKey: "mac_biometric_enabled") as? Bool ?? true
 
         // Initialize biometric manager
         self.biometricManager = MacBiometricManager(
@@ -581,9 +593,10 @@ final class MacAppViewModel: ObservableObject {
 
     /// Called during init to determine if biometric gate should be shown.
     /// Called during init to determine if biometric gate should be shown.
-    /// If biometrics available AND token exists → .biometricGate
+    /// If biometrics enabled AND available AND token exists → .biometricGate
     /// Otherwise → .login
     func evaluateBiometricState() {
+        guard biometricEnabled else { return }
         let method = biometricManager.checkAvailability()
         if method != .none && biometricManager.hasEnrolledToken() {
             restoreCookies()
@@ -621,7 +634,9 @@ final class MacAppViewModel: ObservableObject {
 
     /// Called after successful full login to enroll a biometric token.
     /// Fire-and-forget: failures don't block the session.
+    /// Skipped if biometric auth is disabled in settings.
     func enrollBiometricToken(username: String) async {
+        guard biometricEnabled else { return }
         _ = await biometricManager.enrollToken(username: username)
     }
 
