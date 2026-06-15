@@ -6,6 +6,7 @@ import SwiftUI
 
 enum MacAuthState: Equatable {
     case login
+    case biometricGate        // Biometric unlock screen
     case changePassword
     case totpSetup(secret: String, uri: String)
     case twoFA
@@ -42,6 +43,7 @@ struct MacMonitor: Identifiable, Equatable {
 @MainActor
 final class MacAppViewModel: ObservableObject {
     @Published var authState: MacAuthState = .login
+    @Published var biometricManager: MacBiometricManager
     @Published var monitors: [MacMonitor] = []
     @Published var globalState: String = "GREEN"
     @Published var isLoading: Bool = false
@@ -214,11 +216,22 @@ final class MacAppViewModel: ObservableObject {
         let storedThreshold = defaults.object(forKey: "mac_notification_threshold") as? Int ?? 1
         self.notificationThreshold = (1...5).contains(storedThreshold) ? storedThreshold : 1
 
-        // Ripristina sessione se "Ricordami" era attivo
-        if defaults.bool(forKey: "mac_remember_me"),
-           let _ = defaults.string(forKey: "mac_session_active") {
-            authState = .authenticated
-            restoreCookies()
+        // Initialize biometric manager
+        self.biometricManager = MacBiometricManager(
+            keychainStore: MacKeychainStore(),
+            baseURL: "https://kuma-dashboard.sundata.cloud"
+        )
+
+        // Check biometric state first
+        evaluateBiometricState()
+
+        // Only check "remember me" if biometric didn't set the state
+        if authState == .login {
+            if defaults.bool(forKey: "mac_remember_me"),
+               let _ = defaults.string(forKey: "mac_session_active") {
+                authState = .authenticated
+                restoreCookies()
+            }
         }
     }
 
@@ -561,12 +574,59 @@ final class MacAppViewModel: ObservableObject {
     func logout() {
         stopAutoRefresh()
         monitors = []
+        biometricManager.removeToken()  // Clear biometric token on logout
         defaults.removeObject(forKey: "mac_remember_me")
         defaults.removeObject(forKey: "mac_session_active")
         defaults.removeObject(forKey: "mac_cookies")
         HTTPCookieStorage.shared.cookies?.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
         sessionCookies = []
         authState = .login
+    }
+
+    // MARK: - Biometric Authentication
+
+    /// Called during init to determine if biometric gate should be shown.
+    /// If biometrics available AND token exists → .biometricGate
+    /// Otherwise → .login (caller may override with "remember me")
+    func evaluateBiometricState() {
+        let method = biometricManager.checkAvailability()
+        if method != .none && biometricManager.hasEnrolledToken() {
+            authState = .biometricGate
+        }
+        // If method is .none or no token, leave as .login
+    }
+
+    /// Called from MacBiometricGateView to initiate biometric auth.
+    func authenticateWithBiometrics() async {
+        let result = await biometricManager.authenticate()
+
+        switch result {
+        case .success:
+            authState = .authenticated
+            // Refresh token if needed (non-blocking)
+            if let (username, _) = try? MacKeychainStore().loadToken() {
+                Task {
+                    await biometricManager.refreshTokenIfNeeded(username: username)
+                }
+            }
+        case .cancelled:
+            // Do nothing — user can retry or tap fallback
+            break
+        case .failed:
+            // Error is displayed by MacBiometricGateView via biometricManager state
+            break
+        case .tokenExpired:
+            authState = .login
+        case .networkError:
+            // Error is displayed by MacBiometricGateView
+            break
+        }
+    }
+
+    /// Called after successful full login to enroll a biometric token.
+    /// Fire-and-forget: failures don't block the session.
+    func enrollBiometricToken(username: String) async {
+        _ = await biometricManager.enrollToken(username: username)
     }
 
     // MARK: - Cookie Management
