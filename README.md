@@ -349,6 +349,7 @@ Ore 14:35
 | `user:<username>` | Hash | Credenziali utente (`password_hash`, `totp_secret`, `totp_enrolled`, `must_change_password`, `password_history`) |
 | `biometric:<username>:<token>` | String | Token biometrico con TTL 90 giorni |
 | `inverter:alert_state:<sensor_name>` | String | Stato alert sensore inverter (`normal`/`warning`/`critical`) |
+| `monitor_probes_state` | Hash | Sonde DOWN per monitor (nome → lista sonde separate da virgola) per event log granulare |
 | `events:log` | List | Event log con le ultime 500 transizioni di stato (JSON, più recenti in testa) |
 
 ### Gestione utenti
@@ -633,7 +634,6 @@ App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
 ### Funzionalità
 
 - Login con supporto 1Password (`.textContentType`)
-- "Ricordami" con cookie persistiti in UserDefaults
 - Cambio password obbligatorio e TOTP enrollment con QR code
 - Dashboard con sparkline, sonde colorate, raggruppamento per stato
 - Hover sulle sparkline mostra orario e stato; su mismatch evidenzia le sonde DOWN
@@ -643,13 +643,14 @@ App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
 - Notifiche push APNs native
 - Toggle notifiche push nelle impostazioni (abilita/disabilita con unsubscribe dal backend)
 - Soglia notifica personalizzabile (1–5 sonde DOWN) nelle impostazioni
+- Storico notifiche inline — vista a tutto schermo nella finestra app, sincronizza da `/api/events` (Redis) + push APNs locali; rispetta la dimensione testo configurata
 - Tema: Auto/Chiaro/Scuro (default Scuro con sfondo #141c2b)
 - Dimensione testo regolabile (80%-160%)
 - La X minimizza nel Dock invece di chiudere l'app
 - Widget macOS (small/medium/large) con stato servizi, LED globale, 5 pallini sonde per monitor
 - Icona nella barra dei menu con pallino stato globale e menu a tendina (risorse anomale, azioni rapide)
 - Help macOS nativo (menu Help → Aiuto Dashboard INVA MAC)
-- **Autenticazione biometrica** — Touch ID e Apple Watch unlock per accesso rapido senza digitare credenziali
+- **Autenticazione biometrica** — Touch ID e Apple Watch unlock per accesso rapido senza digitare credenziali; abilitabile/disabilitabile nelle impostazioni
 
 ### Autenticazione Biometrica (Touch ID / Apple Watch)
 
@@ -663,10 +664,11 @@ L'app Mac supporta lo sblocco rapido tramite Touch ID e/o Apple Watch, eliminand
 
 **Sicurezza:**
 - Token firmato HMAC-SHA256 dal backend, con scadenza 90 giorni (TTL Redis)
-- Salvato nel Keychain macOS con access control `biometryCurrentSet` — invalidato se cambiano le impronte registrate
-- Protetto da `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — inaccessibile a dispositivo bloccato
+- Salvato nel Keychain macOS con `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — inaccessibile a dispositivo bloccato
+- Autenticazione Touch ID / Apple Watch richiesta via LAContext prima di leggere e inviare il token
 - Refresh automatico tra il giorno 80 e 90; superati i 90 giorni il token scade e si torna al login manuale
 - Il logout cancella il token dal Keychain
+- Disattivabile nelle impostazioni (toggle "Sblocco con Touch ID / Apple Watch")
 - Mai salvato in UserDefaults o storage non cifrato
 
 **Metodi supportati:**
@@ -832,7 +834,7 @@ Ore 14:32
 - Autenticazione multi-utente con credenziali in Redis (namespace `user:`)
 - Token biometrici firmati con HMAC-SHA256, salvati in Redis con TTL 90 giorni
 - Session token iOS conservato nel Keychain con `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
-- Token biometrico macOS nel Keychain con `biometryCurrentSet` + `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — service `com.inva.uptimeDashboard.mac.biometricToken`
+- Token biometrico macOS nel Keychain con `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — service `com.inva.uptimeDashboard.mac.biometricToken`; autenticazione biometrica via LAContext prima dell'accesso al token
 - Comunicazione backend esclusivamente via HTTPS (validata lato app)
 - Credenziali e token mai scritti nei log
 - Namespace Redis separati per VAPID (`push:`), APNs (`apns:`), utenti (`user:`), biometria (`biometric:`)
