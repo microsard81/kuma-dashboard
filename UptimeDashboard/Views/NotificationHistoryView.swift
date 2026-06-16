@@ -150,7 +150,12 @@ struct NotificationHistoryView: View {
         }
         .navigationTitle("Notifiche")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { loadNotifications() }
+        .onAppear {
+            // Clear local push badge when viewing notifications
+            NotificationStore.shared.markAllAsRead()
+            NotificationCenter.default.post(name: .notificationReadStateChanged, object: nil)
+            loadNotifications()
+        }
         .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
             Task { await fetchServerEvents() }
         }
