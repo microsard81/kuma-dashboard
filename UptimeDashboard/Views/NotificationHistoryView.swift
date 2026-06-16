@@ -142,14 +142,9 @@ struct NotificationHistoryView: View {
                     .padding(.bottom, 16)
                 }
                 .refreshable {
-                    // Sync dal backend, poi segna tutte come lette
-                    await NotificationStore.shared.syncFromServer(
-                        baseURL: AppConfig.baseURL
-                    )
+                    // Fetch from server and mark all as read
+                    await fetchServerEvents()
                     NotificationStore.shared.markAllAsRead()
-                    withAnimation(.easeInOut(duration: 0.35)) {
-                        reloadNotifications()
-                    }
                 }
             }
         }
@@ -159,40 +154,52 @@ struct NotificationHistoryView: View {
     }
 
     private func loadNotifications() {
-        reloadNotifications()
-        // Fetch dal backend per avere lo storico completo
+        // Fetch events directly from server (Redis events only)
         Task {
-            await NotificationStore.shared.syncFromServer(baseURL: AppConfig.baseURL)
-            reloadNotifications()
+            await fetchServerEvents()
         }
-        #if DEBUG
-        // Seed 4 test notifications if empty (con orari diversi)
-        if notifications.isEmpty {
-            seedDebugNotifications()
-            reloadNotifications()
-        }
-        #endif
     }
 
-    #if DEBUG
-    private func seedDebugNotifications() {
-        let now = Date()
-        let records: [(String, String, TimeInterval, Bool)] = [
-            ("⚠️ Temperatura critica", "DCUR - Temperatura ha superato la soglia critica (47.2°C)", -120, false),
-            ("⛔ Portale DOWN", "www.regione.vda.it non raggiungibile da tutte le sonde", -300, false),
-            ("⚡ Potenza bassa", "INV2 - Alimentazione sotto soglia warning (4.1 kW)", -1800, true),
-            ("✅ Ripristino servizio", "mail.cst.inva.it è tornato UP su tutte le sonde", -3600, true),
-        ]
-        let defaults = UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? UserDefaults.standard
-        for (title, body, offset, isRead) in records {
-            var all = NotificationStore.shared.loadAll()
-            all.insert(NotificationRecord(title: title, body: body, date: now.addingTimeInterval(offset), isRead: isRead), at: 0)
-            if let data = try? JSONEncoder().encode(all) {
-                defaults.set(data, forKey: "notification_history")
+    private func fetchServerEvents() async {
+        let url = AppConfig.baseURL.appendingPathComponent("api/events")
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        components?.queryItems = [URLQueryItem(name: "limit", value: "200")]
+
+        guard let requestURL = components?.url else { return }
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "GET"
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+
+            let eventsResponse = try JSONDecoder().decode(SyncEventsResponse.self, from: data)
+
+            // Load read state from local store
+            let readIds = Set(NotificationStore.shared.loadAll().filter { $0.isRead }.compactMap { $0.requestId })
+
+            let records: [NotificationRecord] = eventsResponse.events.map { event in
+                NotificationRecord(
+                    title: event.title,
+                    body: event.body,
+                    date: event.date,
+                    isRead: readIds.contains(event.id),
+                    requestId: event.id
+                )
             }
+
+            await MainActor.run {
+                notifications = records.sorted {
+                    if $0.isRead != $1.isRead { return !$0.isRead }
+                    return $0.date > $1.date
+                }
+            }
+        } catch {
+            // Fallback: show whatever is available locally
+            reloadNotifications()
         }
     }
-    #endif
 
     private func markAsRead(_ notif: NotificationRecord) {
         toggleReadState(notif)
