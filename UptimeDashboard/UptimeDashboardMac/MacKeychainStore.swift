@@ -45,7 +45,7 @@ final class MacKeychainStore {
         guard let accessControl = SecAccessControlCreateWithFlags(
             kCFAllocatorDefault,
             kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            [.biometryCurrentSet, .privateKeyUsage],
+            .biometryCurrentSet,
             &error
         ) else {
             throw KeychainError.accessControlCreationFailed
