@@ -62,7 +62,7 @@ final class MacBiometricManager: ObservableObject {
 
         var error: NSError?
         let canEvaluate = context.canEvaluatePolicy(
-            .deviceOwnerAuthenticationWithBiometricsOrWatch,
+            .deviceOwnerAuthenticationWithBiometricsOrCompanion,
             error: &error
         )
 
@@ -103,7 +103,7 @@ final class MacBiometricManager: ObservableObject {
 
         do {
             let success = try await context.evaluatePolicy(
-                .deviceOwnerAuthenticationWithBiometricsOrWatch,
+                .deviceOwnerAuthenticationWithBiometricsOrCompanion,
                 localizedReason: localizedReason
             )
 
@@ -282,15 +282,6 @@ final class MacBiometricManager: ObservableObject {
         // but biometryType is .none or not .touchID.
         switch biometryType {
         case .touchID:
-            // Check if Apple Watch is also available by attempting
-            // the watch-specific behavior. When both are available,
-            // the policy succeeds and biometryType is .touchID.
-            // We use a heuristic: if biometryType is .touchID, Touch ID is present.
-            // Apple Watch availability is implicit in the policy acceptance.
-            // For accurate detection, we check if the device has Touch ID hardware.
-            // If biometryType is .touchID, at minimum Touch ID is available.
-            // The policy .deviceOwnerAuthenticationWithBiometricsOrWatch also
-            // accepts Apple Watch — so if both are available, report .both.
             if isAppleWatchAvailable(context: context) {
                 return .both
             }
@@ -304,19 +295,22 @@ final class MacBiometricManager: ObservableObject {
             }
             return .none
 
-        @unknown default:
+        case .none:
             // biometryType is .none but policy succeeded → Apple Watch only
+            return .appleWatch
+
+        @unknown default:
             return .appleWatch
         }
     }
 
     /// Checks if Apple Watch is available for unlock.
-    /// On macOS, when canEvaluatePolicy succeeds with .deviceOwnerAuthenticationWithBiometricsOrWatch
+    /// On macOS, when canEvaluatePolicy succeeds with .deviceOwnerAuthenticationWithBiometricsOrCompanion
     /// and biometryType is not .touchID, Apple Watch is the available method.
     /// When biometryType is .touchID, we check if a second evaluation context
     /// without biometrics would still succeed (indicating Watch availability).
     private func isAppleWatchAvailable(context: LAContext) -> Bool {
-        // On macOS, the .deviceOwnerAuthenticationWithBiometricsOrWatch policy
+        // On macOS, the .deviceOwnerAuthenticationWithBiometricsOrCompanion policy
         // succeeds if either Touch ID OR Apple Watch is available.
         // Unfortunately there's no public API to directly query Watch availability.
         // Heuristic: create a new context and check if the policy succeeds
@@ -340,7 +334,7 @@ final class MacBiometricManager: ObservableObject {
         // we already know. If it succeeds or returns interactionNotAllowed (meaning
         // it would succeed but UI is blocked), there might be Watch support.
         _ = watchContext.canEvaluatePolicy(
-            .deviceOwnerAuthenticationWithBiometricsOrWatch,
+            .deviceOwnerAuthenticationWithBiometricsOrCompanion,
             error: &error
         )
 
