@@ -598,13 +598,20 @@ final class MacAppViewModel: ObservableObject {
     /// If biometrics enabled AND available AND token exists → .biometricGate
     /// Otherwise → .login
     func evaluateBiometricState() {
-        guard biometricEnabled else { return }
+        guard biometricEnabled else {
+            print("[DEBUG] evaluateBiometricState: SKIPPED — biometric disabled")
+            return
+        }
         let method = biometricManager.checkAvailability()
-        if method != .none && biometricManager.hasEnrolledToken() {
+        let hasToken = biometricManager.hasEnrolledToken()
+        print("[DEBUG] evaluateBiometricState: method=\(method), hasToken=\(hasToken)")
+        if method != .none && hasToken {
             restoreCookies()
             authState = .biometricGate
+            print("[DEBUG] evaluateBiometricState: → .biometricGate")
+        } else {
+            print("[DEBUG] evaluateBiometricState: → staying .login")
         }
-        // If method is .none or no token, leave as .login
     }
 
     /// Called from MacBiometricGateView to initiate biometric auth.
