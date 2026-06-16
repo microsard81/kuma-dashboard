@@ -151,6 +151,9 @@ struct NotificationHistoryView: View {
         .navigationTitle("Notifiche")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { loadNotifications() }
+        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
+            Task { await fetchServerEvents() }
+        }
     }
 
     private func loadNotifications() {
