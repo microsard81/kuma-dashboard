@@ -132,37 +132,49 @@ final class MacKeychainStore {
     /// Biometric auth is enforced by MacBiometricManager (LAContext) before calling this.
     /// Returns (username, token) tuple.
     func loadToken() throws -> (username: String, token: String) {
-        let query: [String: Any] = [
+        // Step 1: Find all accounts for this service (attributes only — no data)
+        let findQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecReturnData as String: true,
             kSecReturnAttributes as String: true,
             kSecMatchLimit as String: kSecMatchLimitAll
         ]
 
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        var findResult: AnyObject?
+        let findStatus = SecItemCopyMatching(findQuery as CFDictionary, &findResult)
 
-        guard status == errSecSuccess,
-              let items = result as? [[String: Any]] else {
-            if status == errSecItemNotFound {
+        guard findStatus == errSecSuccess,
+              let items = findResult as? [[String: Any]] else {
+            if findStatus == errSecItemNotFound {
                 throw KeychainError.itemNotFound
             }
-            throw KeychainError.loadFailed(status)
+            throw KeychainError.loadFailed(findStatus)
         }
 
-        // Find the token item (not the creation_date one)
-        for item in items {
-            guard let account = item[kSecAttrAccount as String] as? String,
-                  !account.hasSuffix("_creation_date"),
-                  let tokenData = item[kSecValueData as String] as? Data,
-                  let token = String(data: tokenData, encoding: .utf8) else {
-                continue
-            }
-            return (username: account, token: token)
+        // Step 2: Find the token account (not creation_date)
+        guard let tokenAccount = items.compactMap({ $0[kSecAttrAccount as String] as? String })
+                .first(where: { !$0.hasSuffix("_creation_date") }) else {
+            throw KeychainError.itemNotFound
         }
 
-        throw KeychainError.itemNotFound
+        // Step 3: Load data for that specific account
+        let dataQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: tokenAccount,
+            kSecReturnData as String: true
+        ]
+
+        var dataResult: AnyObject?
+        let dataStatus = SecItemCopyMatching(dataQuery as CFDictionary, &dataResult)
+
+        guard dataStatus == errSecSuccess,
+              let tokenData = dataResult as? Data,
+              let token = String(data: tokenData, encoding: .utf8) else {
+            throw KeychainError.loadFailed(dataStatus)
+        }
+
+        return (username: tokenAccount, token: token)
     }
 
     // MARK: - Load Creation Date
