@@ -95,6 +95,8 @@ final class MacBiometricManager: ObservableObject {
         isAuthenticating = true
         defer { isAuthenticating = false }
 
+        print("[DEBUG] authenticate: starting LAContext evaluation")
+
         // Step 1: Biometric evaluation
         let context = LAContext()
         context.touchIDAuthenticationAllowableReuseDuration = 0
@@ -107,16 +109,19 @@ final class MacBiometricManager: ObservableObject {
                 localizedReason: localizedReason
             )
 
+            print("[DEBUG] authenticate: LAContext result=\(success)")
             guard success else {
                 return .failed("Autenticazione non riuscita. Riprova.")
             }
         } catch let error as LAError {
+            print("[DEBUG] authenticate: LAError code=\(error.code.rawValue)")
             return handleLAError(error)
         } catch {
+            print("[DEBUG] authenticate: unknown error=\(error.localizedDescription)")
             return .failed("Autenticazione non riuscita. Riprova.")
         }
 
-        // Step 2: Load token from Keychain (biometric-gated)
+        // Step 2: Load token from Keychain
         let username: String
         let token: String
 
@@ -124,14 +129,18 @@ final class MacBiometricManager: ObservableObject {
             let credentials = try keychainStore.loadToken()
             username = credentials.username
             token = credentials.token
+            print("[DEBUG] authenticate: token loaded for user=\(username.prefix(2))***")
         } catch {
-            // Keychain access failed — clean up and fall back
+            print("[DEBUG] authenticate: keychain load failed=\(error)")
             try? keychainStore.deleteAll()
             return .failed("Autenticazione non riuscita. Riprova.")
         }
 
         // Step 3: POST to backend
-        return await performBiometricLogin(username: username, token: token)
+        print("[DEBUG] authenticate: calling backend /auth/biometric/login")
+        let result = await performBiometricLogin(username: username, token: token)
+        print("[DEBUG] authenticate: backend result=\(result)")
+        return result
     }
 
     // MARK: - Token Enrollment
