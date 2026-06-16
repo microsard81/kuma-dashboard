@@ -676,11 +676,22 @@ private struct MacSparklineSegment: Identifiable {
 
 private struct MacNotificationInlineView: View {
     @State private var notifications: [NotificationRecord] = []
+    @State private var isLoading = false
     @Environment(\.textScale) var scale
+
+    private let baseURL = "https://kuma-dashboard.sundata.cloud"
 
     var body: some View {
         VStack(spacing: 0) {
-            if notifications.isEmpty {
+            if isLoading && notifications.isEmpty {
+                VStack(spacing: 16) {
+                    ProgressView()
+                    Text("Caricamento...")
+                        .font(.scaled(.subheadline, scale: scale))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if notifications.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "bell.slash")
                         .font(.system(size: 36))
@@ -716,8 +727,33 @@ private struct MacNotificationInlineView: View {
                 .listStyle(.plain)
             }
         }
-        .onAppear {
-            notifications = NotificationStore.shared.loadAll()
+        .task {
+            await fetchServerEvents()
+        }
+    }
+
+    private func fetchServerEvents() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        guard let url = URL(string: "\(baseURL)/api/events?limit=200") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let json = try? JSONDecoder().decode(MacEventsResponse.self, from: data) else {
+            return
+        }
+
+        notifications = json.events.map { event in
+            NotificationRecord(
+                title: event.title,
+                body: event.body,
+                date: event.date,
+                isRead: false,
+                requestId: event.id
+            )
         }
     }
 
