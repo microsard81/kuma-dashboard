@@ -34,25 +34,8 @@ private struct SyncServerEvent: Codable, Identifiable {
     /// Genera il titolo dalla struttura dell'evento.
     var title: String {
         if let legacy = title_legacy, !legacy.isEmpty { return legacy }
-        switch type {
-        case "global":
-            switch to {
-            case "RED": return "⛔ Servizi DOWN"
-            case "YELLOW": return "⚠️ Incongruenza tra sonde"
-            case "GREEN": return "✅ Tutto OK"
-            default: return "Stato: \(to)"
-            }
-        case "monitor":
-            if to == "UP" {
-                return "✅ \(name)"
-            } else {
-                return to == "DOWN" ? "⛔ \(name)" : "⚠️ \(name)"
-            }
-        case "sensor":
-            return name
-        default:
-            return name
-        }
+        // Il backend include già l'emoji nel campo name
+        return name
     }
 
     /// Genera il body dalla struttura dell'evento.

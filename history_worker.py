@@ -361,9 +361,10 @@ def maybe_send_global_push(new_state, monitor_details=None):
 
         if is_anomalous and not was_anomalous:
             # Monitor appena entrato in stato anomalo: un evento per sonda DOWN
+            icon = "⛔" if m["severity"] == 2 else "⚠️"
             for probe_key in current_down:
                 probe_name = PROBE_NAMES[probe_key]
-                push_event("monitor", m_name, "UP", "DOWN" if m["severity"] == 2 else "MISMATCH",
+                push_event("monitor", f"{icon} {m_name}", "UP", "DOWN" if m["severity"] == 2 else "MISMATCH",
                            detail=f"DOWN su {probe_name}",
                            severity=m["severity"])
 
@@ -372,11 +373,11 @@ def maybe_send_global_push(new_state, monitor_details=None):
             prev_down = previous_probes.get(m_name, set())
             for probe_key in prev_down:
                 probe_name = PROBE_NAMES[probe_key]
-                push_event("monitor", m_name, "DOWN", "UP",
+                push_event("monitor", f"✅ {m_name}", "DOWN", "UP",
                            detail=f"{probe_name} ripristinata", severity=0)
             # Se non conosciamo le sonde precedenti, un evento generico
             if not prev_down:
-                push_event("monitor", m_name, "DOWN", "UP",
+                push_event("monitor", f"✅ {m_name}", "DOWN", "UP",
                            detail="Ripristinato", severity=0)
 
         elif is_anomalous and was_anomalous:
@@ -385,15 +386,16 @@ def maybe_send_global_push(new_state, monitor_details=None):
             newly_down = current_down - prev_down
             newly_up = prev_down - current_down
 
+            icon = "⛔" if m["severity"] == 2 else "⚠️"
             for probe_key in newly_down:
                 probe_name = PROBE_NAMES[probe_key]
-                push_event("monitor", m_name, "UP", "DOWN",
+                push_event("monitor", f"{icon} {m_name}", "UP", "DOWN",
                            detail=f"{probe_name} DOWN",
                            severity=m["severity"])
 
             for probe_key in newly_up:
                 probe_name = PROBE_NAMES[probe_key]
-                push_event("monitor", m_name, "DOWN", "UP",
+                push_event("monitor", f"✅ {m_name}", "DOWN", "UP",
                            detail=f"{probe_name} ripristinata",
                            severity=0)
 
@@ -462,10 +464,21 @@ def check_inverter_alerts():
         if new_state != prev_state:
             _set_sensor_alert_state(name, new_state)
 
-            # Registra evento nel log (indipendente dalle push)
+            # Registra evento nel log con icona appropriata
             sev = 2 if new_state == "critical" else (1 if new_state == "warning" else 0)
             detail = f"{value} {unit}" if value is not None else ""
-            push_event("sensor", name, prev_state, new_state,
+
+            # Emoji in base allo stato di arrivo
+            if new_state == "normal":
+                event_name = f"✅ {name}"
+            elif new_state == "warning":
+                event_name = f"⚠️ {name}"
+            elif new_state == "critical":
+                event_name = f"🔴 {name}"
+            else:
+                event_name = name
+
+            push_event("sensor", event_name, prev_state, new_state,
                        detail=detail, severity=sev)
 
             # Transizione verso warning
