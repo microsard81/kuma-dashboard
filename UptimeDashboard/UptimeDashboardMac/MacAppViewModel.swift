@@ -244,7 +244,6 @@ final class MacAppViewModel: ObservableObject {
     // MARK: - Login
 
     func login(username: String, password: String) async {
-        print("[DEBUG] login() called for user: \(username.prefix(2))***")
         isLoading = true
         errorMessage = nil
         lastLoginUsername = username
@@ -393,7 +392,6 @@ final class MacAppViewModel: ObservableObject {
             }
 
             persistCookies()
-            print("[DEBUG] verify2FA: SUCCESS — setting authenticated, lastLoginUsername=\(lastLoginUsername.prefix(2))***")
             authState = .authenticated
             Task { await enrollBiometricToken(username: lastLoginUsername) }
         } catch {
@@ -598,19 +596,11 @@ final class MacAppViewModel: ObservableObject {
     /// If biometrics enabled AND available AND token exists → .biometricGate
     /// Otherwise → .login
     func evaluateBiometricState() {
-        guard biometricEnabled else {
-            print("[DEBUG] evaluateBiometricState: SKIPPED — biometric disabled")
-            return
-        }
+        guard biometricEnabled else { return }
         let method = biometricManager.checkAvailability()
-        let hasToken = biometricManager.hasEnrolledToken()
-        print("[DEBUG] evaluateBiometricState: method=\(method), hasToken=\(hasToken)")
-        if method != .none && hasToken {
+        if method != .none && biometricManager.hasEnrolledToken() {
             restoreCookies()
             authState = .biometricGate
-            print("[DEBUG] evaluateBiometricState: → .biometricGate")
-        } else {
-            print("[DEBUG] evaluateBiometricState: → staying .login")
         }
     }
 
@@ -645,13 +635,8 @@ final class MacAppViewModel: ObservableObject {
     /// Fire-and-forget: failures don't block the session.
     /// Skipped if biometric auth is disabled in settings.
     func enrollBiometricToken(username: String) async {
-        print("[DEBUG] enrollBiometricToken called for user: \(username.prefix(2))*** biometricEnabled=\(biometricEnabled)")
-        guard biometricEnabled else {
-            print("[DEBUG] enrollBiometricToken: skipped (biometric disabled)")
-            return
-        }
-        let success = await biometricManager.enrollToken(username: username)
-        print("[DEBUG] enrollBiometricToken: result=\(success)")
+        guard biometricEnabled else { return }
+        _ = await biometricManager.enrollToken(username: username)
     }
 
     // MARK: - Cookie Management

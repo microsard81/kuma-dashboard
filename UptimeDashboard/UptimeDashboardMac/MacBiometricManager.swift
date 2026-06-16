@@ -95,8 +95,6 @@ final class MacBiometricManager: ObservableObject {
         isAuthenticating = true
         defer { isAuthenticating = false }
 
-        print("[DEBUG] authenticate: starting LAContext evaluation")
-
         // Step 1: Biometric evaluation
         let context = LAContext()
         context.touchIDAuthenticationAllowableReuseDuration = 0
@@ -109,15 +107,12 @@ final class MacBiometricManager: ObservableObject {
                 localizedReason: localizedReason
             )
 
-            print("[DEBUG] authenticate: LAContext result=\(success)")
             guard success else {
                 return .failed("Autenticazione non riuscita. Riprova.")
             }
         } catch let error as LAError {
-            print("[DEBUG] authenticate: LAError code=\(error.code.rawValue)")
             return handleLAError(error)
         } catch {
-            print("[DEBUG] authenticate: unknown error=\(error.localizedDescription)")
             return .failed("Autenticazione non riuscita. Riprova.")
         }
 
@@ -129,18 +124,13 @@ final class MacBiometricManager: ObservableObject {
             let credentials = try keychainStore.loadToken()
             username = credentials.username
             token = credentials.token
-            print("[DEBUG] authenticate: token loaded for user=\(username.prefix(2))***")
         } catch {
-            print("[DEBUG] authenticate: keychain load failed=\(error)")
             try? keychainStore.deleteAll()
             return .failed("Autenticazione non riuscita. Riprova.")
         }
 
         // Step 3: POST to backend
-        print("[DEBUG] authenticate: calling backend /auth/biometric/login")
-        let result = await performBiometricLogin(username: username, token: token)
-        print("[DEBUG] authenticate: backend result=\(result)")
-        return result
+        return await performBiometricLogin(username: username, token: token)
     }
 
     // MARK: - Token Enrollment
@@ -186,7 +176,6 @@ final class MacBiometricManager: ObservableObject {
             // Save token and creation date to Keychain
             try keychainStore.saveToken(token, forUsername: username)
             try keychainStore.saveCreationDate(Date(), forUsername: username)
-            print("[INFO] Biometric enrollment: token saved successfully for user")
 
             return true
         } catch {
