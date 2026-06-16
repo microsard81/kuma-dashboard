@@ -212,32 +212,35 @@ final class MacKeychainStore {
     // MARK: - Has Token
 
     /// Checks if a token entry exists without triggering biometric prompt.
-    /// Uses `kSecReturnAttributes` only (no data retrieval = no biometric gate).
+    /// Searches all items for the service and returns true if any is NOT a creation_date entry.
     func hasToken() -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecReturnAttributes as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecMatchLimit as String: kSecMatchLimitAll,
             kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail
         ]
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
-        print("[DEBUG] hasToken: SecItemCopyMatching status=\(status) (errSecSuccess=\(errSecSuccess), errSecInteractionNotAllowed=\(errSecInteractionNotAllowed), errSecItemNotFound=\(errSecItemNotFound))")
 
-        if status == errSecSuccess || status == errSecInteractionNotAllowed {
-            // errSecInteractionNotAllowed means item exists but requires biometric
-            // Verify it's not a creation_date entry
-            if status == errSecSuccess,
-               let item = result as? [String: Any],
-               let account = item[kSecAttrAccount as String] as? String {
-                print("[DEBUG] hasToken: found item with account=\(account)")
-                if account.hasSuffix("_creation_date") {
-                    return false
-                }
-            }
+        if status == errSecInteractionNotAllowed {
+            // At least one item requires biometric — that's our token
             return true
+        }
+
+        guard status == errSecSuccess,
+              let items = result as? [[String: Any]] else {
+            return false
+        }
+
+        // Check if any item is NOT a creation_date entry
+        for item in items {
+            if let account = item[kSecAttrAccount as String] as? String,
+               !account.hasSuffix("_creation_date") {
+                return true
+            }
         }
 
         return false
