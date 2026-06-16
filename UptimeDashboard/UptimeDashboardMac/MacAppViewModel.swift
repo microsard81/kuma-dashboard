@@ -636,8 +636,13 @@ final class MacAppViewModel: ObservableObject {
     /// Fire-and-forget: failures don't block the session.
     /// Skipped if biometric auth is disabled in settings.
     func enrollBiometricToken(username: String) async {
-        guard biometricEnabled else { return }
-        _ = await biometricManager.enrollToken(username: username)
+        print("[DEBUG] enrollBiometricToken called for user: \(username.prefix(2))*** biometricEnabled=\(biometricEnabled)")
+        guard biometricEnabled else {
+            print("[DEBUG] enrollBiometricToken: skipped (biometric disabled)")
+            return
+        }
+        let success = await biometricManager.enrollToken(username: username)
+        print("[DEBUG] enrollBiometricToken: result=\(success)")
     }
 
     // MARK: - Cookie Management
