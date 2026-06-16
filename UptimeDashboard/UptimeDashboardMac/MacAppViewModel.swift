@@ -244,6 +244,7 @@ final class MacAppViewModel: ObservableObject {
     // MARK: - Login
 
     func login(username: String, password: String) async {
+        print("[DEBUG] login() called for user: \(username.prefix(2))***")
         isLoading = true
         errorMessage = nil
         lastLoginUsername = username
@@ -392,6 +393,7 @@ final class MacAppViewModel: ObservableObject {
             }
 
             persistCookies()
+            print("[DEBUG] verify2FA: SUCCESS — setting authenticated, lastLoginUsername=\(lastLoginUsername.prefix(2))***")
             authState = .authenticated
             Task { await enrollBiometricToken(username: lastLoginUsername) }
         } catch {
