@@ -215,3 +215,33 @@ def push_event(
     r.lpush(_EVENTS_KEY, json.dumps(event))
     r.ltrim(_EVENTS_KEY, 0, _MAX_EVENTS - 1)
 
+
+
+# ------------------ PROBE STATE PER MONITOR (per granular event log) ------------------ #
+
+_MONITOR_PROBES_KEY = "monitor_probes_state"
+
+
+def get_monitor_probes_state() -> dict[str, set[str]]:
+    """
+    Ritorna lo stato delle sonde DOWN per ogni monitor anomalo.
+    Formato: {"nome_monitor": {"tim", "iliad"}, ...}
+    """
+    raw = r.hgetall(_MONITOR_PROBES_KEY)
+    result = {}
+    for name, probes_str in (raw or {}).items():
+        result[name] = set(probes_str.split(",")) if probes_str else set()
+    return result
+
+
+def set_monitor_probes_state(state: dict[str, set[str]]):
+    """
+    Salva lo stato delle sonde DOWN per ogni monitor anomalo.
+    Cancella le entry per monitor non più anomali.
+    """
+    pipe = r.pipeline()
+    pipe.delete(_MONITOR_PROBES_KEY)
+    for name, probes in state.items():
+        if probes:
+            pipe.hset(_MONITOR_PROBES_KEY, name, ",".join(sorted(probes)))
+    pipe.execute()

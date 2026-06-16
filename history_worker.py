@@ -37,6 +37,8 @@ from redis_history import (
     set_last_max_down_probes,
     clear_last_max_down_probes,
     push_event,
+    get_monitor_probes_state,
+    set_monitor_probes_state,
 )
 from push_utils import send_push_to_all
 from apns_utils import send_apns_to_all
@@ -332,21 +334,64 @@ def maybe_send_global_push(new_state, monitor_details=None):
                    detail="; ".join(detail_lines), severity=sev)
 
     # Registra eventi per singoli monitor che hanno cambiato stato
+    # Granularità: un evento per ogni monitor E per ogni sonda che cambia stato
+    previous_probes = get_monitor_probes_state()
+    current_probes: dict[str, set[str]] = {}
+
     for m in details:
         m_name = m["name"]
         was_anomalous = m_name in previous_anomalous
         is_anomalous = m_name in current_anomalous
 
+        # Calcola sonde DOWN attuali per questo monitor
+        current_down = set()
+        for probe_key in ("bg", "tim", "iliad", "nodeping", "uptime"):
+            if m[probe_key] == 0:
+                current_down.add(probe_key)
+
+        if is_anomalous:
+            current_probes[m_name] = current_down
+
         if is_anomalous and not was_anomalous:
-            # Monitor entrato in stato anomalo
-            down_probes = [PROBE_NAMES[k] for k in ("bg", "tim", "iliad", "nodeping", "uptime") if m[k] == 0]
-            push_event("monitor", m_name, "UP", "DOWN" if m["severity"] == 2 else "MISMATCH",
-                       detail=f"DOWN su {', '.join(down_probes)}" if down_probes else "",
-                       severity=m["severity"])
+            # Monitor appena entrato in stato anomalo: un evento per sonda DOWN
+            for probe_key in current_down:
+                probe_name = PROBE_NAMES[probe_key]
+                push_event("monitor", m_name, "UP", "DOWN" if m["severity"] == 2 else "MISMATCH",
+                           detail=f"DOWN su {probe_name}",
+                           severity=m["severity"])
+
         elif was_anomalous and not is_anomalous:
-            # Monitor tornato UP
-            push_event("monitor", m_name, "DOWN", "UP",
-                       detail="Ripristinato", severity=0)
+            # Monitor tornato UP: un evento per sonda che era DOWN
+            prev_down = previous_probes.get(m_name, set())
+            for probe_key in prev_down:
+                probe_name = PROBE_NAMES[probe_key]
+                push_event("monitor", m_name, "DOWN", "UP",
+                           detail=f"{probe_name} ripristinata", severity=0)
+            # Se non conosciamo le sonde precedenti, un evento generico
+            if not prev_down:
+                push_event("monitor", m_name, "DOWN", "UP",
+                           detail="Ripristinato", severity=0)
+
+        elif is_anomalous and was_anomalous:
+            # Monitor resta anomalo — registra cambi di sonde
+            prev_down = previous_probes.get(m_name, set())
+            newly_down = current_down - prev_down
+            newly_up = prev_down - current_down
+
+            for probe_key in newly_down:
+                probe_name = PROBE_NAMES[probe_key]
+                push_event("monitor", m_name, "UP", "DOWN",
+                           detail=f"{probe_name} DOWN",
+                           severity=m["severity"])
+
+            for probe_key in newly_up:
+                probe_name = PROBE_NAMES[probe_key]
+                push_event("monitor", m_name, "DOWN", "UP",
+                           detail=f"{probe_name} ripristinata",
+                           severity=0)
+
+    # Salva stato sonde per il prossimo ciclo
+    set_monitor_probes_state(current_probes)
 
 
 # ------------------------------------------------------

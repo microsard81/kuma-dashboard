@@ -150,19 +150,23 @@ final class MacBiometricManager: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 10 // Requirement 2.1: 10-second timeout
+        request.timeoutInterval = 10
 
         do {
-            // Uses URLSession.shared which has access to HTTPCookieStorage.shared (session cookies)
             let (data, response) = try await URLSession.shared.data(for: request)
 
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                print("[WARNING] Biometric enrollment: server returned non-success status")
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("[WARNING] Biometric enrollment: no HTTP response")
                 return false
             }
 
-            // Parse response: {"token": "<hmac-sha256-signed-token>"}
+            // Check for redirect (session invalid) — @login_required returns 302
+            guard httpResponse.statusCode == 200 else {
+                print("[WARNING] Biometric enrollment: HTTP \(httpResponse.statusCode)")
+                return false
+            }
+
+            // Parse response: {"ok": true, "token": "<hmac-sha256-signed-token>"}
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let token = json["token"] as? String,
                   !token.isEmpty else {
@@ -173,11 +177,11 @@ final class MacBiometricManager: ObservableObject {
             // Save token and creation date to Keychain
             try keychainStore.saveToken(token, forUsername: username)
             try keychainStore.saveCreationDate(Date(), forUsername: username)
+            print("[INFO] Biometric enrollment: token saved successfully for user")
 
             return true
         } catch {
-            // Log at WARNING without sensitive data (no token, no username)
-            print("[WARNING] Biometric enrollment: operation failed")
+            print("[WARNING] Biometric enrollment: operation failed - \(error.localizedDescription)")
             return false
         }
     }
