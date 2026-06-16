@@ -212,9 +212,15 @@ final class MacKeychainStore {
     // MARK: - Has Token
 
     /// Checks if a token entry exists without triggering biometric prompt.
-    /// Searches all items for the service and returns true if any is NOT a creation_date entry.
+    /// Uses a targeted query with the known account pattern to find the biometric token.
     func hasToken() -> Bool {
-        let query: [String: Any] = [
+        // Strategy: query all items for this service, excluding biometric UI.
+        // The creation_date items (no biometric protection) will be returned.
+        // The biometric token item will return errSecInteractionNotAllowed
+        // when queried individually, confirming it exists.
+
+        // First: get all accessible items (creation_date entries)
+        let allQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecReturnAttributes as String: true,
@@ -222,24 +228,46 @@ final class MacKeychainStore {
             kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail
         ]
 
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        var allResult: AnyObject?
+        let allStatus = SecItemCopyMatching(allQuery as CFDictionary, &allResult)
 
-        if status == errSecInteractionNotAllowed {
-            // At least one item requires biometric — that's our token
+        // If errSecInteractionNotAllowed: at least one item needs biometric = token exists
+        if allStatus == errSecInteractionNotAllowed {
             return true
         }
 
-        guard status == errSecSuccess,
-              let items = result as? [[String: Any]] else {
-            return false
+        // Get list of known accounts (creation_date entries)
+        var knownAccounts: [String] = []
+        if allStatus == errSecSuccess, let items = allResult as? [[String: Any]] {
+            for item in items {
+                if let account = item[kSecAttrAccount as String] as? String {
+                    knownAccounts.append(account)
+                    // If we find a non-creation_date item, that's our token
+                    if !account.hasSuffix("_creation_date") {
+                        return true
+                    }
+                }
+            }
         }
 
-        // Check if any item is NOT a creation_date entry
-        for item in items {
-            if let account = item[kSecAttrAccount as String] as? String,
-               !account.hasSuffix("_creation_date") {
-                return true
+        // If we only found creation_date entries, try to query for a token entry
+        // by inferring the username from the creation_date account
+        for account in knownAccounts {
+            if account.hasSuffix("_creation_date") {
+                let username = String(account.dropLast("_creation_date".count))
+                // Try to access the token item directly — expect errSecInteractionNotAllowed
+                let tokenQuery: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: service,
+                    kSecAttrAccount as String: username,
+                    kSecReturnAttributes as String: true,
+                    kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail
+                ]
+                var tokenResult: AnyObject?
+                let tokenStatus = SecItemCopyMatching(tokenQuery as CFDictionary, &tokenResult)
+                if tokenStatus == errSecSuccess || tokenStatus == errSecInteractionNotAllowed {
+                    return true
+                }
             }
         }
 
