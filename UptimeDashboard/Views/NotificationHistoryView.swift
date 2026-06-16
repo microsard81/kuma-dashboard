@@ -187,7 +187,9 @@ struct NotificationHistoryView: View {
             // Load read state from local store
             let readIds = Set(NotificationStore.shared.loadAll().filter { $0.isRead }.compactMap { $0.requestId })
 
-            let records: [NotificationRecord] = eventsResponse.events.map { event in
+            let records: [NotificationRecord] = eventsResponse.events
+                .filter { $0.type != "global" }
+                .map { event in
                 NotificationRecord(
                     title: event.title,
                     body: event.body,

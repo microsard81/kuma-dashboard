@@ -755,12 +755,13 @@ def api_inverter_data():
 @app.route("/api/events")
 @login_required
 def api_events():
-    """Storico eventi (transizioni di stato globale, monitor, sensori).
+    """Storico eventi (monitor, sensori — esclude global).
 
     Autenticazione: sessione Flask (@login_required).
     Query params:
       - limit (int, default 50, max 200)
       - before (ISO 8601 timestamp per paginazione)
+      - type (str, opzionale — filtra per tipo: monitor, sensor, global)
     """
     from redis_history import load_events
 
@@ -770,8 +771,12 @@ def api_events():
     # Limita a max 200
     limit = min(limit, 200)
 
-    events = load_events(limit=limit, before=before)
-    return jsonify({"events": events, "count": len(events)})
+    events = load_events(limit=500, before=before)
+
+    # Escludi eventi global (le app mostrano solo monitor e sensor)
+    events = [e for e in events if e.get("type") != "global"]
+
+    return jsonify({"events": events[:limit], "count": len(events[:limit])})
 
 
 @app.route("/api/watch-data")

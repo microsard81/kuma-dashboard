@@ -746,7 +746,9 @@ private struct MacNotificationInlineView: View {
             return
         }
 
-        notifications = json.events.map { event in
+        notifications = json.events
+            .filter { $0.type != "global" }
+            .map { event in
             NotificationRecord(
                 title: event.title,
                 body: event.body,

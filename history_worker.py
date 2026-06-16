@@ -325,6 +325,21 @@ def maybe_send_global_push(new_state, monitor_details=None):
         push_event("global", "global", previous, new_state,
                    detail="; ".join(detail_lines), severity=sev)
 
+    # Registra evento di transizione stato globale (per cronologia completa in Redis)
+    if new_state != previous:
+        detail_lines = []
+        if new_state == "RED":
+            down_resources = [m["name"] for m in details if m["severity"] == 2]
+            if down_resources:
+                detail_lines.append(f"DOWN: {', '.join(down_resources)}")
+        elif new_state == "YELLOW":
+            mismatch_resources = [m["name"] for m in details if m["severity"] == 1]
+            if mismatch_resources:
+                detail_lines.append(f"Mismatch: {', '.join(mismatch_resources)}")
+        sev = 2 if new_state == "RED" else (1 if new_state == "YELLOW" else 0)
+        push_event("global", "global", previous, new_state,
+                   detail="; ".join(detail_lines), severity=sev)
+
     # Registra eventi per singoli monitor che hanno cambiato stato
     # Granularità: un evento per ogni monitor E per ogni sonda che cambia stato
     previous_probes = get_monitor_probes_state()
