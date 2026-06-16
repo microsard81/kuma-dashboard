@@ -224,15 +224,18 @@ final class MacKeychainStore {
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
+        print("[DEBUG] hasToken: SecItemCopyMatching status=\(status) (errSecSuccess=\(errSecSuccess), errSecInteractionNotAllowed=\(errSecInteractionNotAllowed), errSecItemNotFound=\(errSecItemNotFound))")
 
         if status == errSecSuccess || status == errSecInteractionNotAllowed {
             // errSecInteractionNotAllowed means item exists but requires biometric
             // Verify it's not a creation_date entry
             if status == errSecSuccess,
                let item = result as? [String: Any],
-               let account = item[kSecAttrAccount as String] as? String,
-               account.hasSuffix("_creation_date") {
-                return false
+               let account = item[kSecAttrAccount as String] as? String {
+                print("[DEBUG] hasToken: found item with account=\(account)")
+                if account.hasSuffix("_creation_date") {
+                    return false
+                }
             }
             return true
         }
