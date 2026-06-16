@@ -4,7 +4,7 @@ import SwiftUI
 
 // MARK: - Server Event Models (inline per target macOS)
 
-private struct MacServerEvent: Codable, Identifiable {
+struct MacServerEvent: Codable, Identifiable {
     let id: String
     let ts: String
     let type: String
@@ -61,7 +61,7 @@ private struct MacServerEvent: Codable, Identifiable {
     }
 }
 
-private struct MacEventsResponse: Codable {
+struct MacEventsResponse: Codable {
     let events: [MacServerEvent]
     let count: Int
 }
@@ -369,5 +369,40 @@ final class NotificationStore {
     private func persist(_ records: [NotificationRecord]) {
         guard let data = try? JSONEncoder().encode(records) else { return }
         defaults.set(data, forKey: key)
+    }
+
+    /// Sync from backend: merge server events with local push notifications.
+    /// Server events are added if not already present (matched by requestId = event.id).
+    func syncFromServer() async {
+        let baseURL = "https://kuma-dashboard.sundata.cloud"
+        guard let url = URL(string: "\(baseURL)/api/events?limit=200") else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let json = try? JSONDecoder().decode(MacEventsResponse.self, from: data) else {
+            return
+        }
+
+        var records = loadAll()
+        let existingIds = Set(records.compactMap { $0.requestId })
+
+        for event in json.events {
+            if existingIds.contains(event.id) { continue }
+            records.append(NotificationRecord(
+                title: event.title,
+                body: event.body,
+                date: event.date,
+                isRead: false,
+                requestId: event.id
+            ))
+        }
+
+        let cutoff = Date().addingTimeInterval(-maxAge)
+        records = records.filter { $0.date > cutoff }
+        records.sort { $0.date > $1.date }
+        persist(records)
     }
 }

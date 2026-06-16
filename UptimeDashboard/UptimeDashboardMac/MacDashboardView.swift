@@ -248,6 +248,11 @@ struct MacDashboardView: View {
                 showOnlyProblems = false
             }
         }
+        .task {
+            // Sync events from server on dashboard appear
+            await NotificationStore.shared.syncFromServer()
+            unreadNotifications = NotificationStore.shared.unreadCount
+        }
     }
 
     // MARK: - Section Router
