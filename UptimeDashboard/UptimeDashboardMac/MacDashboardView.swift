@@ -168,14 +168,14 @@ struct MacDashboardView: View {
 
                 // Notifications
                 Button {
-                    showNotificationHistory = true
+                    showNotificationHistory.toggle()
                 } label: {
                     ZStack(alignment: .topTrailing) {
-                        Image(systemName: "bell")
+                        Image(systemName: showNotificationHistory ? "bell.fill" : "bell")
                             .font(.system(size: 13))
                             .frame(width: 28, height: 28)
                             .background(.ultraThinMaterial, in: Circle())
-                        if unreadNotifications > 0 {
+                        if unreadNotifications > 0 && !showNotificationHistory {
                             Text("\(unreadNotifications)")
                                 .font(.system(size: 8, weight: .bold))
                                 .foregroundColor(.white)
@@ -187,11 +187,6 @@ struct MacDashboardView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .popover(isPresented: $showNotificationHistory) {
-                    MacNotificationHistoryPopover()
-                        .frame(width: 350, height: 400)
-                        .onDisappear { unreadNotifications = 0 }
-                }
                 .help("Notifiche")
 
                 // Logout
@@ -211,28 +206,36 @@ struct MacDashboardView: View {
 
             Divider()
 
-            // Main content: 3 sections responsive
-            GeometryReader { geo in
-                let isWide = geo.size.width > 900
-
-                if isWide {
-                    // Side by side
-                    HStack(alignment: .top, spacing: 1) {
-                        ForEach(displayOrder, id: \.self) { section in
-                            if section != displayOrder.first {
-                                Divider()
-                            }
-                            sectionView(for: section)
-                                .frame(maxWidth: .infinity)
-                        }
+            // Main content
+            if showNotificationHistory {
+                MacNotificationInlineView()
+                    .onAppear {
+                        NotificationStore.shared.markAllAsRead()
+                        unreadNotifications = 0
                     }
-                } else {
-                    // Stacked
-                    ScrollView {
-                        VStack(spacing: 0) {
+            } else {
+                // Dashboard: 3 sections responsive
+                GeometryReader { geo in
+                    let isWide = geo.size.width > 900
+
+                    if isWide {
+                        // Side by side
+                        HStack(alignment: .top, spacing: 1) {
                             ForEach(displayOrder, id: \.self) { section in
                                 if section != displayOrder.first {
-                                    Divider().padding(.vertical, 4)
+                                    Divider()
+                                }
+                                sectionView(for: section)
+                                    .frame(maxWidth: .infinity)
+                            }
+                        }
+                    } else {
+                        // Stacked
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                ForEach(displayOrder, id: \.self) { section in
+                                    if section != displayOrder.first {
+                                        Divider().padding(.vertical, 4)
                                 }
                                 sectionView(for: section)
                             }
@@ -240,6 +243,7 @@ struct MacDashboardView: View {
                     }
                 }
             }
+            } // end else (dashboard content)
         }
         .background(dashboardBackground)
         .preferredColorScheme(.dark)
@@ -668,7 +672,71 @@ private struct MacSparklineSegment: Identifiable {
     let timestamp: Date
 }
 
-// MARK: - Notification History Popover (macOS)
+// MARK: - Notification Inline View (macOS — in-window)
+
+private struct MacNotificationInlineView: View {
+    @State private var notifications: [NotificationRecord] = []
+    @Environment(\.textScale) var scale
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if notifications.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "bell.slash")
+                        .font(.system(size: 36))
+                        .foregroundColor(.secondary)
+                    Text("Nessuna notifica")
+                        .font(.scaled(.title3, scale: scale))
+                        .foregroundColor(.secondary)
+                    Text("Gli eventi appariranno qui")
+                        .font(.scaled(.subheadline, scale: scale))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(notifications) { notif in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(notif.title)
+                                .font(.scaled(.subheadline, scale: scale).bold())
+                            Spacer()
+                            Text(formatDate(notif.date))
+                                .font(.scaled(.caption, scale: scale))
+                                .foregroundColor(.secondary)
+                        }
+                        if !notif.body.isEmpty {
+                            Text(notif.body)
+                                .font(.scaled(.body, scale: scale))
+                                .foregroundColor(.secondary)
+                                .lineLimit(3)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .listStyle(.plain)
+            }
+        }
+        .onAppear {
+            notifications = NotificationStore.shared.loadAll()
+        }
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "it_IT")
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            formatter.dateFormat = "HH:mm"
+        } else if calendar.isDateInYesterday(date) {
+            formatter.dateFormat = "'Ieri' HH:mm"
+        } else {
+            formatter.dateFormat = "dd/MM HH:mm"
+        }
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Notification History Popover (macOS — legacy, kept for reference)
 
 private struct MacNotificationHistoryPopover: View {
     @State private var notifications: [NotificationRecord] = []
