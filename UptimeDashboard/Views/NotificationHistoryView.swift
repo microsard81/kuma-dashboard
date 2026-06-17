@@ -56,6 +56,20 @@ private struct SyncEventsResponse: Codable {
 struct NotificationHistoryView: View {
     @State private var notifications: [NotificationRecord] = []
 
+    // Read state for server events — persisted locally by event ID
+    private let readStateKey = "ios_event_read_state"
+    private var readStateDefaults: UserDefaults {
+        UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard
+    }
+
+    private func loadReadEventIds() -> Set<String> {
+        Set(readStateDefaults.stringArray(forKey: readStateKey) ?? [])
+    }
+
+    private func saveReadEventIds(_ ids: Set<String>) {
+        readStateDefaults.set(Array(ids), forKey: readStateKey)
+    }
+
     var body: some View {
         Group {
             if notifications.isEmpty {
@@ -127,7 +141,7 @@ struct NotificationHistoryView: View {
                 .refreshable {
                     // Fetch from server and mark all as read
                     await fetchServerEvents()
-                    NotificationStore.shared.markAllAsRead()
+                    markAllServerEventsAsRead()
                 }
             }
         }
@@ -167,8 +181,8 @@ struct NotificationHistoryView: View {
 
             let eventsResponse = try JSONDecoder().decode(SyncEventsResponse.self, from: data)
 
-            // Load read state from local store
-            let readIds = Set(NotificationStore.shared.loadAll().filter { $0.isRead }.compactMap { $0.requestId })
+            // Load read state from local UserDefaults (event IDs already marked as read)
+            let readIds = loadReadEventIds()
 
             let records: [NotificationRecord] = eventsResponse.events
                 .filter { $0.type != "global" }
@@ -205,14 +219,20 @@ struct NotificationHistoryView: View {
     private func toggleReadState(_ notif: NotificationRecord) {
         guard let idx = notifications.firstIndex(where: { $0.id == notif.id }) else { return }
         let newState = !notifications[idx].isRead
-        if newState {
-            NotificationStore.shared.markAsRead(id: notif.id)
-        } else {
-            NotificationStore.shared.markAsUnread(id: notif.id)
+
+        // Persist read state by event ID (requestId = server event UUID)
+        if let eventId = notifications[idx].requestId {
+            var readIds = loadReadEventIds()
+            if newState {
+                readIds.insert(eventId)
+            } else {
+                readIds.remove(eventId)
+            }
+            saveReadEventIds(readIds)
         }
+
         withAnimation(.easeInOut(duration: 0.35)) {
             notifications[idx].isRead = newState
-            // Riordina: non lette prima, poi lette, entrambi per data desc
             notifications.sort {
                 if $0.isRead != $1.isRead { return !$0.isRead }
                 return $0.date > $1.date
@@ -222,6 +242,21 @@ struct NotificationHistoryView: View {
 
     private func isFirstRead(_ notif: NotificationRecord) -> Bool {
         notifications.first(where: { $0.isRead })?.id == notif.id
+    }
+
+    private func markAllServerEventsAsRead() {
+        var readIds = loadReadEventIds()
+        for notif in notifications {
+            if let eventId = notif.requestId {
+                readIds.insert(eventId)
+            }
+        }
+        saveReadEventIds(readIds)
+        for idx in notifications.indices {
+            notifications[idx].isRead = true
+        }
+        NotificationStore.shared.markAllAsRead()
+        NotificationCenter.default.post(name: .notificationReadStateChanged, object: nil)
     }
 
     private func reloadNotifications() {
