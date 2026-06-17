@@ -199,6 +199,10 @@ struct NotificationHistoryView: View {
                     if $0.isRead != $1.isRead { return !$0.isRead }
                     return $0.date > $1.date
                 }
+                // Update badge count
+                let unreadCount = notifications.filter { !$0.isRead }.count
+                readStateDefaults.set(unreadCount, forKey: "ios_event_unread_count")
+                NotificationCenter.default.post(name: .notificationReadStateChanged, object: nil)
             }
         } catch {
             // Fallback: show whatever is available locally
@@ -236,6 +240,11 @@ struct NotificationHistoryView: View {
                 return $0.date > $1.date
             }
         }
+
+        // Update badge — save unread count to UserDefaults for DashboardView
+        let unreadCount = notifications.filter { !$0.isRead }.count
+        readStateDefaults.set(unreadCount, forKey: "ios_event_unread_count")
+        NotificationCenter.default.post(name: .notificationReadStateChanged, object: nil)
     }
 
     private func isFirstRead(_ notif: NotificationRecord) -> Bool {

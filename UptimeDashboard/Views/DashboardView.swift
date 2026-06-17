@@ -12,7 +12,7 @@ struct DashboardView: View {
     @EnvironmentObject private var settingsVM: SettingsViewModel
 
     @State private var showLogoutAlert = false
-    @State private var unreadNotifications = NotificationStore.shared.unreadCount
+    @State private var unreadNotifications = (UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard).integer(forKey: "ios_event_unread_count")
     @State private var pinnedItems: [PinnedItem] = PinnedStore.shared.loadAll()
     @State private var isReorderingPinned = false
     @State private var draggingPinnedItem: PinnedItem? = nil
@@ -363,7 +363,7 @@ struct DashboardView: View {
         .onAppear {
             viewModel.bindSettings(settingsVM)
             viewModel.startAutoRefresh()
-            unreadNotifications = NotificationStore.shared.unreadCount
+            unreadNotifications = (UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard).integer(forKey: "ios_event_unread_count")
             pinnedItems = PinnedStore.shared.loadAll()
         }
         .onReceive(NotificationCenter.default.publisher(for: .pinnedItemsChanged)) { _ in
@@ -371,10 +371,10 @@ struct DashboardView: View {
         }
         .onDisappear { viewModel.stopAutoRefresh() }
         .onReceive(NotificationCenter.default.publisher(for: .notificationReadStateChanged)) { _ in
-            unreadNotifications = NotificationStore.shared.unreadCount
+            unreadNotifications = (UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard).integer(forKey: "ios_event_unread_count")
         }
         .onChange(of: viewModel.lastUpdated) { _ in
-            unreadNotifications = NotificationStore.shared.unreadCount
+            unreadNotifications = (UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard).integer(forKey: "ios_event_unread_count")
         }
         .onChange(of: viewModel.downCount) { count in
             if settingsVM.badgeEnabled {
