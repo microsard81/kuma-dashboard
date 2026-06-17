@@ -262,6 +262,8 @@ struct NotificationHistoryView: View {
         for idx in notifications.indices {
             notifications[idx].isRead = true
         }
+        // Reset badge to 0
+        readStateDefaults.set(0, forKey: "ios_event_unread_count")
         NotificationStore.shared.markAllAsRead()
         NotificationCenter.default.post(name: .notificationReadStateChanged, object: nil)
     }
