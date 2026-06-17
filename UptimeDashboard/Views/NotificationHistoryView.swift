@@ -31,10 +31,8 @@ private struct SyncServerEvent: Codable, Identifiable {
         return formatter.date(from: ts) ?? Date.distantPast
     }
 
-    /// Genera il titolo dalla struttura dell'evento.
+    /// Il titolo dell'evento (il backend include l'emoji nel name).
     var title: String {
-        if let legacy = title_legacy, !legacy.isEmpty { return legacy }
-        // Il backend include già l'emoji nel campo name
         return name
     }
 
