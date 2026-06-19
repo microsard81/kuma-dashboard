@@ -103,9 +103,8 @@ struct PinnedCardView: View {
                 return monitor.rowColor == .red || monitor.rowColor == .yellow
             }
         case .temperatura, .potenza:
-            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }),
-               let t = viewModel.sensorThresholds {
-                return sensor.alertStatus(thresholds: t) != .normal
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                return sensor.status == .critical
             }
         }
         return false
@@ -120,19 +119,13 @@ struct PinnedCardView: View {
             }
             return Color(.systemGray6)
         case .temperatura:
-            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }),
-               let t = viewModel.sensorThresholds {
-                let status = sensor.alertStatus(thresholds: t)
-                if status == .critical { return Color.red.opacity(0.85) }
-                if status == .warning { return Color.yellow.opacity(0.75) }
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                if sensor.status == .critical { return Color.red.opacity(0.85) }
             }
             return Color(.systemGray6)
         case .potenza:
-            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }),
-               let t = viewModel.sensorThresholds {
-                let status = sensor.alertStatus(thresholds: t)
-                if status == .critical { return Color.red.opacity(0.85) }
-                if status == .warning { return Color.yellow.opacity(0.75) }
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                if sensor.status == .critical { return Color.red.opacity(0.85) }
             }
             return Color(.systemGray6)
         }
@@ -164,19 +157,13 @@ struct PinnedCardView: View {
             }
             return .green
         case .temperatura:
-            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }),
-               let t = viewModel.sensorThresholds {
-                let status = sensor.alertStatus(thresholds: t)
-                if status == .critical { return .red }
-                if status == .warning { return .yellow }
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                if sensor.status == .critical { return .red }
             }
             return .orange
         case .potenza:
-            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }),
-               let t = viewModel.sensorThresholds {
-                let status = sensor.alertStatus(thresholds: t)
-                if status == .critical { return .red }
-                if status == .warning { return .yellow }
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                if sensor.status == .critical { return .red }
             }
             return .blue
         }

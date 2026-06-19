@@ -118,7 +118,7 @@ struct SensorSectionView_Previews: PreviewProvider {
                         id: "BRG TLC",
                         name: "BRG TLC",
                         category: .temperature,
-                        value: 23.5,
+                        numericValue: 23.5,
                         unit: "°C",
                         timestamp: nil
                     ),
@@ -126,15 +126,11 @@ struct SensorSectionView_Previews: PreviewProvider {
                         id: "INV1",
                         name: "Inverter 1",
                         category: .power,
-                        value: 8.2,
+                        numericValue: 8.2,
                         unit: "kW",
                         timestamp: nil
                     ),
                 ],
-                thresholds: SensorThresholds(
-                    temperature: ThresholdPair(warning: 35.0, critical: 45.0),
-                    power: ThresholdPair(warning: 5.0, critical: 2.0)
-                ),
                 history: [
                     "BRG TLC": [
                         SensorHistoryPoint(t: "2024-01-15T10:20:00", v: 23.1),

@@ -58,13 +58,9 @@ struct SensorCardView_Previews: PreviewProvider {
                 id: "BRG TLC",
                 name: "BRG TLC",
                 category: .temperature,
-                value: 23.5,
+                numericValue: 23.5,
                 unit: "°C",
                 timestamp: nil
-            ),
-            thresholds: SensorThresholds(
-                temperature: ThresholdPair(warning: 35.0, critical: 45.0),
-                power: ThresholdPair(warning: 5.0, critical: 2.0)
             ),
             historyPoints: [
                 SensorHistoryPoint(t: "2024-01-15T10:20:00", v: 23.1),

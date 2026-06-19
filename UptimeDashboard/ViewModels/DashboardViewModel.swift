@@ -19,7 +19,6 @@ final class DashboardViewModel: ObservableObject {
 
     // MARK: - Sensor properties
     @Published var sensors: [SensorReading] = []
-    @Published var sensorThresholds: SensorThresholds?
     @Published var sensorHistory: [String: [SensorHistoryPoint]] = [:]
     @Published var sensorAlerts: SensorAlerts?
     @Published var sensorError: String?
@@ -176,7 +175,6 @@ final class DashboardViewModel: ObservableObject {
         }
 
         // Thresholds are no longer global — each sensor has its own status from the backend
-        sensorThresholds = nil
 
         // Parse history (key is "history" from /api/inverter-data, or "sensor_history" from /api/watch-data)
         let historyObj = json["history"] ?? json["sensor_history"]

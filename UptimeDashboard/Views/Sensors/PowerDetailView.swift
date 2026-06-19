@@ -10,7 +10,6 @@ struct PowerDetailView: View {
     @State private var isReordering = false
     @State private var manualOrder: [SensorReading] = []
     @State private var isCriticalCollapsed = false
-    @State private var isWarningCollapsed = false
     @State private var isNormalCollapsed = false
     @State private var showPinConfirmation = false
     @State private var showUnpinConfirmation = false
@@ -77,10 +76,9 @@ struct PowerDetailView: View {
                 }
                 .onMove { from, to in manualOrder.move(fromOffsets: from, toOffset: to) }
             } else {
-                let criticalSensors = displaySensors.filter { viewModel.sensorThresholds != nil && $0.alertStatus(thresholds: viewModel.sensorThresholds!) == .critical }
-                let warningSensors = displaySensors.filter { viewModel.sensorThresholds != nil && $0.alertStatus(thresholds: viewModel.sensorThresholds!) == .warning }
-                let normalSensors = displaySensors.filter { viewModel.sensorThresholds == nil || $0.alertStatus(thresholds: viewModel.sensorThresholds!) == .normal }
-                let allNormal = criticalSensors.isEmpty && warningSensors.isEmpty
+                let criticalSensors = displaySensors.filter { $0.status == .critical }
+                let normalSensors = displaySensors.filter { $0.status == .normal }
+                let allNormal = criticalSensors.isEmpty
 
                 if !criticalSensors.isEmpty {
                     Section(isExpanded: Binding(get: { !isCriticalCollapsed }, set: { isCriticalCollapsed = !$0 })) {
@@ -90,17 +88,6 @@ struct PowerDetailView: View {
                     } header: {
                         Label("Critical (\(criticalSensors.count))", systemImage: "exclamationmark.octagon.fill")
                             .foregroundColor(.red)
-                    }
-                }
-
-                if !warningSensors.isEmpty {
-                    Section(isExpanded: Binding(get: { !isWarningCollapsed }, set: { isWarningCollapsed = !$0 })) {
-                        ForEach(warningSensors) { sensor in
-                            sensorRow(sensor)
-                        }
-                    } header: {
-                        Label("Warning (\(warningSensors.count))", systemImage: "exclamationmark.triangle.fill")
-                            .foregroundColor(.yellow)
                     }
                 }
 
