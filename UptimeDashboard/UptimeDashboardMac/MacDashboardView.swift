@@ -65,23 +65,11 @@ struct MacDashboardView: View {
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
     @State private var unreadNotifications = NotificationStore.shared.unreadCount
-    @State private var sectionOrder: [String] = {
-        let allSections = ["portali", "temperatura", "potenza", "ups", "generatori"]
-        guard var saved = UserDefaults.standard.stringArray(forKey: "mac_dashboard_section_order") else {
-            return allSections
-        }
-        // Migrazione: aggiungi nuove sezioni non presenti nel vecchio ordine salvato
-        for section in allSections where !saved.contains(section) {
-            saved.append(section)
-        }
-        return saved
-    }()
 
-    private let sectionOrderKey = "mac_dashboard_section_order"
     private let sidebarWidth: CGFloat = 200
 
     private var orderedSections: [DashboardSection] {
-        sectionOrder.compactMap { DashboardSection(rawValue: $0) }
+        DashboardSection.allCases
     }
 
     private var filteredMonitors: [MacMonitor] {
@@ -186,35 +174,6 @@ struct MacDashboardView: View {
                     .font(.scaled(.caption, scale: scale))
                     .foregroundColor(.secondary)
             }
-
-            // Section order menu
-            Menu {
-                Text("Sposta in cima:")
-                    .font(.caption)
-                ForEach(sectionOrder, id: \.self) { section in
-                    Button(DashboardSection(rawValue: section)?.displayName ?? section) {
-                        if let idx = sectionOrder.firstIndex(of: section), idx > 0 {
-                            sectionOrder.remove(at: idx)
-                            sectionOrder.insert(section, at: 0)
-                            UserDefaults.standard.set(sectionOrder, forKey: sectionOrderKey)
-                        }
-                    }
-                }
-                Divider()
-                Button("Ripristina ordine") {
-                    let defaultOrder = ["portali", "temperatura", "potenza", "ups", "generatori"]
-                    sectionOrder = defaultOrder
-                    UserDefaults.standard.set(defaultOrder, forKey: sectionOrderKey)
-                }
-            } label: {
-                Image(systemName: "rectangle.3.group")
-                    .font(.system(size: 13))
-                    .frame(width: 28, height: 28)
-                    .background(.ultraThinMaterial, in: Circle())
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            .help("Riordina sezioni")
 
             // Refresh
             Button {
@@ -411,7 +370,7 @@ struct MacDashboardView: View {
     private var overviewView: some View {
         VStack {
             Spacer()
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 ForEach(orderedSections) { section in
                     OverviewCard(
                         section: section,
@@ -424,7 +383,6 @@ struct MacDashboardView: View {
                     }
                 }
             }
-            .padding(.horizontal, 24)
             Spacer()
         }
     }
@@ -455,7 +413,6 @@ struct MacDashboardView: View {
             return "OK"
         }
     }
-
     // MARK: - Portals Detail
 
     private var portalsDetail: some View {
@@ -724,15 +681,25 @@ private struct OverviewCard: View {
     let action: () -> Void
     @Environment(\.textScale) var scale
 
+    private var cardLabel: String {
+        switch section {
+        case .portali: return "Portali"
+        case .temperatura: return "Temp"
+        case .potenza: return "Potenza"
+        case .ups: return "UPS"
+        case .generatori: return "GE"
+        }
+    }
+
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 Image(systemName: section.icon)
-                    .font(.system(size: 24))
+                    .font(.system(size: 22, weight: .medium))
                     .foregroundColor(statusColor)
 
-                Text(section.displayName)
-                    .font(.scaled(.caption, scale: scale, weight: .semibold))
+                Text(cardLabel)
+                    .font(.scaled(.caption, scale: scale, weight: .medium))
                     .foregroundColor(.primary)
                     .lineLimit(1)
 
@@ -741,16 +708,10 @@ private struct OverviewCard: View {
                     .foregroundColor(statusColor)
                     .lineLimit(1)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .padding(.horizontal, 8)
+            .frame(width: 80, height: 90)
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.controlBackgroundColor).opacity(0.8))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(statusColor.opacity(0.3), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(hex: "#1e2a3a"))
             )
         }
         .buttonStyle(.plain)
