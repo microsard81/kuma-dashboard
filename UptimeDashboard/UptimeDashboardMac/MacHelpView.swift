@@ -33,92 +33,123 @@ struct HelpWebView: NSViewRepresentable {
     <!DOCTYPE html>
     <html lang="it">
     <head><meta charset="utf-8"><title>Aiuto</title>
-    <style>body{font-family:-apple-system,sans-serif;max-width:650px;margin:40px auto;padding:0 20px;color:#333;line-height:1.6}h1{font-size:24px}h2{font-size:18px;margin-top:24px}h3{font-size:15px;margin-top:16px}ul{padding-left:20px}li{margin-bottom:4px}.key{background:#eee;padding:2px 6px;border-radius:3px;font-family:monospace;font-size:13px}</style>
+    <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:680px;margin:40px auto;padding:0 24px;color:#222;line-height:1.7;font-size:14px}
+    h1{font-size:26px;margin-bottom:4px}
+    h2{font-size:18px;margin-top:32px;border-bottom:1px solid #ddd;padding-bottom:6px}
+    h3{font-size:15px;margin-top:20px}
+    ul{padding-left:20px}li{margin-bottom:5px}
+    table{border-collapse:collapse;width:100%;margin:12px 0}
+    th,td{border:1px solid #ddd;padding:8px 12px;text-align:left}
+    th{background:#f5f5f7;font-weight:600}
+    .key{background:#f0f0f0;padding:2px 7px;border-radius:4px;font-family:SFMono-Regular,monospace;font-size:12px}
+    .green{color:#34c759}.yellow{color:#f5a623}.red{color:#ff3b30}.blue{color:#007aff}.purple{color:#af52de}.orange{color:#ff9500}
+    hr{border:none;border-top:1px solid #e0e0e0;margin:24px 0}
+    </style>
     </head><body>
     <h1>Dashboard INVA MAC</h1>
-    <p>Applicazione di monitoraggio uptime multi-sonda e sensori datacenter per i servizi IN.VA.</p>
+    <hr>
+    <p>Applicazione di monitoraggio uptime multi-sonda per i servizi IN.VA. Monitora lo stato dei servizi tramite cinque sonde indipendenti, i sensori del datacenter (temperatura, potenza, UPS, generatori) e invia notifiche push al cambio di stato.</p>
 
-    <h2>Layout Sidebar / Detail</h2>
-    <p>L'interfaccia è divisa in due aree:</p>
+    <h2>Struttura dell'interfaccia</h2>
+    <p>L'app usa un layout <strong>Sidebar + Detail</strong>:</p>
     <ul>
-    <li><strong>Sidebar sinistra</strong> — Lista delle 5 sezioni con icona, nome e indicatore di stato. Clicca una sezione per vederne il dettaglio nel pannello destro.</li>
-    <li><strong>Pannello destro (Detail)</strong> — Mostra il contenuto della sezione selezionata oppure la <em>Panoramica</em>.</li>
+    <li><strong>Sidebar (sinistra)</strong> — Elenca le 5 sezioni con icona, nome e indicatore di stato. In cima c'è il pulsante "Panoramica" per tornare alla vista d'insieme.</li>
+    <li><strong>Pannello Detail (destra)</strong> — Mostra il contenuto della sezione selezionata, oppure la Panoramica.</li>
     </ul>
-    <p>Per nascondere la sidebar: clicca "Nascondi sidebar" nella sidebar stessa. Per riaprirla: clicca l'icona sidebar nella toolbar.</p>
 
     <h2>Panoramica</h2>
-    <p>Quando nessuna sezione è selezionata (clicca "Panoramica" nella sidebar), il pannello destro mostra:</p>
+    <p>Quando nessuna sezione è selezionata (oppure cliccando "Panoramica" nella sidebar), il pannello destro mostra:</p>
     <ul>
-    <li><strong>In evidenza</strong> — Risorse pinnate con stato live (se presenti)</li>
-    <li><strong>Card sezioni</strong> — Una card per sezione con icona, nome e conteggio: es. "OK (10)" oppure "2/10 DOWN"</li>
+    <li><strong>Card sezioni</strong> — Una card per ognuna delle 5 sezioni con icona, nome e stato riassuntivo (es. "OK (10)", "2/10 DOWN", "1/5 Critical"). Clicca una card per entrare nella sezione.</li>
+    <li><strong>In evidenza</strong> — Sotto le card, mostra le risorse che hai pinnato (vedi sezione dedicata).</li>
     </ul>
-    <p>Le card si aggiornano automaticamente: se un sensore va in Critical o un portale va DOWN, il conteggio e il colore cambiano in tempo reale.</p>
-    <p>Clicca una card per entrare nella sezione corrispondente.</p>
-
-    <h2>In evidenza (Pin)</h2>
-    <p>Puoi "pinnare" qualsiasi risorsa per tenerla in evidenza nella Panoramica:</p>
-    <ul>
-    <li><strong>Pinnare</strong> — Click destro (o Control+click) su un monitor o sensore → "Aggiungi a In evidenza"</li>
-    <li><strong>Rimuovere</strong> — Click destro sulla card pinnata nella Panoramica → "Rimuovi da In evidenza"</li>
-    </ul>
-    <p>Le card pinnate mostrano icona, nome abbreviato e valore/stato live (es. "UP", "23.5 °C", "DOWN").</p>
+    <p>Le card si aggiornano in tempo reale: se un sensore va in Critical o un portale va DOWN, il conteggio e il colore cambiano immediatamente.</p>
 
     <h2>Sezioni</h2>
-    <ul>
-    <li><strong>Portali</strong> — Stato dei servizi web monitorati da 5 sonde indipendenti</li>
-    <li><strong>Temperatura (°C)</strong> — Sensori di temperatura del datacenter</li>
-    <li><strong>Potenza (kW)</strong> — Sensori di potenza elettrica</li>
-    <li><strong>UPS</strong> — Stato UPS: batteria, sorgente, capacità, durata, fasi</li>
-    <li><strong>Generatori</strong> — Stato gruppi elettrogeni: controller, tensione, carico, carburante</li>
-    </ul>
+    <table>
+    <tr><th>Sezione</th><th>Contenuto</th></tr>
+    <tr><td>Portali</td><td>Stato dei servizi web monitorati da 5 sonde indipendenti. Ogni monitor mostra lo stato per sonda e una sparkline storica.</td></tr>
+    <tr><td>Temperatura</td><td>Sensori di temperatura del datacenter (°C) con grafico storico.</td></tr>
+    <tr><td>Potenza</td><td>Sensori di potenza elettrica (kW) con grafico storico.</td></tr>
+    <tr><td>UPS</td><td>Stato UPS: batteria, sorgente, capacità, durata, fasi.</td></tr>
+    <tr><td>Generatori</td><td>Stato gruppi elettrogeni: controller, tensione, carico, carburante.</td></tr>
+    </table>
 
-    <h2>Sonde</h2>
-    <ul>
-    <li><strong>Aruba</strong> — Bergamo</li>
-    <li><strong>TIM</strong> — Sestu (CA)</li>
-    <li><strong>ILIAD</strong> — Sinnai (CA)</li>
-    <li><strong>NodePing</strong> — Europa</li>
-    <li><strong>Uptime</strong> — Globale</li>
-    </ul>
+    <h2>Sonde di monitoraggio</h2>
+    <p>Ogni portale viene verificato da 5 sonde indipendenti distribuite geograficamente:</p>
+    <table>
+    <tr><th>Sonda</th><th>Posizione</th></tr>
+    <tr><td>k1 — Aruba</td><td>Bergamo</td></tr>
+    <tr><td>k2 — TIM</td><td>Sestu (CA)</td></tr>
+    <tr><td>k3 — ILIAD</td><td>Sinnai (CA)</td></tr>
+    <tr><td>n1 — NodePing</td><td>Europa</td></tr>
+    <tr><td>u1 — Uptime</td><td>Globale</td></tr>
+    </table>
 
     <h2>Stato globale</h2>
     <ul>
-    <li>🟢 <strong>GREEN</strong> — Tutto UP</li>
-    <li>🟡 <strong>YELLOW</strong> — Mismatch tra sonde</li>
-    <li>🔴 <strong>RED</strong> — DOWN su tutte le sonde</li>
+    <li><span class="green">●</span> <strong>GREEN</strong> — Tutte le risorse sono UP su tutte le sonde</li>
+    <li><span class="yellow">●</span> <strong>YELLOW</strong> — Almeno una risorsa ha stato diverso tra le sonde</li>
+    <li><span class="red">●</span> <strong>RED</strong> — Almeno una risorsa è DOWN su tutte le sonde</li>
     </ul>
+    <p>Lo stato globale è indicato dal pallino colorato nella sidebar accanto a "Portali" e nell'icona della menu bar.</p>
 
     <h2>Sensori datacenter</h2>
-    <p>I sensori monitorano temperatura, potenza, stato UPS e gruppi elettrogeni. Ogni sensore ha una soglia individuale dal sistema di monitoraggio:</p>
+    <p>I sensori monitorano temperatura, potenza, stato UPS e gruppi elettrogeni. Ogni sensore ha una soglia individuale definita dal sistema di monitoraggio:</p>
     <ul>
-    <li>🟠 <strong>Normale (temperatura)</strong> / 🔵 <strong>Normale (potenza)</strong> / 🟣 <strong>Normale (UPS)</strong> / 🟠 <strong>Normale (generatori)</strong></li>
-    <li>🔴 <strong>Critical</strong> — Soglia superata, richiede attenzione immediata</li>
+    <li><span class="orange">●</span> Normale (temperatura/generatori) / <span class="blue">●</span> Normale (potenza) / <span class="purple">●</span> Normale (UPS)</li>
+    <li><span class="red">●</span> <strong>Critical</strong> — Soglia superata, richiede attenzione immediata</li>
     </ul>
-    <p>I sensori possono mostrare valori numerici (es. 23.5 °C, 100 %) o di stato (es. "Normale", "AUTOMATICO").</p>
-    <p>Passa il mouse sul grafico per vedere valore e orario del punto.</p>
+    <p>I sensori possono mostrare valori numerici (es. 23.5 °C, 100 %) o di stato (es. "Normale", "AUTOMATICO"). Passa il mouse sul grafico sparkline per vedere valore e orario del punto.</p>
 
-    <h2>Notifiche</h2>
-    <p>Ricevi notifiche push quando lo stato cambia:</p>
+    <h2>In evidenza (Pin)</h2>
+    <p>Puoi "pinnare" qualsiasi risorsa per tenerla sempre visibile nella Panoramica:</p>
     <ul>
-    <li>🔴 Servizi DOWN</li>
-    <li>🟡 Incongruenza tra sonde</li>
-    <li>🟢 Tutto OK (ripristino)</li>
-    <li>🔴🟡🟢 Alert sensori (temperature/potenza fuori soglia o rientrate)</li>
+    <li><strong>Aggiungere</strong> — Click destro (o Control+click) su un monitor o sensore in qualsiasi sezione → "Aggiungi a In evidenza"</li>
+    <li><strong>Rimuovere</strong> — Click destro sulla card pinnata nella Panoramica → "Rimuovi da In evidenza"</li>
+    <li><strong>Navigare</strong> — Doppio click su una card pinnata apre la sezione corrispondente</li>
     </ul>
-    <p>Clicca l'icona 🔔 nella toolbar per vedere lo storico notifiche (ultimo mese).</p>
+    <p>Le card pinnate mostrano icona, nome e valore/stato live che si aggiorna in tempo reale.</p>
 
-    <h2>Soglia notifica</h2>
-    <p>Configura quante sonde devono essere DOWN prima di ricevere la notifica (1–5). Impostazioni → Soglia notifica.</p>
+    <h2>Riordino manuale</h2>
+    <p>In ogni sezione (Portali, Temperatura, Potenza, UPS, Generatori) puoi riordinare gli elementi:</p>
+    <ul>
+    <li>Clicca il pulsante <strong>↑↓</strong> nell'intestazione della sezione per entrare in modalità riordino</li>
+    <li>Trascina le righe per cambiare l'ordine</li>
+    <li>Clicca <strong>✓</strong> per confermare — l'ordine viene salvato e mantenuto tra i riavvii</li>
+    </ul>
+
+    <h2>Notifiche push</h2>
+    <p>L'app riceve notifiche push native quando lo stato cambia:</p>
+    <ul>
+    <li><span class="red">●</span> Servizi DOWN (una o più risorse non raggiungibili)</li>
+    <li><span class="yellow">●</span> Incongruenza tra sonde (mismatch)</li>
+    <li><span class="green">●</span> Tutto OK (ripristino alla normalità)</li>
+    <li><span class="red">●</span> Alert sensori (temperatura/potenza/UPS fuori soglia)</li>
+    <li><span class="green">●</span> Sensore rientrato nella norma</li>
+    </ul>
+    <p>Clicca l'icona 🔔 nella toolbar per vedere lo storico notifiche.</p>
+
+    <h3>Soglia notifica</h3>
+    <p>Puoi configurare quante sonde devono essere DOWN prima di ricevere la notifica (da 1 a 5). Vai in Impostazioni → Soglia notifica. Con soglia 3, ad esempio, ricevi la notifica solo quando almeno 3 sonde rilevano il DOWN.</p>
+
+    <h2>Menu bar</h2>
+    <p>L'app mostra un'icona nella barra dei menu con un pallino colorato che indica lo stato globale. Clicca per vedere un riepilogo rapido: risorse anomale, ultimo aggiornamento, e azioni (Aggiorna, Apri Dashboard, Impostazioni, Esci).</p>
+
+    <h2>Autenticazione biometrica</h2>
+    <p>Al primo login con username + password + 2FA, l'app salva un token nel Keychain protetto da Touch ID o Apple Watch. Ai successivi avvii puoi sbloccare con la biometria senza reinserire le credenziali. Il token scade dopo 90 giorni.</p>
 
     <h2>Scorciatoie</h2>
-    <ul>
-    <li><span class="key">⌘R</span> — Aggiorna Dashboard</li>
-    <li><span class="key">⌘,</span> — Impostazioni</li>
-    <li><span class="key">⌘Q</span> — Esci dall'app</li>
-    </ul>
+    <table>
+    <tr><th>Tasto</th><th>Azione</th></tr>
+    <tr><td><span class="key">⌘R</span></td><td>Aggiorna Dashboard</td></tr>
+    <tr><td><span class="key">⌘,</span></td><td>Impostazioni</td></tr>
+    <tr><td><span class="key">⌘Q</span></td><td>Esci</td></tr>
+    </table>
 
     <h2>Supporto</h2>
-    <p>Per assistenza contattare ABISSI S.r.l.</p>
+    <p>Per assistenza tecnica contattare il team ABISSI S.r.l.</p>
     </body></html>
     """
 }
