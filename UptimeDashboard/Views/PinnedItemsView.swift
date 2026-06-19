@@ -178,12 +178,12 @@ struct PinnedCardView: View {
             return "—"
         case .temperatura:
             if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
-                return String(format: "%.1f °C", sensor.value)
+                return sensor.displayValueWithUnit
             }
             return "—"
         case .potenza:
             if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
-                return String(format: "%.1f kW", sensor.value)
+                return sensor.displayValueWithUnit
             }
             return "—"
         }
