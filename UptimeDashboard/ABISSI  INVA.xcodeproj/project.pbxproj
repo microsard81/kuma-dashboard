@@ -49,6 +49,8 @@
 		B0070003 /* PortalsDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070004 /* PortalsDetailView.swift */; };
 		B0070005 /* TemperatureDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070006 /* TemperatureDetailView.swift */; };
 		B0070007 /* PowerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0070008 /* PowerDetailView.swift */; };
+		B007000A /* UPSDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B007000B /* UPSDetailView.swift */; };
+		B007000C /* GeneratorDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B007000D /* GeneratorDetailView.swift */; };
 		B0080001 /* NotificationHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0080002 /* NotificationHistoryView.swift */; };
 		B0090001 /* PinnedItemsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0090002 /* PinnedItemsView.swift */; };
 		B00A0001 /* CheckmarkPopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00A0002 /* CheckmarkPopup.swift */; };
@@ -191,6 +193,8 @@
 		B0070004 /* PortalsDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalsDetailView.swift; sourceTree = "<group>"; };
 		B0070006 /* TemperatureDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemperatureDetailView.swift; sourceTree = "<group>"; };
 		B0070008 /* PowerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerDetailView.swift; sourceTree = "<group>"; };
+		B007000B /* UPSDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UPSDetailView.swift; sourceTree = "<group>"; };
+		B007000D /* GeneratorDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratorDetailView.swift; sourceTree = "<group>"; };
 		B0080002 /* NotificationHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationHistoryView.swift; sourceTree = "<group>"; };
 		B0090002 /* PinnedItemsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedItemsView.swift; sourceTree = "<group>"; };
 		B00A0002 /* CheckmarkPopup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckmarkPopup.swift; sourceTree = "<group>"; };
@@ -457,6 +461,8 @@
 				B0060006 /* SensorSectionView.swift */,
 				B0070006 /* TemperatureDetailView.swift */,
 				B0070008 /* PowerDetailView.swift */,
+				B007000B /* UPSDetailView.swift */,
+				B007000D /* GeneratorDetailView.swift */,
 			);
 			path = Sensors;
 			sourceTree = "<group>";
@@ -830,6 +836,8 @@
 				B0070003 /* PortalsDetailView.swift in Sources */,
 				B0070005 /* TemperatureDetailView.swift in Sources */,
 				B0070007 /* PowerDetailView.swift in Sources */,
+				B007000A /* UPSDetailView.swift in Sources */,
+				B007000C /* GeneratorDetailView.swift in Sources */,
 				B0080001 /* NotificationHistoryView.swift in Sources */,
 				B0090001 /* PinnedItemsView.swift in Sources */,
 				B00A0001 /* CheckmarkPopup.swift in Sources */,
