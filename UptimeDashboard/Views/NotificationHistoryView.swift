@@ -251,26 +251,25 @@ struct NotificationHistoryView: View {
     // MARK: - Notification Row Helper
 
     private func notificationRow(for notif: NotificationRecord) -> some View {
-        NotificationSwipeRow(
-            notification: bindingForNotification(notif),
+        return NotificationSwipeRow(
+            notification: Binding(
+                get: {
+                    if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+                        return notifications[idx]
+                    }
+                    return notif
+                },
+                set: { newValue in
+                    if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+                        notifications[idx] = newValue
+                    }
+                }
+            ),
             onAction: {
                 toggleReadState(notif)
             }
         )
-        .id(notif.id)
-    }
-
-    private func bindingForNotification(_ notif: NotificationRecord) -> Binding<NotificationRecord> {
-        Binding(
-            get: {
-                notifications.first(where: { $0.id == notif.id }) ?? notif
-            },
-            set: { newValue in
-                if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
-                    notifications[idx] = newValue
-                }
-            }
-        )
+        .id("\(notif.id)-\(notif.isRead)")
     }
 
     private func loadNotifications() {
