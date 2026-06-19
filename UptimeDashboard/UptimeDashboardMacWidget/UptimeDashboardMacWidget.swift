@@ -24,7 +24,10 @@ struct MacDashboardEntry: TimelineEntry {
     let monitors: [MacWidgetMonitor]
     let downCount: Int
     let mismatchCount: Int
-    let sensorAlerts: MacSensorAlerts?
+    let temperatureCritical: Int
+    let powerCritical: Int
+    let upsCritical: Int
+    let generatorCritical: Int
     let sensorError: Bool
     let isPlaceholder: Bool
 
@@ -35,27 +38,14 @@ struct MacDashboardEntry: TimelineEntry {
             monitors: [],
             downCount: 0,
             mismatchCount: 0,
-            sensorAlerts: nil,
+            temperatureCritical: 0,
+            powerCritical: 0,
+            upsCritical: 0,
+            generatorCritical: 0,
             sensorError: false,
             isPlaceholder: true
         )
     }
-}
-
-// MARK: - Sensor Alerts (Mac Widget-local model matching backend JSON)
-
-struct MacSensorAlerts: Codable, Equatable {
-    let warningCount: Int
-    let criticalCount: Int
-
-    enum CodingKeys: String, CodingKey {
-        case warningCount = "warning_count"
-        case criticalCount = "critical_count"
-    }
-
-    var totalCount: Int { warningCount + criticalCount }
-    var hasAlerts: Bool { totalCount > 0 }
-    var hasCritical: Bool { criticalCount > 0 }
 }
 
 // MARK: - API Fetch
@@ -92,16 +82,27 @@ struct MacWidgetAPIClient {
                 return MacWidgetMonitor(name: name, k1: k1, k2: k2, k3: k3, n1: n1, u1: u1, finalStatus: final_)
             }
 
-            // Parse sensor alerts from response
-            let sensorAlerts: MacSensorAlerts?
-            if let alertsDict = json["sensor_alerts"] as? [String: Int] {
-                sensorAlerts = MacSensorAlerts(
-                    warningCount: alertsDict["warning_count"] ?? 0,
-                    criticalCount: alertsDict["critical_count"] ?? 0
-                )
-            } else {
-                sensorAlerts = nil
+            // Parse sensors and count critical per category
+            var tempCritical = 0
+            var powerCritical = 0
+            var upsCritical = 0
+            var genCritical = 0
+
+            if let sensorsArray = json["sensors"] as? [[String: Any]] {
+                for sensor in sensorsArray {
+                    let status = sensor["status"] as? String ?? "normal"
+                    guard status == "critical" else { continue }
+                    let category = sensor["category"] as? String ?? ""
+                    switch category {
+                    case "temperature": tempCritical += 1
+                    case "power": powerCritical += 1
+                    case "ups": upsCritical += 1
+                    case "generator": genCritical += 1
+                    default: break
+                    }
+                }
             }
+
             let sensorError = json["sensor_error"] != nil
 
             return MacDashboardEntry(
@@ -110,7 +111,10 @@ struct MacWidgetAPIClient {
                 monitors: monitors,
                 downCount: monitors.filter(\.isDown).count,
                 mismatchCount: monitors.filter(\.isMismatch).count,
-                sensorAlerts: sensorAlerts,
+                temperatureCritical: tempCritical,
+                powerCritical: powerCritical,
+                upsCritical: upsCritical,
+                generatorCritical: genCritical,
                 sensorError: sensorError,
                 isPlaceholder: false
             )
@@ -199,6 +203,8 @@ struct MacSmallWidgetView: View {
                 MacMacroRow(icon: "globe", title: "Portali", color: portalsColor, detail: portalsDetail)
                 MacMacroRow(icon: "thermometer.medium", title: "Temp", color: temperatureColor, detail: temperatureDetail)
                 MacMacroRow(icon: "bolt.fill", title: "Potenza", color: powerColor, detail: powerDetail)
+                MacMacroRow(icon: "battery.75percent", title: "UPS", color: upsColor, detail: upsDetail)
+                MacMacroRow(icon: "fuelpump.fill", title: "GE", color: generatorColor, detail: generatorDetail)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -209,32 +215,19 @@ struct MacSmallWidgetView: View {
         if entry.mismatchCount > 0 { return .yellow }
         return .green
     }
-
     private var portalsDetail: String {
         if entry.downCount > 0 { return "\(entry.downCount) DOWN" }
         if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠" }
         return "OK"
     }
-
-    private var temperatureColor: Color {
-        guard let alerts = entry.sensorAlerts else { return .orange }
-        if alerts.hasCritical { return .red }
-        if alerts.hasAlerts { return .yellow }
-        return .orange
-    }
-
-    private var temperatureDetail: String {
-        guard let alerts = entry.sensorAlerts else { return "—" }
-        if alerts.hasAlerts { return "\(alerts.totalCount) ⚠" }
-        return "OK"
-    }
-
-    private var powerColor: Color { .blue }
-
-    private var powerDetail: String {
-        if entry.sensorError { return "Errore" }
-        return "OK"
-    }
+    private var temperatureColor: Color { entry.temperatureCritical > 0 ? .red : .orange }
+    private var temperatureDetail: String { entry.sensorError ? "—" : (entry.temperatureCritical > 0 ? "\(entry.temperatureCritical) ⚠" : "OK") }
+    private var powerColor: Color { entry.powerCritical > 0 ? .red : .blue }
+    private var powerDetail: String { entry.sensorError ? "—" : (entry.powerCritical > 0 ? "\(entry.powerCritical) ⚠" : "OK") }
+    private var upsColor: Color { entry.upsCritical > 0 ? .red : .purple }
+    private var upsDetail: String { entry.sensorError ? "—" : (entry.upsCritical > 0 ? "\(entry.upsCritical) ⚠" : "OK") }
+    private var generatorColor: Color { entry.generatorCritical > 0 ? .red : .orange }
+    private var generatorDetail: String { entry.sensorError ? "—" : (entry.generatorCritical > 0 ? "\(entry.generatorCritical) ⚠" : "OK") }
 }
 
 // MARK: - Medium Widget: 3 macro areas
@@ -262,10 +255,12 @@ struct MacMediumWidgetView: View {
                 Spacer()
             } else {
                 Spacer(minLength: 4)
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     MacMacroCard(icon: "globe", title: "Portali", color: portalsColor, subtitle: portalsSubtitle)
-                    MacMacroCard(icon: "thermometer.medium", title: "Temperatura", color: temperatureColor, subtitle: temperatureSubtitle)
+                    MacMacroCard(icon: "thermometer.medium", title: "Temp", color: temperatureColor, subtitle: temperatureSubtitle)
                     MacMacroCard(icon: "bolt.fill", title: "Potenza", color: powerColor, subtitle: powerSubtitle)
+                    MacMacroCard(icon: "battery.75percent", title: "UPS", color: upsColor, subtitle: upsSubtitle)
+                    MacMacroCard(icon: "fuelpump.fill", title: "GE", color: generatorColor, subtitle: generatorSubtitle)
                 }
                 Spacer(minLength: 0)
             }
@@ -278,33 +273,20 @@ struct MacMediumWidgetView: View {
         if entry.mismatchCount > 0 { return .yellow }
         return .green
     }
-
     private var portalsSubtitle: String {
         let total = entry.monitors.count
         if entry.downCount > 0 { return "\(entry.downCount) DOWN / \(total)" }
         if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠ / \(total)" }
-        return "Tutto OK (\(total))"
+        return "OK (\(total))"
     }
-
-    private var temperatureColor: Color {
-        guard let alerts = entry.sensorAlerts else { return .orange }
-        if alerts.hasCritical { return .red }
-        if alerts.hasAlerts { return .yellow }
-        return .orange
-    }
-
-    private var temperatureSubtitle: String {
-        guard let alerts = entry.sensorAlerts else { return "—" }
-        if alerts.hasAlerts { return "\(alerts.totalCount) in allarme" }
-        return "Tutto OK"
-    }
-
-    private var powerColor: Color { .blue }
-
-    private var powerSubtitle: String {
-        if entry.sensorError { return "Errore" }
-        return "Tutto OK"
-    }
+    private var temperatureColor: Color { entry.temperatureCritical > 0 ? .red : .orange }
+    private var temperatureSubtitle: String { entry.sensorError ? "Errore" : (entry.temperatureCritical > 0 ? "\(entry.temperatureCritical) ⚠" : "OK") }
+    private var powerColor: Color { entry.powerCritical > 0 ? .red : .blue }
+    private var powerSubtitle: String { entry.sensorError ? "Errore" : (entry.powerCritical > 0 ? "\(entry.powerCritical) ⚠" : "OK") }
+    private var upsColor: Color { entry.upsCritical > 0 ? .red : .purple }
+    private var upsSubtitle: String { entry.sensorError ? "Errore" : (entry.upsCritical > 0 ? "\(entry.upsCritical) ⚠" : "OK") }
+    private var generatorColor: Color { entry.generatorCritical > 0 ? .red : .orange }
+    private var generatorSubtitle: String { entry.sensorError ? "Errore" : (entry.generatorCritical > 0 ? "\(entry.generatorCritical) ⚠" : "OK") }
 }
 
 // MARK: - Large Widget: 3 macro areas + top monitors
@@ -332,10 +314,12 @@ struct MacLargeWidgetView: View {
                 HStack { Spacer(); Text("Caricamento...").font(.caption).foregroundColor(.secondary); Spacer() }
                 Spacer()
             } else {
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     MacMacroCard(icon: "globe", title: "Portali", color: portalsColor, subtitle: portalsSubtitle)
                     MacMacroCard(icon: "thermometer.medium", title: "Temp", color: temperatureColor, subtitle: temperatureSubtitle)
                     MacMacroCard(icon: "bolt.fill", title: "Potenza", color: powerColor, subtitle: powerSubtitle)
+                    MacMacroCard(icon: "battery.75percent", title: "UPS", color: upsColor, subtitle: upsSubtitle)
+                    MacMacroCard(icon: "fuelpump.fill", title: "GE", color: generatorColor, subtitle: generatorSubtitle)
                 }
                 .padding(.bottom, 4)
 
@@ -372,33 +356,19 @@ struct MacLargeWidgetView: View {
         if entry.mismatchCount > 0 { return .yellow }
         return .green
     }
-
     private var portalsSubtitle: String {
-        let total = entry.monitors.count
         if entry.downCount > 0 { return "\(entry.downCount) DOWN" }
         if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠" }
-        return "OK (\(total))"
+        return "OK (\(entry.monitors.count))"
     }
-
-    private var temperatureColor: Color {
-        guard let alerts = entry.sensorAlerts else { return .orange }
-        if alerts.hasCritical { return .red }
-        if alerts.hasAlerts { return .yellow }
-        return .orange
-    }
-
-    private var temperatureSubtitle: String {
-        guard let alerts = entry.sensorAlerts else { return "—" }
-        if alerts.hasAlerts { return "\(alerts.totalCount) ⚠" }
-        return "OK"
-    }
-
-    private var powerColor: Color { .blue }
-
-    private var powerSubtitle: String {
-        if entry.sensorError { return "Errore" }
-        return "OK"
-    }
+    private var temperatureColor: Color { entry.temperatureCritical > 0 ? .red : .orange }
+    private var temperatureSubtitle: String { entry.sensorError ? "—" : (entry.temperatureCritical > 0 ? "\(entry.temperatureCritical) ⚠" : "OK") }
+    private var powerColor: Color { entry.powerCritical > 0 ? .red : .blue }
+    private var powerSubtitle: String { entry.sensorError ? "—" : (entry.powerCritical > 0 ? "\(entry.powerCritical) ⚠" : "OK") }
+    private var upsColor: Color { entry.upsCritical > 0 ? .red : .purple }
+    private var upsSubtitle: String { entry.sensorError ? "—" : (entry.upsCritical > 0 ? "\(entry.upsCritical) ⚠" : "OK") }
+    private var generatorColor: Color { entry.generatorCritical > 0 ? .red : .orange }
+    private var generatorSubtitle: String { entry.sensorError ? "—" : (entry.generatorCritical > 0 ? "\(entry.generatorCritical) ⚠" : "OK") }
 }
 
 // MARK: - MacMacroRow (compact, for small widget)

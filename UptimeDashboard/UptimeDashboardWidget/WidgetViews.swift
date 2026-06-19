@@ -37,14 +37,13 @@ struct WidgetEntryView: View {
     }
 }
 
-// MARK: - Small Widget: 3 macro areas compact
+// MARK: - Small Widget: 5 righe stato compatto
 
 struct SmallWidgetView: View {
     let entry: DashboardEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Header
+        VStack(alignment: .leading, spacing: 5) {
             HStack {
                 Text("INVA")
                     .font(.system(size: 11, weight: .bold))
@@ -66,14 +65,11 @@ struct SmallWidgetView: View {
                 Spacer()
             } else {
                 Spacer(minLength: 2)
-
-                // Portali
                 MacroRow(icon: "globe", title: "Portali", color: portalsColor, detail: portalsDetail)
-                // Temperatura
                 MacroRow(icon: "thermometer.medium", title: "Temperatura", color: temperatureColor, detail: temperatureDetail)
-                // Potenza
                 MacroRow(icon: "bolt.fill", title: "Potenza", color: powerColor, detail: powerDetail)
-
+                MacroRow(icon: "battery.75percent", title: "UPS", color: upsColor, detail: upsDetail)
+                MacroRow(icon: "fuelpump.fill", title: "Generatori", color: generatorColor, detail: generatorDetail)
                 Spacer(minLength: 0)
             }
         }
@@ -85,38 +81,22 @@ struct SmallWidgetView: View {
         if entry.mismatchCount > 0 { return .yellow }
         return .green
     }
-
     private var portalsDetail: String {
         if entry.downCount > 0 { return "\(entry.downCount) DOWN" }
         if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠" }
-        return "OK (\(entry.monitors.count))"
-    }
-
-    private var temperatureColor: Color {
-        guard let alerts = entry.sensorAlerts else { return .orange }
-        if alerts.hasCritical { return .red }
-        if alerts.hasAlerts { return .yellow }
-        return .orange
-    }
-
-    private var temperatureDetail: String {
-        if entry.sensorError { return "—" }
-        guard let alerts = entry.sensorAlerts else { return "—" }
-        if alerts.hasAlerts { return "\(alerts.totalCount) ⚠" }
         return "OK"
     }
-
-    private var powerColor: Color {
-        return .blue
-    }
-
-    private var powerDetail: String {
-        if entry.sensorError { return "—" }
-        return "OK"
-    }
+    private var temperatureColor: Color { entry.temperatureCritical > 0 ? .red : .orange }
+    private var temperatureDetail: String { entry.sensorError ? "—" : (entry.temperatureCritical > 0 ? "\(entry.temperatureCritical) ⚠" : "OK") }
+    private var powerColor: Color { entry.powerCritical > 0 ? .red : .blue }
+    private var powerDetail: String { entry.sensorError ? "—" : (entry.powerCritical > 0 ? "\(entry.powerCritical) ⚠" : "OK") }
+    private var upsColor: Color { entry.upsCritical > 0 ? .red : .purple }
+    private var upsDetail: String { entry.sensorError ? "—" : (entry.upsCritical > 0 ? "\(entry.upsCritical) ⚠" : "OK") }
+    private var generatorColor: Color { entry.generatorCritical > 0 ? .red : .orange }
+    private var generatorDetail: String { entry.sensorError ? "—" : (entry.generatorCritical > 0 ? "\(entry.generatorCritical) ⚠" : "OK") }
 }
 
-// MARK: - Medium Widget: 3 card quadrate affiancate
+// MARK: - Medium Widget: 5 card affiancate
 
 struct MediumWidgetView: View {
     let entry: DashboardEntry
@@ -141,10 +121,12 @@ struct MediumWidgetView: View {
                 Spacer()
             } else {
                 Spacer(minLength: 4)
-                HStack(spacing: 12) {
+                HStack(spacing: 6) {
                     MacroCard(icon: "globe", title: "Portali", color: portalsColor, subtitle: portalsSubtitle)
-                    MacroCard(icon: "thermometer.medium", title: "Temperatura", color: temperatureColor, subtitle: temperatureSubtitle)
+                    MacroCard(icon: "thermometer.medium", title: "Temp", color: temperatureColor, subtitle: temperatureSubtitle)
                     MacroCard(icon: "bolt.fill", title: "Potenza", color: powerColor, subtitle: powerSubtitle)
+                    MacroCard(icon: "battery.75percent", title: "UPS", color: upsColor, subtitle: upsSubtitle)
+                    MacroCard(icon: "fuelpump.fill", title: "GE", color: generatorColor, subtitle: generatorSubtitle)
                 }
                 Spacer(minLength: 0)
             }
@@ -157,37 +139,22 @@ struct MediumWidgetView: View {
         if entry.mismatchCount > 0 { return .yellow }
         return .green
     }
-
     private var portalsSubtitle: String {
-        let total = entry.monitors.count
-        if entry.downCount > 0 { return "\(entry.downCount) DOWN / \(total)" }
-        if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠ / \(total)" }
-        return "Tutto OK (\(total))"
+        if entry.downCount > 0 { return "\(entry.downCount) DOWN" }
+        if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠" }
+        return "OK (\(entry.monitors.count))"
     }
-
-    private var temperatureColor: Color {
-        guard let alerts = entry.sensorAlerts else { return .orange }
-        if alerts.hasCritical { return .red }
-        if alerts.hasAlerts { return .yellow }
-        return .orange
-    }
-
-    private var temperatureSubtitle: String {
-        if entry.sensorError { return "Errore" }
-        guard let alerts = entry.sensorAlerts else { return "—" }
-        if alerts.hasAlerts { return "\(alerts.totalCount) in allarme" }
-        return "Tutto OK"
-    }
-
-    private var powerColor: Color { .blue }
-
-    private var powerSubtitle: String {
-        if entry.sensorError { return "Errore" }
-        return "Tutto OK"
-    }
+    private var temperatureColor: Color { entry.temperatureCritical > 0 ? .red : .orange }
+    private var temperatureSubtitle: String { entry.sensorError ? "Errore" : (entry.temperatureCritical > 0 ? "\(entry.temperatureCritical) ⚠" : "OK") }
+    private var powerColor: Color { entry.powerCritical > 0 ? .red : .blue }
+    private var powerSubtitle: String { entry.sensorError ? "Errore" : (entry.powerCritical > 0 ? "\(entry.powerCritical) ⚠" : "OK") }
+    private var upsColor: Color { entry.upsCritical > 0 ? .red : .purple }
+    private var upsSubtitle: String { entry.sensorError ? "Errore" : (entry.upsCritical > 0 ? "\(entry.upsCritical) ⚠" : "OK") }
+    private var generatorColor: Color { entry.generatorCritical > 0 ? .red : .orange }
+    private var generatorSubtitle: String { entry.sensorError ? "Errore" : (entry.generatorCritical > 0 ? "\(entry.generatorCritical) ⚠" : "OK") }
 }
 
-// MARK: - Large Widget: 3 card + lista monitor
+// MARK: - Large Widget: 5 card + lista portali
 
 struct LargeWidgetView: View {
     let entry: DashboardEntry
@@ -212,17 +179,19 @@ struct LargeWidgetView: View {
                 HStack { Spacer(); Text("Caricamento...").font(.caption).foregroundColor(.secondary); Spacer() }
                 Spacer()
             } else {
-                // 3 card
-                HStack(spacing: 12) {
+                // 5 card
+                HStack(spacing: 6) {
                     MacroCard(icon: "globe", title: "Portali", color: portalsColor, subtitle: portalsSubtitle)
                     MacroCard(icon: "thermometer.medium", title: "Temp", color: temperatureColor, subtitle: temperatureSubtitle)
                     MacroCard(icon: "bolt.fill", title: "Potenza", color: powerColor, subtitle: powerSubtitle)
+                    MacroCard(icon: "battery.75percent", title: "UPS", color: upsColor, subtitle: upsSubtitle)
+                    MacroCard(icon: "fuelpump.fill", title: "GE", color: generatorColor, subtitle: generatorSubtitle)
                 }
                 .padding(.bottom, 4)
 
                 Divider().background(Color.white.opacity(0.2))
 
-                // Monitor list
+                // Monitor list (portali)
                 ForEach(sortedMonitors) { monitor in
                     HStack(spacing: 6) {
                         Text(shortName(monitor.name))
@@ -265,34 +234,19 @@ struct LargeWidgetView: View {
         if entry.mismatchCount > 0 { return .yellow }
         return .green
     }
-
     private var portalsSubtitle: String {
-        let total = entry.monitors.count
         if entry.downCount > 0 { return "\(entry.downCount) DOWN" }
         if entry.mismatchCount > 0 { return "\(entry.mismatchCount) ⚠" }
-        return "OK (\(total))"
-    }
-
-    private var temperatureColor: Color {
-        guard let alerts = entry.sensorAlerts else { return .orange }
-        if alerts.hasCritical { return .red }
-        if alerts.hasAlerts { return .yellow }
-        return .orange
-    }
-
-    private var temperatureSubtitle: String {
-        if entry.sensorError { return "Errore" }
-        guard let alerts = entry.sensorAlerts else { return "—" }
-        if alerts.hasAlerts { return "\(alerts.totalCount) ⚠" }
         return "OK"
     }
-
-    private var powerColor: Color { .blue }
-
-    private var powerSubtitle: String {
-        if entry.sensorError { return "Errore" }
-        return "OK"
-    }
+    private var temperatureColor: Color { entry.temperatureCritical > 0 ? .red : .orange }
+    private var temperatureSubtitle: String { entry.sensorError ? "—" : (entry.temperatureCritical > 0 ? "\(entry.temperatureCritical) ⚠" : "OK") }
+    private var powerColor: Color { entry.powerCritical > 0 ? .red : .blue }
+    private var powerSubtitle: String { entry.sensorError ? "—" : (entry.powerCritical > 0 ? "\(entry.powerCritical) ⚠" : "OK") }
+    private var upsColor: Color { entry.upsCritical > 0 ? .red : .purple }
+    private var upsSubtitle: String { entry.sensorError ? "—" : (entry.upsCritical > 0 ? "\(entry.upsCritical) ⚠" : "OK") }
+    private var generatorColor: Color { entry.generatorCritical > 0 ? .red : .orange }
+    private var generatorSubtitle: String { entry.sensorError ? "—" : (entry.generatorCritical > 0 ? "\(entry.generatorCritical) ⚠" : "OK") }
 }
 
 // MARK: - MacroCard (quadrato per medium/large)
@@ -304,22 +258,23 @@ private struct MacroCard: View {
     let subtitle: String
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 3) {
             Image(systemName: icon)
-                .font(.system(size: 16))
+                .font(.system(size: 14))
                 .foregroundColor(color)
             Text(title)
-                .font(.system(size: 9, weight: .bold))
+                .font(.system(size: 8, weight: .bold))
                 .foregroundColor(.white)
+                .lineLimit(1)
             Text(subtitle)
-                .font(.system(size: 8))
+                .font(.system(size: 7))
                 .foregroundColor(color)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
         .background(color.opacity(0.1))
-        .cornerRadius(8)
+        .cornerRadius(6)
     }
 }
 
@@ -335,92 +290,56 @@ private struct MacroRow: View {
         HStack(spacing: 6) {
             Circle()
                 .fill(color)
-                .frame(width: 8, height: 8)
+                .frame(width: 7, height: 7)
             Image(systemName: icon)
-                .font(.system(size: 9))
+                .font(.system(size: 8))
                 .foregroundColor(color)
             Text(title)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 9, weight: .medium))
                 .foregroundColor(.white)
             Spacer()
             Text(detail)
-                .font(.system(size: 9, weight: .bold))
+                .font(.system(size: 9, weight: .semibold))
                 .foregroundColor(color)
         }
     }
 }
 
-// MARK: - Probe Dots (5 pallini compatti)
+// MARK: - ProbeDotsView (5 pallini sonda per monitor)
 
 private struct ProbeDotsView: View {
     let monitor: WidgetMonitor
 
     var body: some View {
         HStack(spacing: 2) {
-            Circle().fill(monitor.k1 == "UP" ? Color.green : Color.red).frame(width: 5, height: 5)
-            Circle().fill(monitor.k2 == "UP" ? Color.green : Color.red).frame(width: 5, height: 5)
-            Circle().fill(monitor.k3 == "UP" ? Color.green : Color.red).frame(width: 5, height: 5)
-            Circle().fill(monitor.n1 == "UP" ? Color.green : Color.red).frame(width: 5, height: 5)
-            Circle().fill(monitor.u1 == "UP" ? Color.green : Color.red).frame(width: 5, height: 5)
+            Circle().fill(monitor.k1 == "DOWN" ? Color.red : Color.green).frame(width: 5, height: 5)
+            Circle().fill(monitor.k2 == "DOWN" ? Color.red : Color.green).frame(width: 5, height: 5)
+            Circle().fill(monitor.k3 == "DOWN" ? Color.red : Color.green).frame(width: 5, height: 5)
+            Circle().fill(monitor.n1 == "DOWN" ? Color.red : Color.green).frame(width: 5, height: 5)
+            Circle().fill(monitor.u1 == "DOWN" ? Color.red : Color.green).frame(width: 5, height: 5)
         }
     }
 }
 
-// MARK: - Helper
+// MARK: - Helpers
 
 private func shortName(_ name: String) -> String {
-    name.replacingOccurrences(of: "INVA - ", with: "")
+    // Rimuovi prefisso comune "www." se presente
+    if name.hasPrefix("www.") { return String(name.dropFirst(4)) }
+    return name
 }
 
-// MARK: - Color hex (widget target)
+// MARK: - Color(hex:)
 
 extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0
         Scanner(string: hex).scanHexInt64(&int)
-        let r, g, b, a: UInt64
-        switch hex.count {
-        case 6:
-            (r, g, b, a) = ((int >> 16) & 0xFF, (int >> 8) & 0xFF, int & 0xFF, 255)
-        case 8:
-            (r, g, b, a) = ((int >> 24) & 0xFF, (int >> 16) & 0xFF, (int >> 8) & 0xFF, int & 0xFF)
-        default:
-            (r, g, b, a) = (0, 0, 0, 255)
-        }
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
+        let r, g, b: Double
+        r = Double((int >> 16) & 0xFF) / 255
+        g = Double((int >> 8) & 0xFF) / 255
+        b = Double(int & 0xFF) / 255
+        self.init(red: r, green: g, blue: b)
     }
 }
-
-// MARK: - Previews
-
-#if DEBUG
-#Preview("Small", as: .systemSmall) {
-    UptimeDashboardWidget()
-} timeline: {
-    DashboardEntry(date: Date(), globalState: "GREEN", monitors: [], downCount: 0, mismatchCount: 0, sensorAlerts: nil, sensorError: false, isPlaceholder: false)
-}
-
-#Preview("Medium", as: .systemMedium) {
-    UptimeDashboardWidget()
-} timeline: {
-    DashboardEntry(date: Date(), globalState: "YELLOW", monitors: [
-        WidgetMonitor(name: "INVA - www.regione.vda.it", k1: "UP", k2: "UP", k3: "UP", n1: "DOWN", u1: "UP", finalStatus: "UP"),
-    ], downCount: 0, mismatchCount: 1, sensorAlerts: SensorAlerts(warningCount: 1, criticalCount: 0), sensorError: false, isPlaceholder: false)
-}
-
-#Preview("Large", as: .systemLarge) {
-    UptimeDashboardWidget()
-} timeline: {
-    DashboardEntry(date: Date(), globalState: "GREEN", monitors: [
-        WidgetMonitor(name: "INVA - www.regione.vda.it", k1: "UP", k2: "UP", k3: "UP", n1: "UP", u1: "UP", finalStatus: "UP"),
-        WidgetMonitor(name: "INVA - mail.cst.inva.it", k1: "UP", k2: "UP", k3: "UP", n1: "UP", u1: "UP", finalStatus: "UP"),
-    ], downCount: 0, mismatchCount: 0, sensorAlerts: nil, sensorError: false, isPlaceholder: false)
-}
-#endif

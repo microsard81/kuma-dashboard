@@ -24,7 +24,10 @@ struct DashboardEntry: TimelineEntry {
     let monitors: [WidgetMonitor]
     let downCount: Int
     let mismatchCount: Int
-    let sensorAlerts: SensorAlerts?
+    let temperatureCritical: Int
+    let powerCritical: Int
+    let upsCritical: Int
+    let generatorCritical: Int
     let sensorError: Bool
     let isPlaceholder: Bool
 
@@ -35,27 +38,23 @@ struct DashboardEntry: TimelineEntry {
             monitors: [],
             downCount: 0,
             mismatchCount: 0,
-            sensorAlerts: nil,
+            temperatureCritical: 0,
+            powerCritical: 0,
+            upsCritical: 0,
+            generatorCritical: 0,
             sensorError: false,
             isPlaceholder: true
         )
     }
 }
 
-// MARK: - Sensor Alerts (Widget-local model matching backend JSON)
+// MARK: - Sensor Category Status (per-category critical count)
 
-struct SensorAlerts: Codable, Equatable {
-    let warningCount: Int
-    let criticalCount: Int
-
-    enum CodingKeys: String, CodingKey {
-        case warningCount = "warning_count"
-        case criticalCount = "critical_count"
-    }
-
-    var totalCount: Int { warningCount + criticalCount }
-    var hasAlerts: Bool { totalCount > 0 }
-    var hasCritical: Bool { criticalCount > 0 }
+struct CategoryStatus {
+    let critical: Int
+    var color: Color { critical > 0 ? .red : normalColor }
+    let normalColor: Color
+    var detail: String { critical > 0 ? "\(critical) ⚠" : "OK" }
 }
 
 // MARK: - API Fetch
@@ -92,16 +91,27 @@ struct WidgetAPIClient {
                 return WidgetMonitor(name: name, k1: k1, k2: k2, k3: k3, n1: n1, u1: u1, finalStatus: final_)
             }
 
-            // Parse sensor alerts from response
-            let sensorAlerts: SensorAlerts?
-            if let alertsDict = json["sensor_alerts"] as? [String: Int] {
-                sensorAlerts = SensorAlerts(
-                    warningCount: alertsDict["warning_count"] ?? 0,
-                    criticalCount: alertsDict["critical_count"] ?? 0
-                )
-            } else {
-                sensorAlerts = nil
+            // Parse sensors and count critical per category
+            var tempCritical = 0
+            var powerCritical = 0
+            var upsCritical = 0
+            var genCritical = 0
+
+            if let sensorsArray = json["sensors"] as? [[String: Any]] {
+                for sensor in sensorsArray {
+                    let status = sensor["status"] as? String ?? "normal"
+                    guard status == "critical" else { continue }
+                    let category = sensor["category"] as? String ?? ""
+                    switch category {
+                    case "temperature": tempCritical += 1
+                    case "power": powerCritical += 1
+                    case "ups": upsCritical += 1
+                    case "generator": genCritical += 1
+                    default: break
+                    }
+                }
             }
+
             let sensorError = json["sensor_error"] != nil
 
             return DashboardEntry(
@@ -110,7 +120,10 @@ struct WidgetAPIClient {
                 monitors: monitors,
                 downCount: monitors.filter(\.isDown).count,
                 mismatchCount: monitors.filter(\.isMismatch).count,
-                sensorAlerts: sensorAlerts,
+                temperatureCritical: tempCritical,
+                powerCritical: powerCritical,
+                upsCritical: upsCritical,
+                generatorCritical: genCritical,
                 sensorError: sensorError,
                 isPlaceholder: false
             )
