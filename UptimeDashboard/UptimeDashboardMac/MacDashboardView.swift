@@ -366,7 +366,7 @@ struct MacDashboardView: View {
     // MARK: - Temperature Section
 
     private var temperatureSection: some View {
-        let sensors = viewModel.sensors.filter { $0.category == .temperature }
+        let sensors = sortedSensors(viewModel.sensors.filter { $0.category == .temperature })
         return VStack(spacing: 0) {
             HStack {
                 Image(systemName: "thermometer.medium")
@@ -408,7 +408,7 @@ struct MacDashboardView: View {
     // MARK: - Power Section
 
     private var powerSection: some View {
-        let sensors = viewModel.sensors.filter { $0.category == .power }
+        let sensors = sortedSensors(viewModel.sensors.filter { $0.category == .power })
         return VStack(spacing: 0) {
             HStack {
                 Image(systemName: "bolt.fill")
@@ -450,7 +450,7 @@ struct MacDashboardView: View {
     // MARK: - UPS Section
 
     private var upsSection: some View {
-        let sensors = viewModel.sensors.filter { $0.category == .ups }
+        let sensors = sortedSensors(viewModel.sensors.filter { $0.category == .ups })
         return VStack(spacing: 0) {
             HStack {
                 Image(systemName: "battery.75percent")
@@ -492,7 +492,7 @@ struct MacDashboardView: View {
     // MARK: - Generator Section
 
     private var generatorSection: some View {
-        let sensors = viewModel.sensors.filter { $0.category == .generator }
+        let sensors = sortedSensors(viewModel.sensors.filter { $0.category == .generator })
         return VStack(spacing: 0) {
             HStack {
                 Image(systemName: "fuelpump.fill")
@@ -532,6 +532,20 @@ struct MacDashboardView: View {
     }
 
     // MARK: - Helpers
+
+    /// Ordina sensori secondo la preferenza sortOrder dalle impostazioni.
+    private func sortedSensors(_ sensors: [SensorReading]) -> [SensorReading] {
+        let sortOrder = viewModel.sortOrder
+        if sortOrder == "alphabetical" {
+            return sensors.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        }
+        // Per gravità: critical in cima, poi normal, entrambi alfabetici
+        let critical = sensors.filter { $0.status == .critical }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let normal = sensors.filter { $0.status == .normal }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        return critical + normal
+    }
 
     private var ledColor: Color {
         switch viewModel.globalState {
