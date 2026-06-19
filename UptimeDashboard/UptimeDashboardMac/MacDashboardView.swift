@@ -50,6 +50,14 @@ struct MacDashboardView: View {
     @State private var isGeneratorCollapsed = false
     @State private var allCollapsed = false
 
+    // Column widths for wide layout (proportional, saved in UserDefaults)
+    @State private var columnWidths: [CGFloat] = {
+        if let saved = UserDefaults.standard.array(forKey: "mac_column_widths") as? [CGFloat], !saved.isEmpty {
+            return saved
+        }
+        return []  // empty = equal widths
+    }()
+
     private let sectionOrderKey = "mac_dashboard_section_order"
 
     private var displayOrder: [String] {
@@ -225,20 +233,18 @@ struct MacDashboardView: View {
                         unreadNotifications = 0
                     }
             } else {
-                // Dashboard: 3 sections responsive
+                // Dashboard: sections responsive
                 GeometryReader { geo in
                     let isWide = geo.size.width > 900
 
                     if isWide {
-                        // Side by side
-                        HStack(alignment: .top, spacing: 1) {
-                            ForEach(displayOrder, id: \.self) { section in
-                                if section != displayOrder.first {
-                                    Divider()
-                                }
-                                sectionView(for: section)
-                                    .frame(maxWidth: .infinity)
-                            }
+                        // Side by side with resizable columns
+                        ResizableColumnsView(
+                            sections: displayOrder,
+                            columnWidths: $columnWidths,
+                            totalWidth: geo.size.width
+                        ) { section in
+                            sectionView(for: section)
                         }
                     } else {
                         // Stacked
