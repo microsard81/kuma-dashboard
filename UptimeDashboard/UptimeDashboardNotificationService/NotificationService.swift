@@ -70,6 +70,10 @@ class NotificationService: UNNotificationServiceExtension {
         if let encoded = try? JSONEncoder().encode(records) {
             defaults.set(encoded, forKey: key)
         }
+
+        // Aggiorna il contatore non lette per il badge della campanella
+        let unreadCount = records.filter { !$0.isRead }.count
+        defaults.set(unreadCount, forKey: "ios_event_unread_count")
     }
 }
 

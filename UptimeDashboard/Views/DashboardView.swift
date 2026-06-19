@@ -373,6 +373,11 @@ struct DashboardView: View {
         .onReceive(NotificationCenter.default.publisher(for: .notificationReadStateChanged)) { _ in
             unreadNotifications = (UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard).integer(forKey: "ios_event_unread_count")
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            // Rileggi il conteggio non lette al ritorno in foreground
+            // (la NSE potrebbe averlo aggiornato mentre l'app era in background)
+            unreadNotifications = (UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard).integer(forKey: "ios_event_unread_count")
+        }
         .onChange(of: viewModel.lastUpdated) { _ in
             unreadNotifications = (UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard).integer(forKey: "ios_event_unread_count")
         }
