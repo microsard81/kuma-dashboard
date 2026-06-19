@@ -61,6 +61,7 @@ struct GeneratorDetailView: View {
             }
         }
         .listStyle(.plain)
+        .environment(\.editMode, isReordering ? .constant(.active) : .constant(.inactive))
         .navigationTitle("Generatori")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -61,6 +61,7 @@ struct UPSDetailView: View {
             }
         }
         .listStyle(.plain)
+        .environment(\.editMode, isReordering ? .constant(.active) : .constant(.inactive))
         .navigationTitle("UPS")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
