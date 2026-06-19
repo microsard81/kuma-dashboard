@@ -17,6 +17,7 @@ struct GeneratorDetailView: View {
 
         let saved = loadSavedOrder()
         var baseOrder: [SensorReading]
+        let hasCustomOrder: Bool
         if !saved.isEmpty {
             var ordered: [SensorReading] = []
             let sensorMap = Dictionary(uniqueKeysWithValues: viewModel.generatorSensors.map { ($0.id, $0) })
@@ -27,13 +28,29 @@ struct GeneratorDetailView: View {
                 ordered.append(s)
             }
             baseOrder = ordered
+            hasCustomOrder = true
         } else {
             baseOrder = viewModel.generatorSensors
+            hasCustomOrder = false
         }
 
-        // Critical in cima
+        if hasCustomOrder {
+            let critical = baseOrder.filter { $0.status == .critical }
+            let normal = baseOrder.filter { $0.status == .normal }
+            return critical + normal
+        }
+
+        // Nessun ordine manuale: applica sortOrder globale
+        let sortOrder = UserDefaults.standard.string(forKey: "sortOrder") ?? "severity"
+        if sortOrder == "alphabetical" {
+            return baseOrder.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        }
+
+        // Per gravità: ordina alfabeticamente dentro ogni gruppo
         let critical = baseOrder.filter { $0.status == .critical }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         let normal = baseOrder.filter { $0.status == .normal }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         return critical + normal
     }
 
