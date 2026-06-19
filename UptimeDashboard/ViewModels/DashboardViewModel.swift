@@ -64,6 +64,18 @@ final class DashboardViewModel: ObservableObject {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    /// UPS sensors filtered from the full sensors array.
+    var upsSensors: [SensorReading] {
+        sensors.filter { $0.category == .ups }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Generator sensors filtered from the full sensors array.
+    var generatorSensors: [SensorReading] {
+        sensors.filter { $0.category == .generator }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
     // MARK: - Dependencies
 
     private let network: NetworkClientProtocol
@@ -142,6 +154,7 @@ final class DashboardViewModel: ObservableObject {
 
     /// Parses sensor fields from the `/api/inverter-data` JSON response.
     /// Missing fields are treated as empty (graceful degradation).
+    /// Alert status is now computed server-side (per-sensor threshold).
     private func parseSensorPayload(data: Data) {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             sensorError = "Errore decodifica sensori"
@@ -162,17 +175,8 @@ final class DashboardViewModel: ObservableObject {
             sensors = []
         }
 
-        // Parse thresholds
-        if let thresholdsObj = json["thresholds"] {
-            if let thresholdsData = try? JSONSerialization.data(withJSONObject: thresholdsObj),
-               let decoded = try? decoder.decode(SensorThresholds.self, from: thresholdsData) {
-                sensorThresholds = decoded
-            } else {
-                sensorThresholds = nil
-            }
-        } else {
-            sensorThresholds = nil
-        }
+        // Thresholds are no longer global — each sensor has its own status from the backend
+        sensorThresholds = nil
 
         // Parse history (key is "history" from /api/inverter-data, or "sensor_history" from /api/watch-data)
         let historyObj = json["history"] ?? json["sensor_history"]
@@ -187,19 +191,9 @@ final class DashboardViewModel: ObservableObject {
             sensorHistory = [:]
         }
 
-        // Compute sensor_alerts client-side from sensors + thresholds
-        if let thresholds = sensorThresholds {
-            var warningCount = 0
-            var criticalCount = 0
-            for sensor in sensors {
-                let status = sensor.alertStatus(thresholds: thresholds)
-                if status == .critical { criticalCount += 1 }
-                else if status == .warning { warningCount += 1 }
-            }
-            sensorAlerts = SensorAlerts(warningCount: warningCount, criticalCount: criticalCount)
-        } else {
-            sensorAlerts = nil
-        }
+        // Compute sensor_alerts from server-computed status
+        let criticalCount = sensors.filter { $0.status == .critical }.count
+        sensorAlerts = SensorAlerts(criticalCount: criticalCount)
 
         // Parse error (key is "error" from /api/inverter-data, or "sensor_error" from /api/watch-data)
         if let errorStr = json["error"] as? String {

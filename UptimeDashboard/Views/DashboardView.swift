@@ -17,7 +17,7 @@ struct DashboardView: View {
     @State private var isReorderingPinned = false
     @State private var draggingPinnedItem: PinnedItem? = nil
     @State private var selectedPinnedItem: PinnedItem? = nil
-    @State private var sectionOrder: [String] = UserDefaults.standard.stringArray(forKey: "ios_section_order") ?? ["portali", "temperatura", "potenza"]
+    @State private var sectionOrder: [String] = UserDefaults.standard.stringArray(forKey: "ios_section_order") ?? ["portali", "temperatura", "potenza", "ups", "generatori"]
     @State private var isReorderingSections = false
     @State private var selectedSection: String? = nil
 
@@ -30,21 +30,29 @@ struct DashboardView: View {
     /// Worst alert status among temperature sensors.
     /// Normal = orange (category default).
     private var temperatureStatusColor: Color {
-        guard let thresholds = viewModel.sensorThresholds else { return .orange }
-        let statuses = viewModel.temperatureSensors.map { $0.alertStatus(thresholds: thresholds) }
-        if statuses.contains(.critical) { return .red }
-        if statuses.contains(.warning) { return .yellow }
+        if viewModel.temperatureSensors.contains(where: { $0.status == .critical }) { return .red }
         return .orange
     }
 
     /// Worst alert status among power sensors.
     /// Normal = blue (category default).
     private var powerStatusColor: Color {
-        guard let thresholds = viewModel.sensorThresholds else { return .blue }
-        let statuses = viewModel.powerSensors.map { $0.alertStatus(thresholds: thresholds) }
-        if statuses.contains(.critical) { return .red }
-        if statuses.contains(.warning) { return .yellow }
+        if viewModel.powerSensors.contains(where: { $0.status == .critical }) { return .red }
         return .blue
+    }
+
+    /// Worst alert status among UPS sensors.
+    /// Normal = purple (category default).
+    private var upsStatusColor: Color {
+        if viewModel.upsSensors.contains(where: { $0.status == .critical }) { return .red }
+        return .purple
+    }
+
+    /// Worst alert status among generator sensors.
+    /// Normal = orange (category default).
+    private var generatorStatusColor: Color {
+        if viewModel.generatorSensors.contains(where: { $0.status == .critical }) { return .red }
+        return .orange
     }
 
     /// Global state color for portals.
@@ -54,14 +62,22 @@ struct DashboardView: View {
 
     /// Number of temperature sensors in alert state.
     private var temperatureAlertCount: Int {
-        guard let t = viewModel.sensorThresholds else { return 0 }
-        return viewModel.temperatureSensors.filter { $0.alertStatus(thresholds: t) != .normal }.count
+        viewModel.temperatureSensors.filter { $0.status == .critical }.count
     }
 
     /// Number of power sensors in alert state.
     private var powerAlertCount: Int {
-        guard let t = viewModel.sensorThresholds else { return 0 }
-        return viewModel.powerSensors.filter { $0.alertStatus(thresholds: t) != .normal }.count
+        viewModel.powerSensors.filter { $0.status == .critical }.count
+    }
+
+    /// Number of UPS sensors in alert state.
+    private var upsAlertCount: Int {
+        viewModel.upsSensors.filter { $0.status == .critical }.count
+    }
+
+    /// Number of generator sensors in alert state.
+    private var generatorAlertCount: Int {
+        viewModel.generatorSensors.filter { $0.status == .critical }.count
     }
 
     var body: some View {
@@ -145,6 +161,34 @@ struct DashboardView: View {
                                             withAnimation { isReorderingSections = true }
                                         }
                                     }
+                                case "ups":
+                                    if !viewModel.upsSensors.isEmpty {
+                                        MacroAreaCard(
+                                            title: "UPS",
+                                            icon: "battery.75percent",
+                                            statusColor: upsStatusColor,
+                                            subtitle: upsSubtitle,
+                                            alertCount: upsAlertCount
+                                        )
+                                        .onTapGesture { selectedSection = "ups" }
+                                        .onLongPressGesture(minimumDuration: 0.5) {
+                                            withAnimation { isReorderingSections = true }
+                                        }
+                                    }
+                                case "generatori":
+                                    if !viewModel.generatorSensors.isEmpty {
+                                        MacroAreaCard(
+                                            title: "Generatori",
+                                            icon: "fuelpump.fill",
+                                            statusColor: generatorStatusColor,
+                                            subtitle: generatorSubtitle,
+                                            alertCount: generatorAlertCount
+                                        )
+                                        .onTapGesture { selectedSection = "generatori" }
+                                        .onLongPressGesture(minimumDuration: 0.5) {
+                                            withAnimation { isReorderingSections = true }
+                                        }
+                                    }
                                 default:
                                     EmptyView()
                                 }
@@ -162,6 +206,14 @@ struct DashboardView: View {
                             NavigationLink(
                                 destination: PowerDetailView(viewModel: viewModel),
                                 isActive: Binding(get: { selectedSection == "potenza" }, set: { if !$0 { selectedSection = nil } })
+                            ) { EmptyView() }.hidden()
+                            NavigationLink(
+                                destination: UPSDetailView(viewModel: viewModel),
+                                isActive: Binding(get: { selectedSection == "ups" }, set: { if !$0 { selectedSection = nil } })
+                            ) { EmptyView() }.hidden()
+                            NavigationLink(
+                                destination: GeneratorDetailView(viewModel: viewModel),
+                                isActive: Binding(get: { selectedSection == "generatori" }, set: { if !$0 { selectedSection = nil } })
                             ) { EmptyView() }.hidden()
                         }
 
@@ -400,6 +452,8 @@ struct DashboardView: View {
         case "portali": return "globe"
         case "temperatura": return "thermometer.medium"
         case "potenza": return "bolt.fill"
+        case "ups": return "battery.75percent"
+        case "generatori": return "fuelpump.fill"
         default: return "questionmark"
         }
     }
@@ -409,6 +463,8 @@ struct DashboardView: View {
         case "portali": return portalsColor
         case "temperatura": return temperatureStatusColor
         case "potenza": return powerStatusColor
+        case "ups": return upsStatusColor
+        case "generatori": return generatorStatusColor
         default: return .gray
         }
     }
@@ -418,6 +474,8 @@ struct DashboardView: View {
         case "portali": return "Portali"
         case "temperatura": return "Temperatura"
         case "potenza": return "Potenza"
+        case "ups": return "UPS"
+        case "generatori": return "Generatori"
         default: return section
         }
     }
@@ -516,16 +574,28 @@ struct DashboardView: View {
 
     private var temperatureSubtitle: String {
         let count = viewModel.temperatureSensors.count
-        guard let thresholds = viewModel.sensorThresholds else { return "\(count) sensori" }
-        let alerts = viewModel.temperatureSensors.filter { $0.alertStatus(thresholds: thresholds) != .normal }.count
+        let alerts = viewModel.temperatureSensors.filter { $0.status == .critical }.count
         if alerts > 0 { return "\(alerts) in allarme su \(count)" }
         return "Tutto OK (\(count))"
     }
 
     private var powerSubtitle: String {
         let count = viewModel.powerSensors.count
-        guard let thresholds = viewModel.sensorThresholds else { return "\(count) sensori" }
-        let alerts = viewModel.powerSensors.filter { $0.alertStatus(thresholds: thresholds) != .normal }.count
+        let alerts = viewModel.powerSensors.filter { $0.status == .critical }.count
+        if alerts > 0 { return "\(alerts) in allarme su \(count)" }
+        return "Tutto OK (\(count))"
+    }
+
+    private var upsSubtitle: String {
+        let count = viewModel.upsSensors.count
+        let alerts = viewModel.upsSensors.filter { $0.status == .critical }.count
+        if alerts > 0 { return "\(alerts) in allarme su \(count)" }
+        return "Tutto OK (\(count))"
+    }
+
+    private var generatorSubtitle: String {
+        let count = viewModel.generatorSensors.count
+        let alerts = viewModel.generatorSensors.filter { $0.status == .critical }.count
         if alerts > 0 { return "\(alerts) in allarme su \(count)" }
         return "Tutto OK (\(count))"
     }

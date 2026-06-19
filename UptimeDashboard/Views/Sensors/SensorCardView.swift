@@ -8,23 +8,12 @@ import SwiftUI
 /// Styled with rounded corners, subtle shadow, and system background.
 struct SensorCardView: View {
     let sensor: SensorReading
-    let thresholds: SensorThresholds?
     let historyPoints: [SensorHistoryPoint]
 
-    private var status: AlertStatus {
-        guard let t = thresholds else { return .normal }
-        return sensor.alertStatus(thresholds: t)
-    }
-
     /// Color based on alert status, with category-specific defaults for normal state.
-    /// Temperature normal = orange, Power normal = blue. Warning = yellow, Critical = red.
     private var displayColor: Color {
-        switch status {
-        case .critical: return .red
-        case .warning: return .yellow
-        case .normal:
-            return sensor.category == .power ? .blue : .orange
-        }
+        if sensor.status == .critical { return .red }
+        return sensor.category.normalColor
     }
 
     var body: some View {
@@ -33,8 +22,8 @@ struct SensorCardView: View {
                 Text(sensor.name)
                     .font(DeviceAdaptive.monitorNameFont)
                 Spacer()
-                // Status badge with value only (unit shown in section header)
-                Text("\(sensor.value, specifier: "%.1f")")
+                // Status badge with value
+                Text(sensor.displayValueWithUnit)
                     .font(.caption.bold())
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
@@ -43,9 +32,11 @@ struct SensorCardView: View {
                     .cornerRadius(4)
             }
 
-            if !historyPoints.isEmpty {
+            // Sparkline only for numeric history
+            let numericPoints = historyPoints.filter { $0.numericValue != nil }
+            if !numericPoints.isEmpty {
                 SensorSparklineView(
-                    historyPoints: Array(historyPoints.suffix(60)),
+                    historyPoints: Array(numericPoints.suffix(60)),
                     color: displayColor,
                     category: sensor.category
                 )

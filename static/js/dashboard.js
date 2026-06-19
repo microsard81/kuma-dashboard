@@ -459,6 +459,8 @@ function categoriseSensors(sensors) {
     return {
         temperature: sensors.filter(s => s.category === "temperature"),
         power: sensors.filter(s => s.category === "power"),
+        ups: sensors.filter(s => s.category === "ups"),
+        generator: sensors.filter(s => s.category === "generator"),
     };
 }
 
@@ -527,19 +529,22 @@ function getSparklineData(history, sensorId) {
 }
 
 function renderInverterCards(data) {
-    const { temperature, power } = categoriseSensors(data.sensors || []);
+    const { temperature, power, ups, generator } = categoriseSensors(data.sensors || []);
     const history = data.history || {};
     const responseTs = data.timestamp;
-    const thresholds = data.thresholds || {};
 
     const sortedTemp = _sortByUserOrder(temperature, "inverter_temp_order");
     const sortedPower = _sortByUserOrder(power, "inverter_power_order");
+    const sortedUps = _sortByUserOrder(ups, "inverter_ups_order");
+    const sortedGenerator = _sortByUserOrder(generator, "inverter_generator_order");
 
-    _renderCardGroup("inverter-temp-grid", sortedTemp, history, responseTs, "bi-thermometer-half", thresholds.temperature, "inverter_temp_order");
-    _renderCardGroup("inverter-power-grid", sortedPower, history, responseTs, "bi-lightning-charge", thresholds.power, "inverter_power_order");
+    _renderCardGroup("inverter-temp-grid", sortedTemp, history, responseTs, "bi-thermometer-half", "inverter_temp_order");
+    _renderCardGroup("inverter-power-grid", sortedPower, history, responseTs, "bi-lightning-charge", "inverter_power_order");
+    _renderCardGroup("inverter-ups-grid", sortedUps, history, responseTs, "bi-battery-half", "inverter_ups_order");
+    _renderCardGroup("inverter-generator-grid", sortedGenerator, history, responseTs, "bi-fuel-pump", "inverter_generator_order");
 }
 
-function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, thresholds, orderKey) {
+function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, orderKey) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -553,8 +558,6 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, 
 
     container.innerHTML = "";
 
-    const category = iconClass === "bi-thermometer-half" ? "temperature" : "power";
-
     sensors.forEach(sensor => {
         const card = document.createElement("div");
         card.classList.add("inverter-card");
@@ -562,16 +565,18 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, 
         card.draggable = inverterReorderEnabled;
         card.style.cursor = inverterReorderEnabled ? "grab" : "default";
 
-        // Colore card in base a categoria e stato soglia
-        const badgeState = _getBadgeState(sensor.value, category, thresholds);
+        // Colore card in base allo stato dal backend (per-sensor threshold)
+        const badgeState = sensor.status || "normal";
         if (badgeState === "critical") {
             card.classList.add("inverter-card-critical");
-        } else if (badgeState === "warning") {
-            card.classList.add("inverter-card-warning");
-        } else if (category === "power") {
-            card.classList.add("inverter-card-power");
         } else {
-            card.classList.add("inverter-card-temp");
+            // Colore di default per categoria
+            const cat = sensor.category || "other";
+            if (cat === "temperature") card.classList.add("inverter-card-temp");
+            else if (cat === "power") card.classList.add("inverter-card-power");
+            else if (cat === "ups") card.classList.add("inverter-card-ups");
+            else if (cat === "generator") card.classList.add("inverter-card-generator");
+            else card.classList.add("inverter-card-temp");
         }
 
         // Drag & drop (attivo solo quando sbloccato)
@@ -610,18 +615,24 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, 
         const badge = document.createElement("span");
         badge.classList.add("inverter-card-badge");
 
-        // Stato badge già calcolato sopra per il colore card
+        // Badge state dal backend
         if (badgeState === "critical") {
             badge.classList.add("critical");
-        } else if (badgeState === "warning") {
-            badge.classList.add("warning");
         }
-        // Stale ha priorità visiva solo se non c'è critical/warning
+        // Stale ha priorità visiva solo se non c'è critical
         if (isSensorStale(sensor.timestamp, responseTs) && badgeState === "normal") {
             badge.classList.add("stale");
         }
 
-        badge.textContent = sensor.value != null ? sensor.value + " " + (sensor.unit || "") : "—";
+        // Formatta il valore (supporta stringhe e numeri)
+        if (sensor.value != null) {
+            const displayValue = typeof sensor.value === "number" 
+                ? sensor.value + " " + (sensor.unit || "")
+                : String(sensor.value);
+            badge.textContent = displayValue;
+        } else {
+            badge.textContent = "—";
+        }
 
         header.appendChild(nameEl);
         header.appendChild(badge);
@@ -641,27 +652,20 @@ function _renderCardGroup(containerId, sensors, history, responseTs, iconClass, 
         container.appendChild(card);
 
         // Render sparkline chart dopo che il canvas è nel DOM
+        // Solo per sensori con valori numerici nello storico
         const entries = getSparklineData(history, sensor.id);
-        if (entries.length > 0) {
+        const numericEntries = entries.filter(e => typeof e.v === "number");
+        if (numericEntries.length > 0) {
             requestAnimationFrame(() => {
-                createOrUpdateSparkline(canvasId, entries, category);
+                createOrUpdateSparkline(canvasId, numericEntries, sensor.category || "other");
             });
         }
     });
 }
 
-function _getBadgeState(value, category, thresholds) {
-    if (value == null || !thresholds) return "normal";
-    if (category === "temperature") {
-        // Temperatura: warning/critical se MAGGIORE DI
-        if (value > thresholds.critical) return "critical";
-        if (value > thresholds.warning) return "warning";
-    } else {
-        // Potenza: warning/critical se MINORE DI
-        if (value < thresholds.critical) return "critical";
-        if (value < thresholds.warning) return "warning";
-    }
-    return "normal";
+function _getBadgeState(sensor) {
+    // Lo stato viene direttamente dal backend (per-sensor threshold)
+    return sensor.status || "normal";
 }
 
 function createOrUpdateSparkline(canvasId, entries, category) {
@@ -675,9 +679,13 @@ function createOrUpdateSparkline(canvasId, entries, category) {
         return d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
     });
 
-    // Scale Y fisse per categoria
-    const yMin = category === "power" ? 1 : 10;
-    const yMax = category === "power" ? 100 : 65;
+    // Scale Y per categoria
+    let yMin, yMax;
+    if (category === "temperature") { yMin = 10; yMax = 50; }
+    else if (category === "power") { yMin = 0; yMax = 40; }
+    else if (category === "ups") { yMin = 0; yMax = 110; }
+    else if (category === "generator") { yMin = 0; yMax = 250; }
+    else { yMin = Math.min(...values) - 5; yMax = Math.max(...values) + 5; }
 
     // Se esiste già un chart, aggiorna i dati
     if (sparklineCharts[canvasId]) {

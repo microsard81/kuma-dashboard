@@ -52,7 +52,6 @@ final class MacAppViewModel: ObservableObject {
 
     // MARK: - Sensor properties
     @Published var sensors: [SensorReading] = []
-    @Published var sensorThresholds: SensorThresholds?
     @Published var sensorHistory: [String: [SensorHistoryPoint]] = [:]
     @Published var sensorAlerts: SensorAlerts?
     @Published var sensorError: String?
@@ -66,6 +65,18 @@ final class MacAppViewModel: ObservableObject {
     /// Power sensors filtered from the full sensors array.
     var powerSensors: [SensorReading] {
         sensors.filter { $0.category == .power }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// UPS sensors filtered from the full sensors array.
+    var upsSensors: [SensorReading] {
+        sensors.filter { $0.category == .ups }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Generator sensors filtered from the full sensors array.
+    var generatorSensors: [SensorReading] {
+        sensors.filter { $0.category == .generator }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
@@ -483,6 +494,7 @@ final class MacAppViewModel: ObservableObject {
 
     /// Parses sensor fields from the `/api/watch-data` JSON response.
     /// Missing fields are treated as empty (graceful degradation).
+    /// Alert status is computed server-side (per-sensor threshold).
     private func parseSensorPayload(data: Data) {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             sensorError = "Errore decodifica sensori"
@@ -503,18 +515,6 @@ final class MacAppViewModel: ObservableObject {
             sensors = []
         }
 
-        // Parse thresholds
-        if let thresholdsObj = json["thresholds"] {
-            if let thresholdsData = try? JSONSerialization.data(withJSONObject: thresholdsObj),
-               let decoded = try? decoder.decode(SensorThresholds.self, from: thresholdsData) {
-                sensorThresholds = decoded
-            } else {
-                sensorThresholds = nil
-            }
-        } else {
-            sensorThresholds = nil
-        }
-
         // Parse sensor_history
         if let historyObj = json["sensor_history"] {
             if let historyData = try? JSONSerialization.data(withJSONObject: historyObj),
@@ -527,17 +527,9 @@ final class MacAppViewModel: ObservableObject {
             sensorHistory = [:]
         }
 
-        // Parse sensor_alerts
-        if let alertsObj = json["sensor_alerts"] {
-            if let alertsData = try? JSONSerialization.data(withJSONObject: alertsObj),
-               let decoded = try? decoder.decode(SensorAlerts.self, from: alertsData) {
-                sensorAlerts = decoded
-            } else {
-                sensorAlerts = nil
-            }
-        } else {
-            sensorAlerts = nil
-        }
+        // Compute sensor_alerts from server-computed status
+        let criticalCount = sensors.filter { $0.status == .critical }.count
+        sensorAlerts = SensorAlerts(criticalCount: criticalCount)
 
         // Parse sensor_error
         if let errorStr = json["sensor_error"] as? String {

@@ -116,10 +116,6 @@ Copia `.env.example` in `.env` e compila tutti i campi:
 | `BIOMETRIC_SECRET` | — | Segreto per firmare i token biometrici (default: `FLASK_SECRET_KEY`) |
 | `PUSH_LOG_FILE` | — | Percorso file di log per le notifiche push VAPID e APNs (vuoto = disabilitato) |
 | `INVERTER_STATUS_URL` | — | URL endpoint invadcstatus (default: `http://127.0.0.1:9000/invadcstatus`) |
-| `INVERTER_TEMP_WARNING` | — | Soglia warning temperatura °C — notifica se maggiore di (default: `35`) |
-| `INVERTER_TEMP_CRITICAL` | — | Soglia critical temperatura °C — notifica se maggiore di (default: `45`) |
-| `INVERTER_POWER_WARNING` | — | Soglia warning potenza kW — notifica se minore di (default: `5`) |
-| `INVERTER_POWER_CRITICAL` | — | Soglia critical potenza kW — notifica se minore di (default: `2`) |
 | `REDIS_HOST` | — | Host Redis (default: `127.0.0.1`) |
 | `REDIS_PORT` | — | Porta Redis (default: `6379`) |
 | `REDIS_DB` | — | Database Redis (default: `0`) |
@@ -222,17 +218,19 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 
 > Lo storico usa la convenzione `0 = DOWN, 1 = UP` per ogni sonda. I punti vecchi (pre-migrazione) possono apparire come semplici interi. I punti nel formato a 5 campi (pre-sonda Uptime) avranno `u1: null`.
 
-### Sensori Inverter
+### Sensori Datacenter
 
-La dashboard integra dati in tempo reale da un endpoint locale `invadcstatus` che fornisce letture di temperatura e potenza dall'inverter e dai sensori ambientali.
+La dashboard integra dati in tempo reale da un endpoint locale `invadcstatus` che fornisce letture da sensori ambientali, UPS e gruppi elettrogeni dei datacenter.
 
 **Funzionalità:**
-- Sezione "Sensori Inverter" nella pagina principale, sotto le card uptime
-- Card raggruppate per categoria: Temperatura (°C) e Potenza (kW)
-- Sparkline Chart.js (ultimi 60 valori storici) in ogni card
-- Badge verde per valori normali, ambra per letture stale (>5 minuti)
+- Sezione "Sensori Datacenter" nella pagina principale, sotto le card uptime
+- Card raggruppate per categoria: Temperatura (°C), Potenza (kW), UPS, Generatori
+- Supporto valori numerici e testuali (es. "Normale", "AUTOMATICO" per sensori di stato)
+- Threshold per-sensore dal webhook (non più variabili d'ambiente): solo stato CRITICAL
+- Sparkline Chart.js (ultimi 60 valori numerici) in ogni card
+- Badge verde per valori normali, rosso per critical, ambra per letture stale (>5 minuti)
 - Auto-refresh ogni 60 secondi (stesso ciclo della dashboard)
-- Errori inverter non bloccano la sezione uptime (fetch indipendenti)
+- Errori sensori non bloccano la sezione uptime (fetch indipendenti)
 - Layout responsive: 1 colonna mobile, 3 colonne tablet/desktop
 - Drag & drop per riordinare le card (bloccato di default, sbloccare con icona 🔀)
 - Ordine personalizzato salvato in localStorage per utente/browser
@@ -244,24 +242,66 @@ La dashboard integra dati in tempo reale da un endpoint locale `invadcstatus` ch
 {
   "sensors": [
     {
-      "id": "sensor_temp_brg_tlc",
-      "name": "BRG TLC",
+      "id": "TDC-DCUR - Temperatura",
+      "name": "TDC-DCUR - Temperatura",
       "category": "temperature",
-      "value": 23.5,
+      "value": 23.4,
       "unit": "°C",
-      "timestamp": "2024-01-15T10:30:00Z"
+      "timestamp": "2026-06-19T13:11:28Z",
+      "site": "TDC",
+      "room": "TDC-DCUR",
+      "type": "TEMPERATURE",
+      "description": "Superamento soglia temperatura sala DCUR",
+      "threshold": {"type": "above", "value": 25.5},
+      "status": "normal"
+    },
+    {
+      "id": "TDC-UPS-1 - Sorgente Uscita",
+      "name": "TDC-UPS-1 - Sorgente Uscita",
+      "category": "ups",
+      "value": "Normale",
+      "unit": "",
+      "timestamp": "2026-06-19T13:11:28Z",
+      "site": "TDC",
+      "room": "TDC-UPS-1",
+      "type": "STATE",
+      "description": "UPS 1 - Sala Power: sorgente non è più Normale",
+      "threshold": {"type": "not_equal", "expected": "Normale"},
+      "status": "normal"
     }
   ],
   "history": {
-    "sensor_temp_brg_tlc": [
-      {"t": "2024-01-15T10:20:00Z", "v": 23.1},
-      {"t": "2024-01-15T10:21:00Z", "v": 23.3}
+    "TDC-DCUR - Temperatura": [
+      {"t": "2026-06-19T12:00:00Z", "v": 23.1},
+      {"t": "2026-06-19T12:01:00Z", "v": 23.3}
     ]
   },
-  "timestamp": "2024-01-15T10:30:00Z",
+  "sites": {
+    "TDC": {"name": "Torre della Comunicazione", "address": "Località L'Ile-Blanche 5, 11020 Brissogne (AO)"},
+    "BRG": {"name": "Borgnalle (i Prismi)", "address": "Reg. Borgnalle 12, 11100 Aosta"},
+    "DEFF": {"name": "Palazzo Regione VDA", "address": "Piazza Deffeyes 1, 11100 Aosta"}
+  },
+  "timestamp": "2026-06-19T13:11:28Z",
   "error": null
 }
 ```
+
+**Categorie sensori:**
+- `temperature` — sensori ambientali di temperatura (°C)
+- `power` — potenza elettrica (kW)
+- `ups` — stato UPS (batteria, sorgente, capacità, durata, fasi)
+- `generator` — stato gruppi elettrogeni (controller, tensione, carico, carburante)
+
+**Tipi di threshold per-sensore:**
+| Tipo | Logica CRITICAL | Esempio |
+|---|---|---|
+| `above` | valore > soglia | `{"type": "above", "value": 25.5}` |
+| `below` | valore < soglia | `{"type": "below", "value": 60.0}` |
+| `greater_than` | valore > 0 (indica avvio) | `{"type": "greater_than", "value": 0}` |
+| `not_equal` | valore ≠ atteso | `{"type": "not_equal", "expected": "Normale"}` |
+| `not_in` | valore non nella lista | `{"type": "not_in", "expected": ["AUTOMATICO", "Automatica"]}` |
+
+> I sensori senza `threshold` (valore `null`) sono solo informativi e non generano alert.
 
 **Configurazione:** la variabile `INVERTER_STATUS_URL` nel `.env` permette di puntare a un endpoint diverso (default: `http://127.0.0.1:9000/invadcstatus`). Il token di autenticazione è lo stesso `STATUS_TOKEN` già usato per l'uptime.
 
@@ -297,7 +337,7 @@ Il `history_worker.py` registra ogni transizione di stato (globale, per-monitor,
 **Tipi evento (`type`):**
 - `global` — transizione dello stato globale (GREEN/YELLOW/RED)
 - `monitor` — singolo monitor entrato/uscito da stato anomalo
-- `sensor` — sensore inverter che cambia stato (normal/warning/critical)
+- `sensor` — sensore datacenter che cambia stato (normal/critical)
 
 **Note:**
 - Gli eventi vengono registrati indipendentemente da `PUSH_ENABLED` e dalla soglia notifica
@@ -307,31 +347,24 @@ Il `history_worker.py` registra ogni transizione di stato (globale, per-monitor,
 
 **Soglie e notifiche push:**
 
-Il sistema invia notifiche push (VAPID + APNs) quando un sensore supera le soglie configurate:
+Il sistema invia notifiche push (VAPID + APNs) quando un sensore supera la soglia configurata nel webhook `/invadcstatus`. Le soglie sono per-sensore e definiscono solo lo stato CRITICAL (non c'è più warning).
 
-| Variabile | Tipo | Logica |
-|---|---|---|
-| `INVERTER_TEMP_WARNING` | Temperatura | Notifica se valore **>** soglia |
-| `INVERTER_TEMP_CRITICAL` | Temperatura | Notifica se valore **>** soglia |
-| `INVERTER_POWER_WARNING` | Potenza | Notifica se valore **<** soglia |
-| `INVERTER_POWER_CRITICAL` | Potenza | Notifica se valore **<** soglia |
-
-- Le notifiche vengono inviate solo alle **transizioni** di stato (normal→warning, →critical, →normal)
+- Le notifiche vengono inviate solo alle **transizioni** di stato (normal→critical, critical→normal)
 - Lo stato di ogni sensore è persistito in Redis (`inverter:alert_state:<nome>`)
 - Il check avviene nel `history_worker.py` ad ogni ciclo (60s)
-- Badge nella dashboard: verde (normale), ambra (warning), rosso (critical)
+- Badge nella dashboard: verde (normale), rosso (critical), ambra (stale)
 
 Esempio notifiche:
 ```
-⚠️ Temperatura Media
-Temperatura 38.2 °C (soglia warning: >35 °C)
+⛔ TDC-DCUR - Temperatura
+23.4 °C (soglia: >25.5 °C)
 Ore 14:32
 
-🔴 Active Power Fase 1
-Potenza 1.5 kW (soglia critical: <2 kW)
+⛔ TDC-UPS-1 - Sorgente Uscita
+Stato: Batteria (atteso: Normale)
 Ore 14:32
 
-🟢 Temperatura Media
+✅ TDC-DCUR - Temperatura
 Valore rientrato nella norma: 22.3 °C
 Ore 14:35
 ```
@@ -536,7 +569,7 @@ UptimeDashboard/
 │   ├── TOTPSetupView.swift         # Enrollment TOTP con QR code
 │   ├── TwoFAView.swift             # Input TOTP con autocompletamento SMS
 │   ├── BiometricGateView.swift     # Gate Face ID / Touch ID per sessioni salvate
-│   ├── DashboardView.swift         # Schermata principale con 3 macro-aree (Portali, Temperatura, Potenza)
+│   ├── DashboardView.swift         # Schermata principale con 5 macro-aree (Portali, Temperatura, Potenza, UPS, Generatori)
 │   ├── PortalsDetailView.swift     # Dettaglio portali con monitor, sparkline, riordino
 │   ├── MonitorRowView.swift        # Riga singolo monitor con sonde e sparkline
 │   ├── SettingsView.swift          # Impostazioni (tema, ordinamento, refresh, notifiche, biometria)
@@ -547,7 +580,9 @@ UptimeDashboard/
 │       ├── SensorCardView.swift        # Card singolo sensore con badge e sparkline
 │       ├── SensorSectionView.swift     # Sezione raggruppata per categoria
 │       ├── TemperatureDetailView.swift # Dettaglio sensori temperatura con riordino
-│       └── PowerDetailView.swift       # Dettaglio sensori potenza con riordino
+│       ├── PowerDetailView.swift       # Dettaglio sensori potenza con riordino
+│       ├── UPSDetailView.swift         # Dettaglio sensori UPS con riordino
+│       └── GeneratorDetailView.swift   # Dettaglio sensori generatori con riordino
 ├── Services/
 │   ├── NetworkClient.swift         # URLSession, cookie Flask, tutti gli endpoint
 │   ├── KeychainStore.swift         # Archiviazione sicura session token
@@ -574,10 +609,12 @@ UptimeDashboardTests/
 - **Cambio password obbligatorio** — al primo accesso o dopo reset da parte dell'admin
 - **Enrollment TOTP** — configurazione 2FA con QR code al primo accesso o dopo reset
 - **Biometria** — accesso rapido con Face ID / Touch ID quando c'è una sessione salvata nel Keychain
-- **Schermata principale** — 3 macro-aree (Portali, Temperatura, Potenza) con stato globale e conteggio alert per ciascuna; tap per entrare nel dettaglio
+- **Schermata principale** — 5 macro-aree (Portali, Temperatura, Potenza, UPS, Generatori) con stato globale e conteggio alert per ciascuna; tap per entrare nel dettaglio
 - **Portali** — lista monitor con stato per sonda, colore riga, sparkline storico, raggruppamento per stato (DOWN/Mismatch/UP)
-- **Sensori Temperatura** — lista sensori con sparkline, badge valore, colore arancione (normal), giallo (warning), rosso (critical); ordinati per gravità
-- **Sensori Potenza** — lista sensori con sparkline, badge valore, colore blu (normal), giallo (warning), rosso (critical); ordinati per gravità
+- **Sensori Temperatura** — lista sensori con sparkline, badge valore, colore arancione (normal), rosso (critical); ordinati per gravità
+- **Sensori Potenza** — lista sensori con sparkline, badge valore, colore blu (normal), rosso (critical); ordinati per gravità
+- **Sensori UPS** — stato batteria, sorgente, capacità, durata, fasi; colore viola (normal), rosso (critical)
+- **Sensori Generatori** — stato controller, tensione, carico, carburante; colore arancione (normal), rosso (critical)
 - **Tooltip interattivo** — tocca il grafico di un sensore per vedere valore e orario (HH:mm) del punto
 - **Riordino sezioni** — long press su una macro-card per riordinare le 3 sezioni con drag & drop
 - **Riordino elementi** — swipe a destra su un elemento → drag & drop → "Termina"; ordine salvato

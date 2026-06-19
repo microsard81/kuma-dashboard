@@ -32,10 +32,12 @@ struct MacDashboardView: View {
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
     @State private var unreadNotifications = NotificationStore.shared.unreadCount
-    @State private var sectionOrder: [String] = UserDefaults.standard.stringArray(forKey: "mac_dashboard_section_order") ?? ["portali", "temperatura", "potenza"]
+    @State private var sectionOrder: [String] = UserDefaults.standard.stringArray(forKey: "mac_dashboard_section_order") ?? ["portali", "temperatura", "potenza", "ups", "generatori"]
     @State private var isPortalsCollapsed = false
     @State private var isTemperatureCollapsed = false
     @State private var isPowerCollapsed = false
+    @State private var isUPSCollapsed = false
+    @State private var isGeneratorCollapsed = false
     @State private var allCollapsed = false
 
     private let sectionOrderKey = "mac_dashboard_section_order"
@@ -71,19 +73,23 @@ struct MacDashboardView: View {
     // MARK: - Sensor status colors
 
     private var temperatureStatusColor: Color {
-        guard let t = viewModel.sensorThresholds else { return .orange }
-        let sensors = viewModel.sensors.filter { $0.category == .temperature }
-        if sensors.contains(where: { $0.alertStatus(thresholds: t) == .critical }) { return .red }
-        if sensors.contains(where: { $0.alertStatus(thresholds: t) == .warning }) { return .yellow }
+        if viewModel.temperatureSensors.contains(where: { $0.status == .critical }) { return .red }
         return .orange
     }
 
     private var powerStatusColor: Color {
-        guard let t = viewModel.sensorThresholds else { return .blue }
-        let sensors = viewModel.sensors.filter { $0.category == .power }
-        if sensors.contains(where: { $0.alertStatus(thresholds: t) == .critical }) { return .red }
-        if sensors.contains(where: { $0.alertStatus(thresholds: t) == .warning }) { return .yellow }
+        if viewModel.powerSensors.contains(where: { $0.status == .critical }) { return .red }
         return .blue
+    }
+
+    private var upsStatusColor: Color {
+        if viewModel.upsSensors.contains(where: { $0.status == .critical }) { return .red }
+        return .purple
+    }
+
+    private var generatorStatusColor: Color {
+        if viewModel.generatorSensors.contains(where: { $0.status == .critical }) { return .red }
+        return .orange
     }
 
     var body: some View {
@@ -144,6 +150,8 @@ struct MacDashboardView: View {
                         isPortalsCollapsed = allCollapsed
                         isTemperatureCollapsed = allCollapsed
                         isPowerCollapsed = allCollapsed
+                        isUPSCollapsed = allCollapsed
+                        isGeneratorCollapsed = allCollapsed
                     }
                 } label: {
                     Image(systemName: allCollapsed ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
@@ -267,6 +275,8 @@ struct MacDashboardView: View {
         case "portali": portalsSection
         case "temperatura": temperatureSection
         case "potenza": powerSection
+        case "ups": upsSection
+        case "generatori": generatorSection
         default: EmptyView()
         }
     }
@@ -374,7 +384,6 @@ struct MacDashboardView: View {
                     ForEach(sensors) { sensor in
                         SensorCardView(
                             sensor: sensor,
-                            thresholds: viewModel.sensorThresholds,
                             historyPoints: viewModel.sensorHistory[sensor.id] ?? []
                         )
                         .padding(.horizontal, 16)
@@ -417,7 +426,6 @@ struct MacDashboardView: View {
                     ForEach(sensors) { sensor in
                         SensorCardView(
                             sensor: sensor,
-                            thresholds: viewModel.sensorThresholds,
                             historyPoints: viewModel.sensorHistory[sensor.id] ?? []
                         )
                         .padding(.horizontal, 16)
@@ -426,6 +434,90 @@ struct MacDashboardView: View {
                 }
             }
             } // end if !isPowerCollapsed
+        }
+    }
+
+    // MARK: - UPS Section
+
+    private var upsSection: some View {
+        let sensors = viewModel.sensors.filter { $0.category == .ups }
+        return VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "battery.75percent")
+                    .foregroundColor(upsStatusColor)
+                Text("UPS")
+                    .font(.scaled(.headline, scale: scale))
+                Image(systemName: isUPSCollapsed ? "chevron.right" : "chevron.down")
+                    .font(.scaled(.caption, scale: scale))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Circle()
+                    .fill(upsStatusColor)
+                    .frame(width: 10, height: 10)
+                    .shadow(color: upsStatusColor.opacity(0.6), radius: 3)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(upsStatusColor.opacity(0.05))
+            .onTapGesture { withAnimation { isUPSCollapsed.toggle() } }
+
+            if !isUPSCollapsed {
+
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(sensors) { sensor in
+                        SensorCardView(
+                            sensor: sensor,
+                            historyPoints: viewModel.sensorHistory[sensor.id] ?? []
+                        )
+                        .padding(.horizontal, 16)
+                        Divider().padding(.leading, 16)
+                    }
+                }
+            }
+            } // end if !isUPSCollapsed
+        }
+    }
+
+    // MARK: - Generator Section
+
+    private var generatorSection: some View {
+        let sensors = viewModel.sensors.filter { $0.category == .generator }
+        return VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "fuelpump.fill")
+                    .foregroundColor(generatorStatusColor)
+                Text("Generatori")
+                    .font(.scaled(.headline, scale: scale))
+                Image(systemName: isGeneratorCollapsed ? "chevron.right" : "chevron.down")
+                    .font(.scaled(.caption, scale: scale))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Circle()
+                    .fill(generatorStatusColor)
+                    .frame(width: 10, height: 10)
+                    .shadow(color: generatorStatusColor.opacity(0.6), radius: 3)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(generatorStatusColor.opacity(0.05))
+            .onTapGesture { withAnimation { isGeneratorCollapsed.toggle() } }
+
+            if !isGeneratorCollapsed {
+
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(sensors) { sensor in
+                        SensorCardView(
+                            sensor: sensor,
+                            historyPoints: viewModel.sensorHistory[sensor.id] ?? []
+                        )
+                        .padding(.horizontal, 16)
+                        Divider().padding(.leading, 16)
+                    }
+                }
+            }
+            } // end if !isGeneratorCollapsed
         }
     }
 

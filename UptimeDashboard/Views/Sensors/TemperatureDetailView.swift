@@ -41,14 +41,11 @@ struct TemperatureDetailView: View {
             hasCustomOrder = false
         }
 
-        // Se c'è ordine manuale, rispettalo (solo gravità in cima)
-        guard let t = viewModel.sensorThresholds else { return baseOrder }
         if hasCustomOrder {
-            // Ordine manuale: solo critical/warning in cima, il resto nell'ordine salvato
-            let critical = baseOrder.filter { $0.alertStatus(thresholds: t) == .critical }
-            let warning = baseOrder.filter { $0.alertStatus(thresholds: t) == .warning }
-            let normal = baseOrder.filter { $0.alertStatus(thresholds: t) == .normal }
-            return critical + warning + normal
+            // Ordine manuale: solo critical in cima, il resto nell'ordine salvato
+            let critical = baseOrder.filter { $0.status == .critical }
+            let normal = baseOrder.filter { $0.status == .normal }
+            return critical + normal
         }
 
         // Nessun ordine manuale: applica sortOrder globale
@@ -58,19 +55,16 @@ struct TemperatureDetailView: View {
         }
 
         // Per gravità: ordina alfabeticamente dentro ogni gruppo
-        let critical = baseOrder.filter { $0.alertStatus(thresholds: t) == .critical }
+        let critical = baseOrder.filter { $0.status == .critical }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        let warning = baseOrder.filter { $0.alertStatus(thresholds: t) == .warning }
+        let normal = baseOrder.filter { $0.status == .normal }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        let normal = baseOrder.filter { $0.alertStatus(thresholds: t) == .normal }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        return critical + warning + normal
+        return critical + normal
     }
 
     private func severityRank(_ status: AlertStatus) -> Int {
         switch status {
         case .critical: return 2
-        case .warning: return 1
         case .normal: return 0
         }
     }
@@ -79,7 +73,7 @@ struct TemperatureDetailView: View {
         List {
             if isReordering {
                 ForEach(manualOrder) { sensor in
-                    SensorCardView(sensor: sensor, thresholds: viewModel.sensorThresholds, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
+                    SensorCardView(sensor: sensor, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
                         .listRowSeparator(.visible)
                 }
                 .onMove { from, to in manualOrder.move(fromOffsets: from, toOffset: to) }
@@ -151,7 +145,7 @@ struct TemperatureDetailView: View {
 
     @ViewBuilder
     private func sensorRow(_ sensor: SensorReading) -> some View {
-        SensorCardView(sensor: sensor, thresholds: viewModel.sensorThresholds, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
+        SensorCardView(sensor: sensor, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
             .listRowSeparator(.visible)
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 if !isReordering {

@@ -5,10 +5,9 @@ import SwiftUI
 
 /// Displays the "Sensori Datacenter" section with sensors grouped by category.
 /// Shows an error banner when sensor data is unavailable, and renders
-/// SensorCardView for each sensor in temperature and power groups.
+/// SensorCardView for each sensor in temperature, power, UPS, and generator groups.
 struct SensorSectionView: View {
     let sensors: [SensorReading]
-    let thresholds: SensorThresholds?
     let history: [String: [SensorHistoryPoint]]
     let error: String?
 
@@ -37,7 +36,6 @@ struct SensorSectionView: View {
                     ForEach(temperatureSensors) { sensor in
                         SensorCardView(
                             sensor: sensor,
-                            thresholds: thresholds,
                             historyPoints: history[sensor.id] ?? []
                         )
                     }
@@ -51,7 +49,32 @@ struct SensorSectionView: View {
                     ForEach(powerSensors) { sensor in
                         SensorCardView(
                             sensor: sensor,
-                            thresholds: thresholds,
+                            historyPoints: history[sensor.id] ?? []
+                        )
+                    }
+                }
+            }
+
+            if !upsSensors.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("UPS", systemImage: "battery.75percent")
+                        .font(.headline)
+                    ForEach(upsSensors) { sensor in
+                        SensorCardView(
+                            sensor: sensor,
+                            historyPoints: history[sensor.id] ?? []
+                        )
+                    }
+                }
+            }
+
+            if !generatorSensors.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Generatori", systemImage: "fuelpump.fill")
+                        .font(.headline)
+                    ForEach(generatorSensors) { sensor in
+                        SensorCardView(
+                            sensor: sensor,
                             historyPoints: history[sensor.id] ?? []
                         )
                     }
@@ -69,6 +92,16 @@ struct SensorSectionView: View {
 
     private var powerSensors: [SensorReading] {
         sensors.filter { $0.category == .power }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private var upsSensors: [SensorReading] {
+        sensors.filter { $0.category == .ups }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private var generatorSensors: [SensorReading] {
+        sensors.filter { $0.category == .generator }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 }

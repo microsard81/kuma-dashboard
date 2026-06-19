@@ -240,70 +240,45 @@ def extract_monitor_url(name, statuses):
 # ============================================================================
 # SENSOR ALERT LOGIC
 # ============================================================================
-def compute_alert_status(sensor: dict, thresholds: dict) -> str:
+def compute_alert_status(sensor: dict) -> str:
     """
-    Computes alert status for a single sensor reading.
-    Temperature: alert when value > threshold (higher is worse)
-    Power: alert when value < threshold (lower is worse)
-    Returns: "normal", "warning", or "critical"
+    Returns the alert status for a single sensor reading.
+    Uses the per-sensor threshold from the webhook.
+    Returns: "normal" or "critical"
     """
-    value = sensor.get("value")
-    category = sensor.get("category")
-    if value is None or category is None:
-        return "normal"
-
-    if category == "temperature":
-        t_crit = thresholds.get("temperature", {}).get("critical")
-        t_warn = thresholds.get("temperature", {}).get("warning")
-        if t_crit is not None and value > t_crit:
-            return "critical"
-        if t_warn is not None and value > t_warn:
-            return "warning"
-    elif category == "power":
-        p_crit = thresholds.get("power", {}).get("critical")
-        p_warn = thresholds.get("power", {}).get("warning")
-        if p_crit is not None and value < p_crit:
-            return "critical"
-        if p_warn is not None and value < p_warn:
-            return "warning"
-
-    return "normal"
+    return sensor.get("status", "normal")
 
 
 def build_sensor_payload(inverter_data: dict) -> dict:
     """
     Builds the sensor portion of the watch-data response.
-    Returns dict with: sensors, thresholds, sensor_history, sensor_alerts,
+    Returns dict with: sensors, sites, sensor_history, sensor_alerts,
     and optionally sensor_error.
     """
     if inverter_data.get("error"):
         return {
             "sensors": [],
-            "thresholds": inverter_data.get("thresholds", {}),
+            "sites": {},
             "sensor_history": {},
-            "sensor_alerts": {"warning_count": 0, "critical_count": 0},
+            "sensor_alerts": {"critical_count": 0},
             "sensor_error": inverter_data["error"],
         }
 
     sensors = inverter_data.get("sensors", [])
-    thresholds = inverter_data.get("thresholds", {})
+    sites = inverter_data.get("sites", {})
     history = inverter_data.get("history", {})
 
-    # Compute alerts
-    warning_count = 0
+    # Compute alerts — solo critical (no warning)
     critical_count = 0
     for s in sensors:
-        status = compute_alert_status(s, thresholds)
-        if status == "critical":
+        if s.get("status") == "critical":
             critical_count += 1
-        elif status == "warning":
-            warning_count += 1
 
     return {
         "sensors": sensors,
-        "thresholds": thresholds,
+        "sites": sites,
         "sensor_history": history,
-        "sensor_alerts": {"warning_count": warning_count, "critical_count": critical_count},
+        "sensor_alerts": {"critical_count": critical_count},
     }
 
 

@@ -19,10 +19,6 @@ from config import (
     PROBE_NODEPING,
     PROBE_UPTIME,
     SLEEP,
-    INVERTER_TEMP_WARNING,
-    INVERTER_TEMP_CRITICAL,
-    INVERTER_POWER_WARNING,
-    INVERTER_POWER_CRITICAL,
 )
 from kuma_client import load_monitors
 from status_client import load_status
@@ -407,7 +403,8 @@ def maybe_send_global_push(new_state, monitor_details=None):
 # INVERTER SENSOR ALERTS
 # ------------------------------------------------------
 # Stato precedente dei sensori salvato in Redis: inverter:alert_state:<sensor_name>
-# Valori: "normal", "warning", "critical"
+# Valori: "normal", "critical"
+# Il threshold è per-sensore e arriva dal webhook (non più da variabili d'ambiente).
 
 def _get_sensor_alert_state(sensor_name):
     """Legge lo stato di alert precedente per un sensore da Redis."""
@@ -421,25 +418,12 @@ def _set_sensor_alert_state(sensor_name, state):
     r.set(f"inverter:alert_state:{sensor_name}", state)
 
 
-def _classify_sensor(value, category):
-    """Classifica il valore di un sensore come normal/warning/critical."""
-    if value is None:
-        return "normal"
-    if category == "temperature":
-        if value > INVERTER_TEMP_CRITICAL:
-            return "critical"
-        if value > INVERTER_TEMP_WARNING:
-            return "warning"
-    else:  # power
-        if value < INVERTER_POWER_CRITICAL:
-            return "critical"
-        if value < INVERTER_POWER_WARNING:
-            return "warning"
-    return "normal"
-
-
 def check_inverter_alerts():
-    """Controlla i sensori inverter e invia push alle transizioni di stato."""
+    """Controlla i sensori inverter e invia push alle transizioni di stato.
+
+    Il threshold è per-sensore (campo 'threshold' in ogni sensore dal webhook).
+    Solo due stati: normal e critical. Le notifiche partono solo alle transizioni.
+    """
     if not PUSH_ENABLED:
         return
 
@@ -454,25 +438,35 @@ def check_inverter_alerts():
     for sensor in sensors:
         name = sensor.get("name", "")
         value = sensor.get("value")
-        category = sensor.get("category", "temperature")
         unit = sensor.get("unit", "")
+        threshold = sensor.get("threshold")
+        description = sensor.get("description", "")
 
-        new_state = _classify_sensor(value, category)
+        # Lo status è già calcolato da sensor_client._evaluate_threshold
+        new_state = sensor.get("status", "normal")
+
+        # Sensori senza threshold non generano alert
+        if threshold is None:
+            continue
+
         prev_state = _get_sensor_alert_state(name)
 
         # Invia push solo alle transizioni (non a ogni ciclo)
         if new_state != prev_state:
             _set_sensor_alert_state(name, new_state)
 
-            # Registra evento nel log con icona appropriata
-            sev = 2 if new_state == "critical" else (1 if new_state == "warning" else 0)
-            detail = f"{value} {unit}" if value is not None else ""
+            # Severity per l'event log
+            sev = 2 if new_state == "critical" else 0
+
+            # Formatta il dettaglio per l'evento
+            if isinstance(value, (int, float)):
+                detail = f"{value} {unit}" if unit else str(value)
+            else:
+                detail = str(value) if value is not None else ""
 
             # Emoji in base allo stato di arrivo
             if new_state == "normal":
                 event_name = f"✅ {name}"
-            elif new_state == "warning":
-                event_name = f"⚠️ {name}"
             elif new_state == "critical":
                 event_name = f"🔴 {name}"
             else:
@@ -481,29 +475,50 @@ def check_inverter_alerts():
             push_event("sensor", event_name, prev_state, new_state,
                        detail=detail, severity=sev)
 
-            # Transizione verso warning
-            if new_state == "warning" and prev_state == "normal":
-                title = f"⚠️ {name}"
-                if category == "temperature":
-                    body = f"Temperatura {value} {unit} (soglia warning: >{INVERTER_TEMP_WARNING} {unit})\nOre {now_str}"
-                else:
-                    body = f"Potenza {value} {unit} (soglia warning: <{INVERTER_POWER_WARNING} {unit})\nOre {now_str}"
-                _send_inverter_push(title, body)
-
             # Transizione verso critical
-            elif new_state == "critical":
+            if new_state == "critical":
                 title = f"⛔ {name}"
-                if category == "temperature":
-                    body = f"Temperatura {value} {unit} (soglia critical: >{INVERTER_TEMP_CRITICAL} {unit})\nOre {now_str}"
-                else:
-                    body = f"Potenza {value} {unit} (soglia critical: <{INVERTER_POWER_CRITICAL} {unit})\nOre {now_str}"
+                body = _build_alert_body(value, unit, threshold, description, now_str)
                 _send_inverter_push(title, body)
 
-            # Ritorno a normal da warning/critical
-            elif new_state == "normal" and prev_state in ("warning", "critical"):
+            # Ritorno a normal da critical
+            elif new_state == "normal" and prev_state == "critical":
                 title = f"✅ {name}"
-                body = f"Valore rientrato nella norma: {value} {unit}\nOre {now_str}"
+                if isinstance(value, (int, float)):
+                    body = f"Valore rientrato nella norma: {value} {unit}\nOre {now_str}"
+                else:
+                    body = f"Valore rientrato nella norma: {value}\nOre {now_str}"
                 _send_inverter_push(title, body)
+
+
+def _build_alert_body(value, unit: str, threshold: dict, description: str, now_str: str) -> str:
+    """Costruisce il body della notifica push per un alert critical."""
+    th_type = threshold.get("type", "")
+
+    if th_type == "above":
+        th_value = threshold.get("value")
+        return f"{value} {unit} (soglia: >{th_value} {unit})\nOre {now_str}"
+
+    elif th_type == "below":
+        th_value = threshold.get("value")
+        return f"{value} {unit} (soglia: <{th_value} {unit})\nOre {now_str}"
+
+    elif th_type == "greater_than":
+        th_value = threshold.get("value")
+        return f"{value} {unit} (soglia: >{th_value} {unit})\nOre {now_str}"
+
+    elif th_type == "not_equal":
+        expected = threshold.get("expected")
+        return f"Stato: {value} (atteso: {expected})\nOre {now_str}"
+
+    elif th_type == "not_in":
+        expected = threshold.get("expected", [])
+        return f"Stato: {value} (attesi: {', '.join(str(e) for e in expected)})\nOre {now_str}"
+
+    # Fallback generico
+    if description:
+        return f"{description}\nOre {now_str}"
+    return f"Valore: {value} {unit}\nOre {now_str}"
 
 
 def _send_inverter_push(title, body):

@@ -543,12 +543,15 @@ body.dark nav.navbar {
     border-left: 4px solid #3b82f6;  /* blu */
 }
 
-/* Colori card per stato soglia */
-.inverter-card-warning {
-    border-left: 4px solid #eab308;  /* giallo */
-    background: #fffbeb;
+.inverter-card-ups {
+    border-left: 4px solid #8b5cf6;  /* viola */
 }
 
+.inverter-card-generator {
+    border-left: 4px solid #f97316;  /* arancione */
+}
+
+/* Colori card per stato soglia */
 .inverter-card-critical {
     border-left: 4px solid #ef4444;  /* rosso */
     background: #fef2f2;
@@ -590,12 +593,16 @@ body.dark nav.navbar {
     background: #3b82f6;  /* blue — default potenza */
 }
 
-.inverter-card-badge.stale {
-    background: #fbbf24;  /* amber — stale */
+.inverter-card-ups .inverter-card-badge {
+    background: #8b5cf6;  /* viola — default UPS */
 }
 
-.inverter-card-badge.warning {
-    background: #f59e0b;  /* amber — warning */
+.inverter-card-generator .inverter-card-badge {
+    background: #f97316;  /* arancione — default generatori */
+}
+
+.inverter-card-badge.stale {
+    background: #fbbf24;  /* amber — stale */
 }
 
 .inverter-card-badge.critical {
@@ -635,12 +642,16 @@ body.dark .inverter-card-power .inverter-card-badge {
     background: #2563eb;
 }
 
-body.dark .inverter-card-badge.stale {
-    background: #d97706;
+body.dark .inverter-card-ups .inverter-card-badge {
+    background: #7c3aed;
 }
 
-body.dark .inverter-card-warning {
-    background: #3b351a;
+body.dark .inverter-card-generator .inverter-card-badge {
+    background: #ea580c;
+}
+
+body.dark .inverter-card-badge.stale {
+    background: #d97706;
 }
 
 body.dark .inverter-card-critical {
