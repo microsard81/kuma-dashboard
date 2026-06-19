@@ -496,6 +496,8 @@ struct DashboardView: View {
         case .portale: return "globe"
         case .temperatura: return "thermometer.medium"
         case .potenza: return "bolt.fill"
+        case .ups: return "battery.75percent"
+        case .generatore: return "fuelpump.fill"
         }
     }
 
@@ -504,6 +506,8 @@ struct DashboardView: View {
         case .portale: return .green
         case .temperatura: return .orange
         case .potenza: return .blue
+        case .ups: return .purple
+        case .generatore: return .orange
         }
     }
 
@@ -519,6 +523,10 @@ struct DashboardView: View {
             TemperatureDetailView(viewModel: viewModel, scrollToId: item.id)
         case .potenza:
             PowerDetailView(viewModel: viewModel, scrollToId: item.id)
+        case .ups:
+            UPSDetailView(viewModel: viewModel, scrollToId: item.id)
+        case .generatore:
+            GeneratorDetailView(viewModel: viewModel, scrollToId: item.id)
         }
     }
 

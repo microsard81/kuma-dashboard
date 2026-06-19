@@ -160,7 +160,7 @@ struct GeneratorDetailView: View {
                     .tint(.red)
                 } else {
                     Button {
-                        PinnedStore.shared.pin(id: sensor.id, type: .potenza)
+                        PinnedStore.shared.pin(id: sensor.id, type: .generatore)
                         pinnedIds.insert(sensor.id)
                         withAnimation { showPinConfirmation = true }
                     } label: {

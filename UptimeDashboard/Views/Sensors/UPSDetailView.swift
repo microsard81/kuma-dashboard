@@ -160,7 +160,7 @@ struct UPSDetailView: View {
                     .tint(.red)
                 } else {
                     Button {
-                        PinnedStore.shared.pin(id: sensor.id, type: .potenza)
+                        PinnedStore.shared.pin(id: sensor.id, type: .ups)
                         pinnedIds.insert(sensor.id)
                         withAnimation { showPinConfirmation = true }
                     } label: {

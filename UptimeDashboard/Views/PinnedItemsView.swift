@@ -12,6 +12,8 @@ struct PinnedItem: Identifiable, Codable, Equatable {
         case portale
         case temperatura
         case potenza
+        case ups
+        case generatore
     }
 }
 
@@ -102,7 +104,7 @@ struct PinnedCardView: View {
             if let monitor = viewModel.items.first(where: { $0.name == item.id }) {
                 return monitor.rowColor == .red || monitor.rowColor == .yellow
             }
-        case .temperatura, .potenza:
+        case .temperatura, .potenza, .ups, .generatore:
             if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
                 return sensor.status == .critical
             }
@@ -128,6 +130,11 @@ struct PinnedCardView: View {
                 if sensor.status == .critical { return Color.red.opacity(0.85) }
             }
             return Color(.systemGray6)
+        case .ups, .generatore:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                if sensor.status == .critical { return Color.red.opacity(0.85) }
+            }
+            return Color(.systemGray6)
         }
     }
 
@@ -145,6 +152,8 @@ struct PinnedCardView: View {
         case .portale: return "globe"
         case .temperatura: return "thermometer.medium"
         case .potenza: return "bolt.fill"
+        case .ups: return "battery.75percent"
+        case .generatore: return "fuelpump.fill"
         }
     }
 
@@ -166,6 +175,16 @@ struct PinnedCardView: View {
                 if sensor.status == .critical { return .red }
             }
             return .blue
+        case .ups:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                if sensor.status == .critical { return .red }
+            }
+            return .purple
+        case .generatore:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                if sensor.status == .critical { return .red }
+            }
+            return .orange
         }
     }
 
@@ -176,12 +195,7 @@ struct PinnedCardView: View {
                 return monitor.final.rawValue
             }
             return "—"
-        case .temperatura:
-            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
-                return sensor.displayValueWithUnit
-            }
-            return "—"
-        case .potenza:
+        case .temperatura, .potenza, .ups, .generatore:
             if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
                 return sensor.displayValueWithUnit
             }
