@@ -137,7 +137,7 @@ struct PowerDetailView: View {
                     highlightedId = id
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    withAnimation(.easeOut(duration: 0.8)) { highlightedId = nil }
+                    withAnimation(.easeOut(duration: 3.0)) { highlightedId = nil }
                 }
             }
         }
