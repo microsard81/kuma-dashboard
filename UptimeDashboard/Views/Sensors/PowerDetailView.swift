@@ -15,6 +15,7 @@ struct PowerDetailView: View {
     @State private var showPinConfirmation = false
     @State private var showUnpinConfirmation = false
     @State private var pinnedIds: Set<String> = Set(PinnedStore.shared.loadAll().map(\.id))
+    @State private var highlightedId: String? = nil
 
     private let orderKey = "sensor_order_power"
 
@@ -133,6 +134,10 @@ struct PowerDetailView: View {
             if let id = scrollToId {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     withAnimation { proxy.scrollTo(id, anchor: .center) }
+                    highlightedId = id
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    withAnimation(.easeOut(duration: 0.8)) { highlightedId = nil }
                 }
             }
         }
@@ -144,6 +149,7 @@ struct PowerDetailView: View {
         SensorCardView(sensor: sensor, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
             .id(sensor.id)
             .listRowSeparator(.visible)
+            .listRowBackground(highlightedId == sensor.id ? Color.blue.opacity(0.15) : nil)
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 if !isReordering {
                     Button {

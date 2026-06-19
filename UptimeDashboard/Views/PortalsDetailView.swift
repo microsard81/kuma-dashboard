@@ -17,6 +17,7 @@ struct PortalsDetailView: View {
     @State private var showPinConfirmation = false
     @State private var showUnpinConfirmation = false
     @State private var pinnedIds: Set<String> = Set(PinnedStore.shared.loadAll().map(\.id))
+    @State private var highlightedId: String? = nil
 
     private let orderKey = "monitor_order_portals"
 
@@ -144,6 +145,10 @@ struct PortalsDetailView: View {
             if let id = scrollToId {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     withAnimation { proxy.scrollTo(id, anchor: .center) }
+                    highlightedId = id
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    withAnimation(.easeOut(duration: 0.8)) { highlightedId = nil }
                 }
             }
         }
@@ -154,7 +159,11 @@ struct PortalsDetailView: View {
     private func monitorRow(_ item: MonitorItem) -> some View {
         MonitorRowView(item: item, openURL: openURL)
             .id(item.name)
-            .listRowBackground(rowBackground(for: item.rowColor))
+            .listRowBackground(
+                highlightedId == item.name
+                    ? Color.blue.opacity(0.15)
+                    : rowBackground(for: item.rowColor)
+            )
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button {
                     manualOrder = displayItems
