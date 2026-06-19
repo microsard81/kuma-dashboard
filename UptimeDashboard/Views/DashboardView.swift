@@ -95,7 +95,7 @@ struct DashboardView: View {
                 if viewModel.isStale { staleBanner }
 
                 ScrollView {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 10) {
                         if isReorderingSections {
                             // Reorder mode: List with drag handles
                             HStack {
