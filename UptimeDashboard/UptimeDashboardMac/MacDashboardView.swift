@@ -117,31 +117,24 @@ struct MacDashboardView: View {
                         .foregroundColor(.secondary)
                 }
 
-                // Section order menu (first)
+                // Section order menu
                 Menu {
-                    Button("Portali · Temperatura · Potenza") {
-                        UserDefaults.standard.set(["portali", "temperatura", "potenza"], forKey: sectionOrderKey)
-                        sectionOrder = ["portali", "temperatura", "potenza"]
+                    Text("Sposta in cima:")
+                        .font(.caption)
+                    ForEach(sectionOrder, id: \.self) { section in
+                        Button(sectionDisplayName(section)) {
+                            if let idx = sectionOrder.firstIndex(of: section), idx > 0 {
+                                sectionOrder.remove(at: idx)
+                                sectionOrder.insert(section, at: 0)
+                                UserDefaults.standard.set(sectionOrder, forKey: sectionOrderKey)
+                            }
+                        }
                     }
-                    Button("Portali · Potenza · Temperatura") {
-                        UserDefaults.standard.set(["portali", "potenza", "temperatura"], forKey: sectionOrderKey)
-                        sectionOrder = ["portali", "potenza", "temperatura"]
-                    }
-                    Button("Temperatura · Potenza · Portali") {
-                        UserDefaults.standard.set(["temperatura", "potenza", "portali"], forKey: sectionOrderKey)
-                        sectionOrder = ["temperatura", "potenza", "portali"]
-                    }
-                    Button("Temperatura · Portali · Potenza") {
-                        UserDefaults.standard.set(["temperatura", "portali", "potenza"], forKey: sectionOrderKey)
-                        sectionOrder = ["temperatura", "portali", "potenza"]
-                    }
-                    Button("Potenza · Temperatura · Portali") {
-                        UserDefaults.standard.set(["potenza", "temperatura", "portali"], forKey: sectionOrderKey)
-                        sectionOrder = ["potenza", "temperatura", "portali"]
-                    }
-                    Button("Potenza · Portali · Temperatura") {
-                        UserDefaults.standard.set(["potenza", "portali", "temperatura"], forKey: sectionOrderKey)
-                        sectionOrder = ["potenza", "portali", "temperatura"]
+                    Divider()
+                    Button("Ripristina ordine") {
+                        let defaultOrder = ["portali", "temperatura", "potenza", "ups", "generatori"]
+                        sectionOrder = defaultOrder
+                        UserDefaults.standard.set(defaultOrder, forKey: sectionOrderKey)
                     }
                 } label: {
                     Image(systemName: "rectangle.3.group")
@@ -545,6 +538,17 @@ struct MacDashboardView: View {
         let normal = sensors.filter { $0.status == .normal }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         return critical + normal
+    }
+
+    private func sectionDisplayName(_ section: String) -> String {
+        switch section {
+        case "portali": return "Portali"
+        case "temperatura": return "Temperatura"
+        case "potenza": return "Potenza"
+        case "ups": return "UPS"
+        case "generatori": return "Generatori"
+        default: return section
+        }
     }
 
     private var ledColor: Color {
