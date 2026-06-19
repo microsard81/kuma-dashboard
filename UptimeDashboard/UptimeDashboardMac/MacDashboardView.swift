@@ -77,6 +77,16 @@ struct MacDashboardView: View {
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
     @State private var unreadNotifications = NotificationStore.shared.unreadCount
+    @State private var manualPortalOrder: [String] = UserDefaults.standard.stringArray(forKey: "mac_manual_order_portali") ?? []
+    @State private var manualSensorOrder: [String: [String]] = {
+        var result: [String: [String]] = [:]
+        for key in ["temperatura", "potenza", "ups", "generatori"] {
+            result[key] = UserDefaults.standard.stringArray(forKey: "mac_manual_order_\(key)") ?? []
+        }
+        return result
+    }()
+    @State private var isReorderingPortals = false
+    @State private var isReorderingSensors = false
 
     private var filteredMonitors: [MacMonitor] {
         var sorted: [MacMonitor]
@@ -496,6 +506,14 @@ struct MacDashboardView: View {
                     .toggleStyle(.button)
                     .controlSize(.small)
                 }
+                Button {
+                    withAnimation { isReorderingPortals.toggle() }
+                } label: {
+                    Image(systemName: isReorderingPortals ? "checkmark.circle.fill" : "arrow.up.arrow.down")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(.plain)
+                .help(isReorderingPortals ? "Termina riordino" : "Riordina manualmente")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -503,55 +521,134 @@ struct MacDashboardView: View {
 
             Divider()
 
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    let downItems = filteredMonitors.filter { $0.isDown }
-                    let mismatchItems = filteredMonitors.filter { $0.isMismatch }
-                    let upItems = filteredMonitors.filter { !$0.isDown && !$0.isMismatch }
-                    let allUp = downItems.isEmpty && mismatchItems.isEmpty
+            if isReorderingPortals {
+                portalReorderList
+            } else {
+                portalNormalList
+            }
+        }
+    }
 
-                    if !downItems.isEmpty {
-                        SectionHeader(title: "DOWN", icon: "xmark.circle.fill", color: .red)
-                        ForEach(downItems) { monitor in
-                            MacMonitorRow(monitor: monitor)
-                                .background(Color.red.opacity(0.12))
-                                .contextMenu { pinContextMenu(for: monitor.name, type: .portale) }
-                        }
+    private var portalNormalList: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                let monitors = orderedMonitors
+                let downItems = monitors.filter { $0.isDown }
+                let mismatchItems = monitors.filter { $0.isMismatch }
+                let upItems = monitors.filter { !$0.isDown && !$0.isMismatch }
+                let allUp = downItems.isEmpty && mismatchItems.isEmpty
+
+                if !downItems.isEmpty {
+                    SectionHeader(title: "DOWN", icon: "xmark.circle.fill", color: .red)
+                    ForEach(downItems) { monitor in
+                        MacMonitorRow(monitor: monitor)
+                            .background(Color.red.opacity(0.12))
+                            .contextMenu { pinContextMenu(for: monitor.name, type: .portale) }
                     }
+                }
 
-                    if !mismatchItems.isEmpty {
-                        SectionHeader(title: "Mismatch", icon: "exclamationmark.triangle.fill", color: .yellow)
-                        ForEach(mismatchItems) { monitor in
-                            MacMonitorRow(monitor: monitor)
-                                .background(Color.yellow.opacity(0.10))
-                                .contextMenu { pinContextMenu(for: monitor.name, type: .portale) }
-                        }
+                if !mismatchItems.isEmpty {
+                    SectionHeader(title: "Mismatch", icon: "exclamationmark.triangle.fill", color: .yellow)
+                    ForEach(mismatchItems) { monitor in
+                        MacMonitorRow(monitor: monitor)
+                            .background(Color.yellow.opacity(0.10))
+                            .contextMenu { pinContextMenu(for: monitor.name, type: .portale) }
                     }
+                }
 
-                    if !upItems.isEmpty {
-                        if !allUp {
-                            SectionHeader(title: "UP", icon: "checkmark.circle.fill", color: .green)
-                        }
-                        ForEach(upItems) { monitor in
-                            MacMonitorRow(monitor: monitor)
-                                .contextMenu { pinContextMenu(for: monitor.name, type: .portale) }
-                        }
+                if !upItems.isEmpty {
+                    if !allUp {
+                        SectionHeader(title: "UP", icon: "checkmark.circle.fill", color: .green)
+                    }
+                    ForEach(upItems) { monitor in
+                        MacMonitorRow(monitor: monitor)
+                            .contextMenu { pinContextMenu(for: monitor.name, type: .portale) }
                     }
                 }
             }
         }
     }
 
+    private var portalReorderList: some View {
+        List {
+            ForEach(reorderableMonitors, id: \.name) { monitor in
+                HStack {
+                    Image(systemName: "line.3.horizontal")
+                        .foregroundColor(.secondary)
+                    Text(monitor.name)
+                        .font(.scaled(.body, scale: scale))
+                    Spacer()
+                    Text(monitor.finalStatus)
+                        .font(.scaled(.caption, scale: scale, weight: .bold))
+                        .foregroundColor(monitor.isDown ? .red : (monitor.isMismatch ? .yellow : .green))
+                }
+            }
+            .onMove { from, to in
+                var items = reorderableMonitors.map(\.name)
+                items.move(fromOffsets: from, toOffset: to)
+                manualPortalOrder = items
+                UserDefaults.standard.set(items, forKey: "mac_manual_order_portali")
+            }
+        }
+        .listStyle(.plain)
+    }
+
+    private var orderedMonitors: [MacMonitor] {
+        if !manualPortalOrder.isEmpty {
+            // Manual order: respect saved order, new items at end
+            var ordered: [MacMonitor] = []
+            for name in manualPortalOrder {
+                if let m = filteredMonitors.first(where: { $0.name == name }) {
+                    ordered.append(m)
+                }
+            }
+            for m in filteredMonitors where !manualPortalOrder.contains(m.name) {
+                ordered.append(m)
+            }
+            return ordered
+        }
+        return filteredMonitors
+    }
+
+    private var reorderableMonitors: [MacMonitor] {
+        // All monitors in current manual order (or default sorted)
+        if !manualPortalOrder.isEmpty {
+            var ordered: [MacMonitor] = []
+            for name in manualPortalOrder {
+                if let m = viewModel.monitors.first(where: { $0.name == name }) {
+                    ordered.append(m)
+                }
+            }
+            for m in viewModel.monitors where !manualPortalOrder.contains(m.name) {
+                ordered.append(m)
+            }
+            return ordered
+        }
+        return viewModel.monitors
+    }
+
     // MARK: - Sensor Detail (generic)
 
     private func sensorDetail(sensors: [SensorReading], title: String, icon: String, color: Color) -> some View {
-        VStack(spacing: 0) {
+        let sectionKey = sectionKeyForTitle(title)
+        let manualOrder = manualSensorOrder[sectionKey] ?? []
+        let orderedSensors = applyManualOrder(sensors: sensors, order: manualOrder)
+
+        return VStack(spacing: 0) {
             HStack {
                 Image(systemName: icon)
                     .foregroundColor(color)
                 Text(title)
                     .font(.scaled(.headline, scale: scale))
                 Spacer()
+                Button {
+                    withAnimation { isReorderingSensors.toggle() }
+                } label: {
+                    Image(systemName: isReorderingSensors ? "checkmark.circle.fill" : "arrow.up.arrow.down")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(.plain)
+                .help(isReorderingSensors ? "Termina riordino" : "Riordina manualmente")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -569,10 +666,32 @@ struct MacDashboardView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if isReorderingSensors {
+                List {
+                    ForEach(orderedSensors) { sensor in
+                        HStack {
+                            Image(systemName: "line.3.horizontal")
+                                .foregroundColor(.secondary)
+                            Text(sensor.name)
+                                .font(.scaled(.body, scale: scale))
+                            Spacer()
+                            Text(sensor.displayValueWithUnit)
+                                .font(.scaled(.caption, scale: scale, weight: .bold))
+                                .foregroundColor(sensor.status == .critical ? .red : .secondary)
+                        }
+                    }
+                    .onMove { from, to in
+                        var items = orderedSensors.map(\.id)
+                        items.move(fromOffsets: from, toOffset: to)
+                        manualSensorOrder[sectionKey] = items
+                        UserDefaults.standard.set(items, forKey: "mac_manual_order_\(sectionKey)")
+                    }
+                }
+                .listStyle(.plain)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(sensors) { sensor in
+                        ForEach(orderedSensors) { sensor in
                             SensorCardView(
                                 sensor: sensor,
                                 historyPoints: viewModel.sensorHistory[sensor.id] ?? []
@@ -585,6 +704,28 @@ struct MacDashboardView: View {
                 }
             }
         }
+    }
+
+    private func sectionKeyForTitle(_ title: String) -> String {
+        if title.contains("Temperatura") { return "temperatura" }
+        if title.contains("Potenza") { return "potenza" }
+        if title.contains("UPS") { return "ups" }
+        if title.contains("Generatori") { return "generatori" }
+        return "other"
+    }
+
+    private func applyManualOrder(sensors: [SensorReading], order: [String]) -> [SensorReading] {
+        guard !order.isEmpty else { return sensors }
+        var ordered: [SensorReading] = []
+        for id in order {
+            if let s = sensors.first(where: { $0.id == id }) {
+                ordered.append(s)
+            }
+        }
+        for s in sensors where !order.contains(s.id) {
+            ordered.append(s)
+        }
+        return ordered
     }
 
     // MARK: - Pin Context Menu
