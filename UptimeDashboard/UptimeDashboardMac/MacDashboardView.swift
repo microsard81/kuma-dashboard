@@ -25,10 +25,43 @@ private extension Color {
     }
 }
 
+// MARK: - Sidebar Section Enum
+
+private enum DashboardSection: String, CaseIterable, Identifiable {
+    case portali
+    case temperatura
+    case potenza
+    case ups
+    case generatori
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .portali: return "Portali"
+        case .temperatura: return "Temperatura"
+        case .potenza: return "Potenza"
+        case .ups: return "UPS"
+        case .generatori: return "Generatori"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .portali: return "globe"
+        case .temperatura: return "thermometer.medium"
+        case .potenza: return "bolt.fill"
+        case .ups: return "battery.75percent"
+        case .generatori: return "fuelpump.fill"
+        }
+    }
+}
+
 struct MacDashboardView: View {
     @EnvironmentObject var viewModel: MacAppViewModel
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.textScale) var scale
+    @State private var selectedSection: DashboardSection? = nil
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
     @State private var unreadNotifications = NotificationStore.shared.unreadCount
@@ -43,25 +76,12 @@ struct MacDashboardView: View {
         }
         return saved
     }()
-    @State private var isPortalsCollapsed = false
-    @State private var isTemperatureCollapsed = false
-    @State private var isPowerCollapsed = false
-    @State private var isUPSCollapsed = false
-    @State private var isGeneratorCollapsed = false
-    @State private var allCollapsed = false
-
-    // Column widths for wide layout (proportional, saved in UserDefaults)
-    @State private var columnWidths: [CGFloat] = {
-        if let saved = UserDefaults.standard.array(forKey: "mac_column_widths") as? [CGFloat], !saved.isEmpty {
-            return saved
-        }
-        return []  // empty = equal widths
-    }()
 
     private let sectionOrderKey = "mac_dashboard_section_order"
+    private let sidebarWidth: CGFloat = 200
 
-    private var displayOrder: [String] {
-        sectionOrder
+    private var orderedSections: [DashboardSection] {
+        sectionOrder.compactMap { DashboardSection(rawValue: $0) }
     }
 
     private var filteredMonitors: [MacMonitor] {
@@ -113,115 +133,7 @@ struct MacDashboardView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Toolbar
-            HStack {
-                Text("Dashboard INVA")
-                    .font(.scaled(.headline, scale: scale))
-
-                Spacer()
-
-                if let date = viewModel.lastUpdated {
-                    Text("Aggiornato: \(date, style: .time)")
-                        .font(.scaled(.caption, scale: scale))
-                        .foregroundColor(.secondary)
-                }
-
-                // Section order menu
-                Menu {
-                    Text("Sposta in cima:")
-                        .font(.caption)
-                    ForEach(sectionOrder, id: \.self) { section in
-                        Button(sectionDisplayName(section)) {
-                            if let idx = sectionOrder.firstIndex(of: section), idx > 0 {
-                                sectionOrder.remove(at: idx)
-                                sectionOrder.insert(section, at: 0)
-                                UserDefaults.standard.set(sectionOrder, forKey: sectionOrderKey)
-                            }
-                        }
-                    }
-                    Divider()
-                    Button("Ripristina ordine") {
-                        let defaultOrder = ["portali", "temperatura", "potenza", "ups", "generatori"]
-                        sectionOrder = defaultOrder
-                        UserDefaults.standard.set(defaultOrder, forKey: sectionOrderKey)
-                    }
-                } label: {
-                    Image(systemName: "rectangle.3.group")
-                        .font(.system(size: 13))
-                        .frame(width: 28, height: 28)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .help("Riordina sezioni")
-
-                // Collapse/Expand all
-                Button {
-                    withAnimation {
-                        allCollapsed.toggle()
-                        isPortalsCollapsed = allCollapsed
-                        isTemperatureCollapsed = allCollapsed
-                        isPowerCollapsed = allCollapsed
-                        isUPSCollapsed = allCollapsed
-                        isGeneratorCollapsed = allCollapsed
-                    }
-                } label: {
-                    Image(systemName: allCollapsed ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
-                        .font(.system(size: 13))
-                        .frame(width: 28, height: 28)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .help(allCollapsed ? "Espandi tutto" : "Comprimi tutto")
-
-                // Refresh
-                Button {
-                    Task { await viewModel.fetchDashboard() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 13))
-                        .frame(width: 28, height: 28)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .help("Aggiorna")
-
-                // Notifications
-                Button {
-                    showNotificationHistory.toggle()
-                } label: {
-                    ZStack(alignment: .topTrailing) {
-                        Image(systemName: showNotificationHistory ? "bell.fill" : "bell")
-                            .font(.system(size: 13))
-                            .frame(width: 28, height: 28)
-                            .background(.ultraThinMaterial, in: Circle())
-                        if unreadNotifications > 0 && !showNotificationHistory {
-                            Text("\(unreadNotifications)")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding(2)
-                                .background(Color.red)
-                                .clipShape(Circle())
-                                .offset(x: 4, y: -2)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-                .help("Notifiche")
-
-                // Logout
-                Button {
-                    viewModel.logout()
-                } label: {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                        .font(.system(size: 13))
-                        .frame(width: 28, height: 28)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .help("Logout")
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
+            toolbarView
 
             Divider()
 
@@ -233,34 +145,19 @@ struct MacDashboardView: View {
                         unreadNotifications = 0
                     }
             } else {
-                // Dashboard: sections responsive
-                GeometryReader { geo in
-                    let isWide = geo.size.width > 900
+                // Sidebar + Detail
+                HStack(spacing: 0) {
+                    // Sidebar
+                    sidebarView
+                        .frame(width: sidebarWidth)
 
-                    if isWide {
-                        // Side by side with resizable columns
-                        ResizableColumnsView(
-                            sections: displayOrder,
-                            columnWidths: $columnWidths,
-                            totalWidth: geo.size.width
-                        ) { section in
-                            sectionView(for: section)
-                        }
-                    } else {
-                        // Stacked
-                        ScrollView {
-                            VStack(spacing: 0) {
-                                ForEach(displayOrder, id: \.self) { section in
-                                    if section != displayOrder.first {
-                                        Divider().padding(.vertical, 4)
-                                }
-                                sectionView(for: section)
-                            }
-                        }
-                    }
+                    Divider()
+
+                    // Detail panel
+                    detailView
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            } // end else (dashboard content)
         }
         .background(dashboardBackground)
         .preferredColorScheme(.dark)
@@ -270,44 +167,306 @@ struct MacDashboardView: View {
             }
         }
         .task {
-            // Sync events from server on dashboard appear
             await NotificationStore.shared.syncFromServer()
             unreadNotifications = NotificationStore.shared.unreadCount
         }
     }
 
-    // MARK: - Section Router
+    // MARK: - Toolbar
 
-    @ViewBuilder
-    private func sectionView(for section: String) -> some View {
+    private var toolbarView: some View {
+        HStack {
+            Text("Dashboard INVA")
+                .font(.scaled(.headline, scale: scale))
+
+            Spacer()
+
+            if let date = viewModel.lastUpdated {
+                Text("Aggiornato: \(date, style: .time)")
+                    .font(.scaled(.caption, scale: scale))
+                    .foregroundColor(.secondary)
+            }
+
+            // Section order menu
+            Menu {
+                Text("Sposta in cima:")
+                    .font(.caption)
+                ForEach(sectionOrder, id: \.self) { section in
+                    Button(DashboardSection(rawValue: section)?.displayName ?? section) {
+                        if let idx = sectionOrder.firstIndex(of: section), idx > 0 {
+                            sectionOrder.remove(at: idx)
+                            sectionOrder.insert(section, at: 0)
+                            UserDefaults.standard.set(sectionOrder, forKey: sectionOrderKey)
+                        }
+                    }
+                }
+                Divider()
+                Button("Ripristina ordine") {
+                    let defaultOrder = ["portali", "temperatura", "potenza", "ups", "generatori"]
+                    sectionOrder = defaultOrder
+                    UserDefaults.standard.set(defaultOrder, forKey: sectionOrderKey)
+                }
+            } label: {
+                Image(systemName: "rectangle.3.group")
+                    .font(.system(size: 13))
+                    .frame(width: 28, height: 28)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .help("Riordina sezioni")
+
+            // Refresh
+            Button {
+                Task { await viewModel.fetchDashboard() }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 13))
+                    .frame(width: 28, height: 28)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help("Aggiorna")
+
+            // Notifications
+            Button {
+                showNotificationHistory.toggle()
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: showNotificationHistory ? "bell.fill" : "bell")
+                        .font(.system(size: 13))
+                        .frame(width: 28, height: 28)
+                        .background(.ultraThinMaterial, in: Circle())
+                    if unreadNotifications > 0 && !showNotificationHistory {
+                        Text("\(unreadNotifications)")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(2)
+                            .background(Color.red)
+                            .clipShape(Circle())
+                            .offset(x: 4, y: -2)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .help("Notifiche")
+
+            // Logout
+            Button {
+                viewModel.logout()
+            } label: {
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                    .font(.system(size: 13))
+                    .frame(width: 28, height: 28)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help("Logout")
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+
+    // MARK: - Sidebar
+
+    private var sidebarView: some View {
+        VStack(spacing: 0) {
+            ForEach(orderedSections) { section in
+                sidebarRow(for: section)
+            }
+            Spacer()
+        }
+        .padding(.top, 8)
+    }
+
+    private func sidebarRow(for section: DashboardSection) -> some View {
+        let isSelected = selectedSection == section
+        let statusColor = sectionStatusColor(for: section)
+
+        return Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                if selectedSection == section {
+                    selectedSection = nil
+                } else {
+                    selectedSection = section
+                }
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 14))
+                    .foregroundColor(statusColor)
+                    .frame(width: 20)
+
+                Text(section.displayName)
+                    .font(.scaled(.body, scale: scale))
+                    .foregroundColor(isSelected ? .white : .primary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: statusColor.opacity(0.6), radius: 2)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isSelected ? Color.accentColor.opacity(0.7) : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 1)
+    }
+
+    private func sectionStatusColor(for section: DashboardSection) -> Color {
         switch section {
-        case "portali": portalsSection
-        case "temperatura": temperatureSection
-        case "potenza": powerSection
-        case "ups": upsSection
-        case "generatori": generatorSection
-        default: EmptyView()
+        case .portali: return ledColor
+        case .temperatura: return temperatureStatusColor
+        case .potenza: return powerStatusColor
+        case .ups: return upsStatusColor
+        case .generatori: return generatorStatusColor
         }
     }
 
-    // MARK: - Portals Section
+    // MARK: - Detail Panel
 
-    private var portalsSection: some View {
+    @ViewBuilder
+    private var detailView: some View {
+        if let section = selectedSection {
+            VStack(spacing: 0) {
+                // Back button header
+                HStack {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            selectedSection = nil
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("Panoramica")
+                                .font(.scaled(.subheadline, scale: scale))
+                        }
+                        .foregroundColor(.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+
+                Divider()
+
+                // Section content
+                sectionDetailContent(for: section)
+            }
+        } else {
+            overviewView
+        }
+    }
+
+    @ViewBuilder
+    private func sectionDetailContent(for section: DashboardSection) -> some View {
+        switch section {
+        case .portali:
+            portalsDetail
+        case .temperatura:
+            sensorDetail(
+                sensors: sortedSensors(viewModel.sensors.filter { $0.category == .temperature }),
+                title: "Temperatura (°C)",
+                icon: "thermometer.medium",
+                color: temperatureStatusColor
+            )
+        case .potenza:
+            sensorDetail(
+                sensors: sortedSensors(viewModel.sensors.filter { $0.category == .power }),
+                title: "Potenza (kW)",
+                icon: "bolt.fill",
+                color: powerStatusColor
+            )
+        case .ups:
+            sensorDetail(
+                sensors: sortedSensors(viewModel.sensors.filter { $0.category == .ups }),
+                title: "UPS",
+                icon: "battery.75percent",
+                color: upsStatusColor
+            )
+        case .generatori:
+            sensorDetail(
+                sensors: sortedSensors(viewModel.sensors.filter { $0.category == .generator }),
+                title: "Generatori",
+                icon: "fuelpump.fill",
+                color: generatorStatusColor
+            )
+        }
+    }
+
+    // MARK: - Overview (status cards)
+
+    private var overviewView: some View {
+        VStack {
+            Spacer()
+            HStack(spacing: 16) {
+                ForEach(orderedSections) { section in
+                    OverviewCard(
+                        section: section,
+                        statusText: overviewStatusText(for: section),
+                        statusColor: sectionStatusColor(for: section)
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            selectedSection = section
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            Spacer()
+        }
+    }
+
+    private func overviewStatusText(for section: DashboardSection) -> String {
+        switch section {
+        case .portali:
+            let down = viewModel.monitors.filter { $0.isDown }.count
+            let mismatch = viewModel.monitors.filter { $0.isMismatch }.count
+            if down > 0 { return "\(down) DOWN" }
+            if mismatch > 0 { return "\(mismatch) Mismatch" }
+            return "OK (\(viewModel.monitors.count))"
+        case .temperatura:
+            let critical = viewModel.temperatureSensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical) Critical" }
+            return "OK"
+        case .potenza:
+            let critical = viewModel.powerSensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical) Critical" }
+            return "OK"
+        case .ups:
+            let critical = viewModel.upsSensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical) Critical" }
+            return "OK"
+        case .generatori:
+            let critical = viewModel.generatorSensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical) Critical" }
+            return "OK"
+        }
+    }
+
+    // MARK: - Portals Detail
+
+    private var portalsDetail: some View {
         VStack(spacing: 0) {
-            // Section header
+            // Header with filter toggle
             HStack {
                 Image(systemName: "globe")
                     .foregroundColor(ledColor)
                 Text("Portali")
                     .font(.scaled(.headline, scale: scale))
-                Image(systemName: isPortalsCollapsed ? "chevron.right" : "chevron.down")
-                    .font(.scaled(.caption, scale: scale))
-                    .foregroundColor(.secondary)
                 Spacer()
-                Circle()
-                    .fill(ledColor)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: ledColor.opacity(0.6), radius: 3)
                 if problemCount > 0 {
                     Toggle(isOn: $showOnlyProblems) {
                         Label("Solo problemi", systemImage: showOnlyProblems
@@ -319,12 +478,12 @@ struct MacDashboardView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
             .background(ledColor.opacity(0.05))
-            .onTapGesture { withAnimation { isPortalsCollapsed.toggle() } }
+
+            Divider()
 
             // Monitor list
-            if !isPortalsCollapsed {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     let downItems = filteredMonitors.filter { $0.isDown }
@@ -358,181 +517,55 @@ struct MacDashboardView: View {
                     }
                 }
             }
-            } // end if !isPortalsCollapsed
         }
     }
 
-    // MARK: - Temperature Section
+    // MARK: - Sensor Detail (generic)
 
-    private var temperatureSection: some View {
-        let sensors = sortedSensors(viewModel.sensors.filter { $0.category == .temperature })
-        return VStack(spacing: 0) {
+    private func sensorDetail(sensors: [SensorReading], title: String, icon: String, color: Color) -> some View {
+        VStack(spacing: 0) {
             HStack {
-                Image(systemName: "thermometer.medium")
-                    .foregroundColor(temperatureStatusColor)
-                Text("Temperatura (°C)")
+                Image(systemName: icon)
+                    .foregroundColor(color)
+                Text(title)
                     .font(.scaled(.headline, scale: scale))
-                Image(systemName: isTemperatureCollapsed ? "chevron.right" : "chevron.down")
-                    .font(.scaled(.caption, scale: scale))
-                    .foregroundColor(.secondary)
                 Spacer()
-                Circle()
-                    .fill(temperatureStatusColor)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: temperatureStatusColor.opacity(0.6), radius: 3)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(temperatureStatusColor.opacity(0.05))
-            .onTapGesture { withAnimation { isTemperatureCollapsed.toggle() } }
+            .padding(.vertical, 10)
+            .background(color.opacity(0.05))
 
-            if !isTemperatureCollapsed {
+            Divider()
 
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(sensors) { sensor in
-                        SensorCardView(
-                            sensor: sensor,
-                            historyPoints: viewModel.sensorHistory[sensor.id] ?? []
-                        )
-                        .padding(.horizontal, 16)
-                        Divider().padding(.leading, 16)
+            if sensors.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: icon)
+                        .font(.system(size: 36))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("Nessun sensore disponibile")
+                        .font(.scaled(.subheadline, scale: scale))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(sensors) { sensor in
+                            SensorCardView(
+                                sensor: sensor,
+                                historyPoints: viewModel.sensorHistory[sensor.id] ?? []
+                            )
+                            .padding(.horizontal, 16)
+                            Divider().padding(.leading, 16)
+                        }
                     }
                 }
             }
-            } // end if !isTemperatureCollapsed
-        }
-    }
-
-    // MARK: - Power Section
-
-    private var powerSection: some View {
-        let sensors = sortedSensors(viewModel.sensors.filter { $0.category == .power })
-        return VStack(spacing: 0) {
-            HStack {
-                Image(systemName: "bolt.fill")
-                    .foregroundColor(powerStatusColor)
-                Text("Potenza (kW)")
-                    .font(.scaled(.headline, scale: scale))
-                Image(systemName: isPowerCollapsed ? "chevron.right" : "chevron.down")
-                    .font(.scaled(.caption, scale: scale))
-                    .foregroundColor(.secondary)
-                Spacer()
-                Circle()
-                    .fill(powerStatusColor)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: powerStatusColor.opacity(0.6), radius: 3)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(powerStatusColor.opacity(0.05))
-            .onTapGesture { withAnimation { isPowerCollapsed.toggle() } }
-
-            if !isPowerCollapsed {
-
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(sensors) { sensor in
-                        SensorCardView(
-                            sensor: sensor,
-                            historyPoints: viewModel.sensorHistory[sensor.id] ?? []
-                        )
-                        .padding(.horizontal, 16)
-                        Divider().padding(.leading, 16)
-                    }
-                }
-            }
-            } // end if !isPowerCollapsed
-        }
-    }
-
-    // MARK: - UPS Section
-
-    private var upsSection: some View {
-        let sensors = sortedSensors(viewModel.sensors.filter { $0.category == .ups })
-        return VStack(spacing: 0) {
-            HStack {
-                Image(systemName: "battery.75percent")
-                    .foregroundColor(upsStatusColor)
-                Text("UPS")
-                    .font(.scaled(.headline, scale: scale))
-                Image(systemName: isUPSCollapsed ? "chevron.right" : "chevron.down")
-                    .font(.scaled(.caption, scale: scale))
-                    .foregroundColor(.secondary)
-                Spacer()
-                Circle()
-                    .fill(upsStatusColor)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: upsStatusColor.opacity(0.6), radius: 3)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(upsStatusColor.opacity(0.05))
-            .onTapGesture { withAnimation { isUPSCollapsed.toggle() } }
-
-            if !isUPSCollapsed {
-
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(sensors) { sensor in
-                        SensorCardView(
-                            sensor: sensor,
-                            historyPoints: viewModel.sensorHistory[sensor.id] ?? []
-                        )
-                        .padding(.horizontal, 16)
-                        Divider().padding(.leading, 16)
-                    }
-                }
-            }
-            } // end if !isUPSCollapsed
-        }
-    }
-
-    // MARK: - Generator Section
-
-    private var generatorSection: some View {
-        let sensors = sortedSensors(viewModel.sensors.filter { $0.category == .generator })
-        return VStack(spacing: 0) {
-            HStack {
-                Image(systemName: "fuelpump.fill")
-                    .foregroundColor(generatorStatusColor)
-                Text("Generatori")
-                    .font(.scaled(.headline, scale: scale))
-                Image(systemName: isGeneratorCollapsed ? "chevron.right" : "chevron.down")
-                    .font(.scaled(.caption, scale: scale))
-                    .foregroundColor(.secondary)
-                Spacer()
-                Circle()
-                    .fill(generatorStatusColor)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: generatorStatusColor.opacity(0.6), radius: 3)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(generatorStatusColor.opacity(0.05))
-            .onTapGesture { withAnimation { isGeneratorCollapsed.toggle() } }
-
-            if !isGeneratorCollapsed {
-
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(sensors) { sensor in
-                        SensorCardView(
-                            sensor: sensor,
-                            historyPoints: viewModel.sensorHistory[sensor.id] ?? []
-                        )
-                        .padding(.horizontal, 16)
-                        Divider().padding(.leading, 16)
-                    }
-                }
-            }
-            } // end if !isGeneratorCollapsed
         }
     }
 
     // MARK: - Helpers
 
-    /// Ordina sensori secondo la preferenza sortOrder dalle impostazioni.
     private func sortedSensors(_ sensors: [SensorReading]) -> [SensorReading] {
         let sortOrder = viewModel.sortOrder
         if sortOrder == "alphabetical" {
@@ -544,17 +577,6 @@ struct MacDashboardView: View {
         let normal = sensors.filter { $0.status == .normal }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         return critical + normal
-    }
-
-    private func sectionDisplayName(_ section: String) -> String {
-        switch section {
-        case "portali": return "Portali"
-        case "temperatura": return "Temperatura"
-        case "potenza": return "Potenza"
-        case "ups": return "UPS"
-        case "generatori": return "Generatori"
-        default: return section
-        }
     }
 
     private var ledColor: Color {
@@ -690,6 +712,48 @@ private struct ProbeIndicator: View {
                 .font(.scaled(.caption, scale: scale))
                 .foregroundColor(.secondary)
         }
+    }
+}
+
+// MARK: - Overview Card
+
+private struct OverviewCard: View {
+    let section: DashboardSection
+    let statusText: String
+    let statusColor: Color
+    let action: () -> Void
+    @Environment(\.textScale) var scale
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 24))
+                    .foregroundColor(statusColor)
+
+                Text(section.displayName)
+                    .font(.scaled(.caption, scale: scale, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+
+                Text(statusText)
+                    .font(.scaled(.caption2, scale: scale, weight: .bold))
+                    .foregroundColor(statusColor)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.controlBackgroundColor).opacity(0.8))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(statusColor.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -882,77 +946,6 @@ private struct MacNotificationInlineView: View {
                 isRead: false,
                 requestId: event.id
             )
-        }
-    }
-
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "it_IT")
-        let calendar = Calendar.current
-        if calendar.isDateInToday(date) {
-            formatter.dateFormat = "HH:mm"
-        } else if calendar.isDateInYesterday(date) {
-            formatter.dateFormat = "'Ieri' HH:mm"
-        } else {
-            formatter.dateFormat = "dd/MM HH:mm"
-        }
-        return formatter.string(from: date)
-    }
-}
-
-// MARK: - Notification History Popover (macOS — legacy, kept for reference)
-
-private struct MacNotificationHistoryPopover: View {
-    @State private var notifications: [NotificationRecord] = []
-    @Environment(\.textScale) var scale
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Notifiche")
-                    .font(.scaled(.headline, scale: scale))
-                Spacer()
-            }
-            .padding()
-
-            Divider()
-
-            if notifications.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "bell.slash")
-                        .font(.title)
-                        .foregroundColor(.secondary)
-                    Text("Nessuna notifica")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List(notifications) { notif in
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Text(notif.title)
-                                .font(.caption.bold())
-                            Spacer()
-                            Text(formatDate(notif.date))
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                        if !notif.body.isEmpty {
-                            Text(notif.body)
-                                .font(.scaled(.caption, scale: scale))
-                                .foregroundColor(.secondary)
-                                .lineLimit(2)
-                        }
-                    }
-                    .padding(.vertical, 2)
-                }
-                .listStyle(.plain)
-            }
-        }
-        .onAppear {
-            notifications = NotificationStore.shared.loadAll()
-            NotificationStore.shared.markAllAsRead()
         }
     }
 
