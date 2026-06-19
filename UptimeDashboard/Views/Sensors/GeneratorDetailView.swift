@@ -6,6 +6,7 @@ import SwiftUI
 /// Swipe right to reorder, swipe left to pin/unpin from home.
 struct GeneratorDetailView: View {
     @ObservedObject var viewModel: DashboardViewModel
+    var scrollToId: String? = nil
     @State private var isReordering = false
     @State private var manualOrder: [SensorReading] = []
     @State private var isCriticalCollapsed = false
@@ -57,6 +58,7 @@ struct GeneratorDetailView: View {
     }
 
     var body: some View {
+        ScrollViewReader { proxy in
         List {
             if isReordering {
                 ForEach(manualOrder) { sensor in
@@ -114,11 +116,20 @@ struct GeneratorDetailView: View {
                 }
             }
         }
+        .onAppear {
+            if let id = scrollToId {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation { proxy.scrollTo(id, anchor: .center) }
+                }
+            }
+        }
+        } // end ScrollViewReader
     }
 
     @ViewBuilder
     private func sensorRow(_ sensor: SensorReading) -> some View {
         SensorCardView(sensor: sensor, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
+            .id(sensor.id)
             .listRowSeparator(.visible)
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 if !isReordering {

@@ -6,6 +6,7 @@ import SwiftUI
 /// Swipe right on a monitor to enter reorder mode. Order is persisted.
 struct PortalsDetailView: View {
     @ObservedObject var viewModel: DashboardViewModel
+    var scrollToId: String? = nil
     @Environment(\.openURL) private var openURL
     @EnvironmentObject private var settingsVM: SettingsViewModel
     @State private var isReordering = false
@@ -47,6 +48,7 @@ struct PortalsDetailView: View {
     }
 
     var body: some View {
+        ScrollViewReader { proxy in
         VStack(spacing: 0) {
             List {
                 if isReordering {
@@ -138,11 +140,20 @@ struct PortalsDetailView: View {
                 }
             }
         }
+        .onAppear {
+            if let id = scrollToId {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation { proxy.scrollTo(id, anchor: .center) }
+                }
+            }
+        }
+        } // end ScrollViewReader
     }
 
     @ViewBuilder
     private func monitorRow(_ item: MonitorItem) -> some View {
         MonitorRowView(item: item, openURL: openURL)
+            .id(item.name)
             .listRowBackground(rowBackground(for: item.rowColor))
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button {

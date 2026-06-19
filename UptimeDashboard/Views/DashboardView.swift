@@ -513,12 +513,12 @@ struct DashboardView: View {
     private func pinnedDestination(for item: PinnedItem) -> some View {
         switch item.type {
         case .portale:
-            PortalsDetailView(viewModel: viewModel)
+            PortalsDetailView(viewModel: viewModel, scrollToId: item.id)
                 .environmentObject(settingsVM)
         case .temperatura:
-            TemperatureDetailView(viewModel: viewModel)
+            TemperatureDetailView(viewModel: viewModel, scrollToId: item.id)
         case .potenza:
-            PowerDetailView(viewModel: viewModel)
+            PowerDetailView(viewModel: viewModel, scrollToId: item.id)
         }
     }
 
