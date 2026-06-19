@@ -159,10 +159,11 @@ struct PortalsDetailView: View {
     private func monitorRow(_ item: MonitorItem) -> some View {
         MonitorRowView(item: item, openURL: openURL)
             .id(item.name)
-            .listRowBackground(
-                highlightedId == item.name
-                    ? Color.blue.opacity(0.15)
-                    : rowBackground(for: item.rowColor)
+            .listRowBackground(rowBackground(for: item.rowColor))
+            .overlay(
+                Color.blue.opacity(highlightedId == item.name ? 0.2 : 0)
+                    .animation(.easeOut(duration: 3.0), value: highlightedId)
+                    .allowsHitTesting(false)
             )
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 Button {

@@ -136,7 +136,7 @@ struct GeneratorDetailView: View {
         SensorCardView(sensor: sensor, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
             .id(sensor.id)
             .listRowSeparator(.visible)
-            .listRowBackground(highlightedId == sensor.id ? Color.blue.opacity(0.15) : nil)
+            .background(Color.blue.opacity(highlightedId == sensor.id ? 0.2 : 0).animation(.easeOut(duration: 3.0), value: highlightedId))
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 if !isReordering {
                     Button {
