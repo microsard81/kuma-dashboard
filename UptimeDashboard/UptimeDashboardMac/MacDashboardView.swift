@@ -244,14 +244,41 @@ struct MacDashboardView: View {
 
     private var sidebarContent: some View {
         List(selection: $selectedSection) {
+            // Panoramica button (deselects any section)
+            Button {
+                selectedSection = nil
+            } label: {
+                Label {
+                    Text("Panoramica")
+                } icon: {
+                    Image(systemName: "square.grid.2x2")
+                        .foregroundColor(.accentColor)
+                }
+            }
+            .buttonStyle(.plain)
+            .padding(.vertical, 4)
+            .opacity(selectedSection == nil ? 0.5 : 1.0)
+
+            Divider()
+
             ForEach(DashboardSection.allCases) { section in
                 Label {
                     HStack {
                         Text(section.displayName)
                         Spacer()
-                        Circle()
-                            .fill(sectionStatusColor(for: section))
-                            .frame(width: 8, height: 8)
+                        let badge = sidebarBadge(for: section)
+                        if let badge = badge {
+                            Text(badge)
+                                .font(.caption2.weight(.bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(sectionStatusColor(for: section), in: Capsule())
+                        } else {
+                            Circle()
+                                .fill(sectionStatusColor(for: section))
+                                .frame(width: 8, height: 8)
+                        }
                     }
                 } icon: {
                     Image(systemName: section.icon)
@@ -261,6 +288,29 @@ struct MacDashboardView: View {
             }
         }
         .listStyle(.sidebar)
+    }
+
+    private func sidebarBadge(for section: DashboardSection) -> String? {
+        switch section {
+        case .portali:
+            let down = viewModel.monitors.filter { $0.isDown }.count
+            let mismatch = viewModel.monitors.filter { $0.isMismatch }.count
+            if down > 0 { return "\(down)" }
+            if mismatch > 0 { return "\(mismatch)" }
+            return nil
+        case .temperatura:
+            let c = viewModel.temperatureSensors.filter { $0.status == .critical }.count
+            return c > 0 ? "\(c)" : nil
+        case .potenza:
+            let c = viewModel.powerSensors.filter { $0.status == .critical }.count
+            return c > 0 ? "\(c)" : nil
+        case .ups:
+            let c = viewModel.upsSensors.filter { $0.status == .critical }.count
+            return c > 0 ? "\(c)" : nil
+        case .generatori:
+            let c = viewModel.generatorSensors.filter { $0.status == .critical }.count
+            return c > 0 ? "\(c)" : nil
+        }
     }
 
     // MARK: - Detail
