@@ -365,13 +365,15 @@ struct MacDashboardView: View {
 
                             LazyVGrid(columns: columns, spacing: 16) {
                                 ForEach(pinnedItems) { item in
-                                    MacPinnedCardView(item: item, viewModel: viewModel)
-                                        .contextMenu {
-                                            Button("Rimuovi da In evidenza") {
-                                                MacPinnedStore.shared.unpin(id: item.id)
-                                                refreshPinned()
-                                            }
+                                    MacPinnedCardView(item: item, viewModel: viewModel) {
+                                        selectedSection = sectionForPinnedItem(item)
+                                    }
+                                    .contextMenu {
+                                        Button("Rimuovi da In evidenza") {
+                                            MacPinnedStore.shared.unpin(id: item.id)
+                                            refreshPinned()
                                         }
+                                    }
                                 }
                             }
                         }
@@ -387,6 +389,16 @@ struct MacDashboardView: View {
 
     private func refreshPinned() {
         pinnedItems = MacPinnedStore.shared.loadAll()
+    }
+
+    private func sectionForPinnedItem(_ item: MacPinnedItem) -> DashboardSection {
+        switch item.type {
+        case .portale: return .portali
+        case .temperatura: return .temperatura
+        case .potenza: return .potenza
+        case .ups: return .ups
+        case .generatore: return .generatori
+        }
     }
 
     private func adaptiveColumns(for width: CGFloat) -> [GridItem] {
@@ -900,6 +912,7 @@ private struct MacPinnedCardView: View {
     let item: MacPinnedItem
     @ObservedObject var viewModel: MacAppViewModel
     @Environment(\.textScale) var scale
+    var onDoubleTap: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 10) {
@@ -924,6 +937,9 @@ private struct MacPinnedCardView: View {
             RoundedRectangle(cornerRadius: 14)
                 .fill(Color(hex: "#1e2a3a"))
         )
+        .onTapGesture(count: 2) {
+            onDoubleTap()
+        }
     }
 
     private var displayName: String {
@@ -937,6 +953,16 @@ private struct MacPinnedCardView: View {
         case .potenza: return "bolt.fill"
         case .ups: return "battery.75percent"
         case .generatore: return "fuelpump.fill"
+        }
+    }
+
+    private var sectionForItem: DashboardSection {
+        switch item.type {
+        case .portale: return .portali
+        case .temperatura: return .temperatura
+        case .potenza: return .potenza
+        case .ups: return .ups
+        case .generatore: return .generatori
         }
     }
 
