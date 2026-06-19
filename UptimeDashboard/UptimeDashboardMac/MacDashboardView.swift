@@ -390,6 +390,7 @@ struct MacDashboardView: View {
                     }
                 }
                 .padding(24)
+                .frame(minHeight: geo.size.height)
             }
         }
         .onAppear { refreshPinned() }
