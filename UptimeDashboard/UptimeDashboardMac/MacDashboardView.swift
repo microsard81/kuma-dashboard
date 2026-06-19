@@ -693,24 +693,24 @@ private struct OverviewCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: 14) {
                 Image(systemName: section.icon)
-                    .font(.system(size: 22, weight: .medium))
+                    .font(.system(size: 36, weight: .medium))
                     .foregroundColor(statusColor)
 
                 Text(cardLabel)
-                    .font(.scaled(.caption, scale: scale, weight: .medium))
+                    .font(.scaled(.body, scale: scale, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineLimit(1)
 
                 Text(statusText)
-                    .font(.scaled(.caption2, scale: scale, weight: .bold))
+                    .font(.scaled(.subheadline, scale: scale, weight: .bold))
                     .foregroundColor(statusColor)
                     .lineLimit(1)
             }
-            .frame(width: 80, height: 90)
+            .frame(width: 140, height: 160)
             .background(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 14)
                     .fill(Color(hex: "#1e2a3a"))
             )
         }
