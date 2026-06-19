@@ -77,7 +77,6 @@ struct MacDashboardView: View {
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
     @State private var unreadNotifications = NotificationStore.shared.unreadCount
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     private var filteredMonitors: [MacMonitor] {
         var sorted: [MacMonitor]
@@ -157,7 +156,7 @@ struct MacDashboardView: View {
                         unreadNotifications = 0
                     }
             } else {
-                NavigationSplitView(columnVisibility: $columnVisibility) {
+                NavigationSplitView {
                     sidebarContent
                         .navigationSplitViewColumnWidth(min: 180, ideal: 210)
                 } detail: {
@@ -182,22 +181,6 @@ struct MacDashboardView: View {
 
     private var toolbarView: some View {
         HStack {
-            // Show sidebar button (when hidden)
-            if columnVisibility == .detailOnly {
-                Button {
-                    withAnimation {
-                        columnVisibility = .all
-                    }
-                } label: {
-                    Image(systemName: "sidebar.left")
-                        .font(.system(size: 13))
-                        .frame(width: 28, height: 28)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .help("Mostra sidebar")
-            }
-
             Text("Dashboard INVA")
                 .font(.scaled(.headline, scale: scale))
 
@@ -261,33 +244,22 @@ struct MacDashboardView: View {
 
     private var sidebarContent: some View {
         List(selection: $selectedSection) {
-            // Spacing in alto
+            // Panoramica button (deselects any section)
             Section {
-                // Toggle sidebar button
                 Button {
-                    withAnimation {
-                        columnVisibility = .detailOnly
-                    }
+                    selectedSection = nil
                 } label: {
-                    Label("Nascondi sidebar", systemImage: "sidebar.left")
-                        .foregroundColor(.secondary)
+                    Label {
+                        Text("Panoramica")
+                    } icon: {
+                        Image(systemName: "square.grid.2x2")
+                            .foregroundColor(.accentColor)
+                    }
                 }
                 .buttonStyle(.plain)
+                .opacity(selectedSection == nil ? 0.5 : 1.0)
             }
-
-            // Panoramica button (deselects any section)
-            Button {
-                selectedSection = nil
-            } label: {
-                Label {
-                    Text("Panoramica")
-                } icon: {
-                    Image(systemName: "square.grid.2x2")
-                        .foregroundColor(.accentColor)
-                }
-            }
-            .buttonStyle(.plain)
-            .opacity(selectedSection == nil ? 0.5 : 1.0)
+            .padding(.top, 12)
 
             Divider()
 
