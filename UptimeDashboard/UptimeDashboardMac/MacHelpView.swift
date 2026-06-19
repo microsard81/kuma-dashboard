@@ -39,11 +39,13 @@ struct HelpWebView: NSViewRepresentable {
     <p>Applicazione di monitoraggio uptime multi-sonda e sensori datacenter per i servizi IN.VA.</p>
 
     <h2>Schermata principale</h2>
-    <p>La dashboard mostra 3 sezioni (affiancate se la finestra è larga, impilate se stretta):</p>
+    <p>La dashboard mostra 5 sezioni (affiancate se la finestra è larga, impilate se stretta):</p>
     <ul>
     <li><strong>Portali</strong> — Stato dei servizi web monitorati da 5 sonde indipendenti</li>
     <li><strong>Temperatura (°C)</strong> — Sensori di temperatura del datacenter</li>
-    <li><strong>Potenza (kW)</strong> — Sensori di potenza degli inverter</li>
+    <li><strong>Potenza (kW)</strong> — Sensori di potenza elettrica</li>
+    <li><strong>UPS</strong> — Stato UPS: batteria, sorgente, capacità, durata, fasi</li>
+    <li><strong>Generatori</strong> — Stato gruppi elettrogeni: controller, tensione, carico, carburante</li>
     </ul>
 
     <h2>Sonde</h2>
@@ -63,12 +65,12 @@ struct HelpWebView: NSViewRepresentable {
     </ul>
 
     <h2>Sensori datacenter</h2>
-    <p>I sensori misurano temperatura e potenza. Ogni sensore ha soglie configurabili:</p>
+    <p>I sensori monitorano temperatura, potenza, stato UPS e gruppi elettrogeni. Ogni sensore ha una soglia individuale dal sistema di monitoraggio:</p>
     <ul>
-    <li>🟠 <strong>Normale (temperatura)</strong> / 🔵 <strong>Normale (potenza)</strong> — Valori entro i limiti</li>
-    <li>🟡 <strong>Warning</strong> — Soglia di attenzione superata</li>
-    <li>🔴 <strong>Critical</strong> — Soglia critica superata</li>
+    <li>🟠 <strong>Normale (temperatura)</strong> / 🔵 <strong>Normale (potenza)</strong> / 🟣 <strong>Normale (UPS)</strong> / 🟠 <strong>Normale (generatori)</strong></li>
+    <li>🔴 <strong>Critical</strong> — Soglia superata, richiede attenzione immediata</li>
     </ul>
+    <p>I sensori possono mostrare valori numerici (es. 23.5 °C, 100 %) o di stato (es. "Normale", "AUTOMATICO").</p>
     <p>Passa il mouse sul grafico per vedere valore e orario del punto.</p>
 
     <h2>Notifiche</h2>

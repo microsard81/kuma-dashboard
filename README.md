@@ -618,9 +618,10 @@ UptimeDashboardTests/
 - **Tooltip interattivo** — tocca il grafico di un sensore per vedere valore e orario (HH:mm) del punto
 - **Riordino sezioni** — long press su una macro-card per riordinare le 3 sezioni con drag & drop
 - **Riordino elementi** — swipe a destra su un elemento → drag & drop → "Termina"; ordine salvato
-- **Risorse in evidenza** — swipe a sinistra per pinnare risorse sulla home; card quadrate con stato in tempo reale; long press per riordinare/rimuovere; drag & drop tra card
+- **Risorse in evidenza** — swipe a sinistra per pinnare risorse sulla home; card quadrate con stato in tempo reale; long press per riordinare/rimuovere; drag & drop tra card; tap per aprire la sezione e scrollare direttamente alla risorsa con evidenziazione temporanea
 - **Storico notifiche** — icona campana con badge non lette; sezioni non lette/lette con raggruppamento temporale collassabile; swipe per segnare letta/non letta; pull-to-refresh sincronizza dal backend e segna tutte come lette
 - **Sezioni collassabili notifiche lette** — le notifiche già lette sono raggruppate in tre sezioni espandibili/collassabili: "Questa settimana" (≤ 7 giorni, aperta di default), "Questo mese" (7–30 giorni, aperta di default), "Precedenti" (> 30 giorni, chiusa di default); tap sul chevron per espandere/collassare con animazione
+- **Navigazione da In evidenza** — tap su una risorsa pinnata apre la sezione, scrolla alla risorsa e la evidenzia temporaneamente con sfondo blu traslucido (2 secondi, poi sfuma)
 - **Event log server-side** — lo storico completo degli eventi (transizioni di stato, alert sensori) è servito dal backend via `/api/events`; le app fanno fetch all'apertura e al pull-to-refresh; lo stato letto/non letto è locale per dispositivo
 - **Auto-refresh** — aggiornamento automatico configurabile (default 60s); pull-to-refresh in ogni scheda
 - **Filtro DOWN** — toggle per mostrare solo i monitor in stato DOWN o mismatch (nella scheda Portali)

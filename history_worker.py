@@ -468,7 +468,7 @@ def check_inverter_alerts():
             if new_state == "normal":
                 event_name = f"✅ {name}"
             elif new_state == "critical":
-                event_name = f"🔴 {name}"
+                event_name = f"⛔ {name}"
             else:
                 event_name = name
 

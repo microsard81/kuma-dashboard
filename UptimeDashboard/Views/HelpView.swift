@@ -9,18 +9,20 @@ struct HelpView: View {
 
                 // Panoramica
                 section("Panoramica") {
-                    Text("Dashboard INVA monitora lo stato dei portali web e dei sensori del datacenter (temperatura e potenza). I dati si aggiornano automaticamente ogni 60 secondi.")
+                    Text("Dashboard INVA monitora lo stato dei portali web e dei sensori del datacenter (temperatura, potenza, UPS, generatori). I dati si aggiornano automaticamente ogni 60 secondi.")
                         .font(.subheadline)
                         .multilineTextAlignment(.leading)
                 }
 
                 // Schermata principale
                 section("Schermata principale") {
-                    Text("La schermata principale mostra 3 aree:")
+                    Text("La schermata principale mostra 5 aree:")
                         .font(.subheadline)
                     areaRow(icon: "globe", color: .green, title: "Portali", description: "Stato dei servizi web monitorati da 5 sonde indipendenti")
-                    areaRow(icon: "thermometer.medium", color: .green, title: "Temperatura", description: "Sensori di temperatura del datacenter (°C)")
-                    areaRow(icon: "bolt.fill", color: .blue, title: "Potenza", description: "Sensori di potenza degli inverter (kW)")
+                    areaRow(icon: "thermometer.medium", color: .orange, title: "Temperatura", description: "Sensori di temperatura del datacenter (°C)")
+                    areaRow(icon: "bolt.fill", color: .blue, title: "Potenza", description: "Sensori di potenza elettrica (kW)")
+                    areaRow(icon: "battery.75percent", color: .purple, title: "UPS", description: "Stato UPS: batteria, sorgente, capacità, durata, fasi")
+                    areaRow(icon: "fuelpump.fill", color: .orange, title: "Generatori", description: "Stato gruppi elettrogeni: controller, tensione, carico, carburante")
                     Text("Il pallino colorato indica lo stato globale dell'area. Tocca una card per vedere i dettagli.")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -41,13 +43,13 @@ struct HelpView: View {
 
                 // Sensori
                 section("Sensori datacenter") {
-                    Text("I sensori misurano temperatura e potenza degli inverter. Ogni sensore ha soglie configurabili:")
+                    Text("I sensori monitorano temperatura, potenza, stato UPS e gruppi elettrogeni. Ogni sensore ha una soglia individuale dal sistema di monitoraggio:")
                         .font(.subheadline)
-                    statusRow(color: .green, label: "Normale", description: "Temperatura: valore entro i limiti. Potenza: valore sopra la soglia minima")
-                    statusRow(color: .yellow, label: "Warning", description: "Temperatura troppo alta o potenza troppo bassa (soglia warning)")
-                    statusRow(color: .red, label: "Critical", description: "Temperatura molto alta o potenza molto bassa (soglia critical)")
+                    statusRow(color: .green, label: "Normale", description: "Valore entro i limiti configurati")
+                    statusRow(color: .red, label: "Critical", description: "Soglia superata — richiede attenzione immediata")
                     Divider()
                     infoRow(icon: "chart.xyaxis.line", text: "Ogni sensore mostra un grafico con gli ultimi 60 valori. Tocca il grafico per vedere valore e orario del punto.")
+                    infoRow(icon: "text.justify.left", text: "I sensori possono mostrare valori numerici (es. 23.5 °C) o di stato (es. \"Normale\", \"AUTOMATICO\").")
                 }
 
                 // Storico
@@ -67,8 +69,7 @@ struct HelpView: View {
                     notifRow("🟡", text: "Incongruenza — alcune sonde vedono DOWN")
                     notifRow("🟢", text: "Tutto OK — tutti i servizi ripristinati")
                     Divider()
-                    notifRow("🔴", text: "Sensore critical — temperatura troppo alta o potenza troppo bassa")
-                    notifRow("🟡", text: "Sensore warning — soglia di attenzione superata")
+                    notifRow("🔴", text: "Sensore critical — soglia superata (richiede attenzione)")
                     notifRow("🟢", text: "Sensore rientrato — valore tornato nella norma")
                 }
 
@@ -93,19 +94,18 @@ struct HelpView: View {
 
                 // Riordino manuale
                 section("Riordino manuale") {
-                    infoRow(icon: "hand.press", text: "Tieni premuto su una delle 3 sezioni principali (Portali, Temperatura, Potenza) per riordinarle con drag & drop.")
+                    infoRow(icon: "hand.press", text: "Tieni premuto su una delle 5 sezioni principali (Portali, Temperatura, Potenza, UPS, Generatori) per riordinarle con drag & drop.")
                     infoRow(icon: "arrow.up.arrow.down", text: "Nelle schede di dettaglio, scorri verso destra su un elemento per riordinare i singoli elementi.")
                     infoRow(icon: "hand.draw", text: "In modalità riordino, trascina gli elementi nell'ordine desiderato.")
-                    infoRow(icon: "checkmark.circle", text: "Tocca 'Fine' per salvare. L'ordine viene mantenuto anche chiudendo l'app.")
+                    infoRow(icon: "checkmark.circle", text: "Tocca 'Termina' per salvare. L'ordine viene mantenuto anche chiudendo l'app.")
                 }
 
                 // Risorse in evidenza
                 section("Risorse in evidenza") {
-                    infoRow(icon: "plus.circle", text: "Nelle schede Portali, Temperatura o Potenza, scorri verso sinistra su un elemento per aggiungerlo alla pagina principale.")
-                    infoRow(icon: "square.grid.2x2", text: "Le risorse in evidenza appaiono come quadrati nella home, sotto le 3 sezioni principali.")
-                    infoRow(icon: "hand.tap", text: "Tocca una risorsa in evidenza per aprire la scheda corrispondente.")
+                    infoRow(icon: "plus.circle", text: "In qualsiasi scheda sensori o portali, scorri verso sinistra su un elemento per aggiungerlo alla pagina principale.")
+                    infoRow(icon: "square.grid.2x2", text: "Le risorse in evidenza appaiono come quadrati nella home, sotto le 5 sezioni principali.")
+                    infoRow(icon: "hand.tap", text: "Tocca una risorsa in evidenza per aprire la scheda e scorrere direttamente fino a quella risorsa (con evidenziazione temporanea).")
                     infoRow(icon: "hand.press", text: "Tieni premuto su una card per entrare in modalità riordino: trascina per spostare, tocca ⊖ per rimuovere.")
-                    infoRow(icon: "trash", text: "In modalità riordino, 'Rimuovi tutti' elimina tutte le risorse in evidenza.")
                     infoRow(icon: "checkmark.circle", text: "Tocca 'Fine' per salvare l'ordine e uscire dalla modalità riordino.")
                 }
 
