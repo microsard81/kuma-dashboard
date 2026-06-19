@@ -233,9 +233,6 @@ struct DashboardView: View {
 
                         // Pinned items (square cards)
                         if !pinnedItems.isEmpty {
-                            Divider()
-                                .padding(.vertical, -4)
-
                             // Header with title + Fine button
                             HStack {
                                 Text("In evidenza")
@@ -417,6 +414,8 @@ struct DashboardView: View {
             viewModel.startAutoRefresh()
             unreadNotifications = (UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard).integer(forKey: "ios_event_unread_count")
             pinnedItems = PinnedStore.shared.loadAll()
+            // Fetch conteggio non lette dal server all'avvio
+            Task { await refreshUnreadCount() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .pinnedItemsChanged)) { _ in
             withAnimation { pinnedItems = PinnedStore.shared.loadAll() }
@@ -429,6 +428,7 @@ struct DashboardView: View {
             // Rileggi il conteggio non lette al ritorno in foreground
             // (la NSE potrebbe averlo aggiornato mentre l'app era in background)
             unreadNotifications = (UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard).integer(forKey: "ios_event_unread_count")
+            Task { await refreshUnreadCount() }
         }
         .onChange(of: viewModel.lastUpdated) { _ in
             unreadNotifications = (UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard).integer(forKey: "ios_event_unread_count")
@@ -559,6 +559,48 @@ struct DashboardView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Unread count from server
+
+    /// Fetches events from the server and updates the unread badge count.
+    /// Compares server event IDs with locally-read IDs to compute the real unread count.
+    private func refreshUnreadCount() async {
+        let url = AppConfig.baseURL.appendingPathComponent("api/events")
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        components?.queryItems = [URLQueryItem(name: "limit", value: "200")]
+
+        guard let requestURL = components?.url else { return }
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "GET"
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+
+            struct EventsResponse: Codable {
+                let events: [EventItem]
+                struct EventItem: Codable {
+                    let id: String
+                    let type: String?
+                }
+            }
+
+            let decoded = try JSONDecoder().decode(EventsResponse.self, from: data)
+            let readIds = Set((UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard).stringArray(forKey: "ios_event_read_state") ?? [])
+
+            let nonGlobalEvents = decoded.events.filter { $0.type != "global" }
+            let unreadCount = nonGlobalEvents.filter { !readIds.contains($0.id) }.count
+
+            await MainActor.run {
+                let defaults = UserDefaults(suiteName: "group.cloud.sundata.uptimeDashboard") ?? .standard
+                defaults.set(unreadCount, forKey: "ios_event_unread_count")
+                unreadNotifications = unreadCount
+            }
+        } catch {
+            // Silently fail — keep existing count
+        }
     }
 
     // MARK: - Subtitles
