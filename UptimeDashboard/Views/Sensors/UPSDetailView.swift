@@ -3,12 +3,16 @@
 import SwiftUI
 
 /// Detail view showing all UPS sensors with sparklines.
-/// Swipe right on a sensor to enter reorder mode (drag & drop).
-/// Order is persisted in UserDefaults.
+/// Swipe right to reorder, swipe left to pin/unpin from home.
 struct UPSDetailView: View {
     @ObservedObject var viewModel: DashboardViewModel
     @State private var isReordering = false
     @State private var manualOrder: [SensorReading] = []
+    @State private var isCriticalCollapsed = false
+    @State private var isNormalCollapsed = false
+    @State private var showPinConfirmation = false
+    @State private var showUnpinConfirmation = false
+    @State private var pinnedIds: Set<String> = Set(PinnedStore.shared.loadAll().map(\.id))
 
     private let orderKey = "sensor_order_ups"
 
@@ -35,19 +39,16 @@ struct UPSDetailView: View {
         }
 
         if hasCustomOrder {
-            // Ordine manuale: solo critical in cima, il resto nell'ordine salvato
             let critical = baseOrder.filter { $0.status == .critical }
             let normal = baseOrder.filter { $0.status == .normal }
             return critical + normal
         }
 
-        // Nessun ordine manuale: applica sortOrder globale
         let sortOrder = UserDefaults.standard.string(forKey: "sortOrder") ?? "severity"
         if sortOrder == "alphabetical" {
             return baseOrder.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         }
 
-        // Per gravità: ordina alfabeticamente dentro ogni gruppo
         let critical = baseOrder.filter { $0.status == .critical }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         let normal = baseOrder.filter { $0.status == .normal }
@@ -59,54 +60,103 @@ struct UPSDetailView: View {
         List {
             if isReordering {
                 ForEach(manualOrder) { sensor in
-                    sensorRow(sensor)
+                    SensorCardView(sensor: sensor, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
+                        .listRowSeparator(.visible)
                 }
-                .onMove { from, to in
-                    manualOrder.move(fromOffsets: from, toOffset: to)
-                }
+                .onMove { from, to in manualOrder.move(fromOffsets: from, toOffset: to) }
             } else {
-                ForEach(displaySensors) { sensor in
-                    sensorRow(sensor)
-                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                            Button {
-                                startReorder()
-                            } label: {
-                                Label("Riordina", systemImage: "arrow.up.arrow.down")
-                            }
-                            .tint(.blue)
+                let criticalSensors = displaySensors.filter { $0.status == .critical }
+                let normalSensors = displaySensors.filter { $0.status == .normal }
+                let allNormal = criticalSensors.isEmpty
+
+                if !criticalSensors.isEmpty {
+                    Section(isExpanded: Binding(get: { !isCriticalCollapsed }, set: { isCriticalCollapsed = !$0 })) {
+                        ForEach(criticalSensors) { sensor in
+                            sensorRow(sensor)
                         }
+                    } header: {
+                        Label("Critical (\(criticalSensors.count))", systemImage: "exclamationmark.octagon.fill")
+                            .foregroundColor(.red)
+                    }
+                }
+
+                if !normalSensors.isEmpty {
+                    if allNormal {
+                        ForEach(normalSensors) { sensor in
+                            sensorRow(sensor)
+                        }
+                    } else {
+                        Section(isExpanded: Binding(get: { !isNormalCollapsed }, set: { isNormalCollapsed = !$0 })) {
+                            ForEach(normalSensors) { sensor in
+                                sensorRow(sensor)
+                            }
+                        } header: {
+                            Label("Normal (\(normalSensors.count))", systemImage: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                        }
+                    }
                 }
             }
         }
         .listStyle(.plain)
         .environment(\.editMode, isReordering ? .constant(.active) : .constant(.inactive))
+        .refreshable { await viewModel.refresh() }
         .navigationTitle("UPS")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if isReordering {
-                Button("Fine") {
-                    saveOrder()
-                    withAnimation { isReordering = false }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Termina") {
+                        saveOrder(manualOrder.map(\.id))
+                        withAnimation { isReordering = false }
+                    }
+                    .bold()
                 }
             }
         }
-        .refreshable { await viewModel.refresh() }
     }
 
+    @ViewBuilder
     private func sensorRow(_ sensor: SensorReading) -> some View {
-        SensorCardView(
-            sensor: sensor,
-            historyPoints: viewModel.sensorHistory[sensor.id] ?? []
-        )
+        SensorCardView(sensor: sensor, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
+            .listRowSeparator(.visible)
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                if !isReordering {
+                    Button {
+                        manualOrder = displaySensors
+                        withAnimation { isReordering = true }
+                    } label: {
+                        Label("Riordina", systemImage: "arrow.up.arrow.down")
+                    }
+                    .tint(.orange)
+                }
+            }
+            .swipeActions(edge: .trailing) {
+                if pinnedIds.contains(sensor.id) {
+                    Button {
+                        PinnedStore.shared.unpin(id: sensor.id)
+                        pinnedIds.remove(sensor.id)
+                        withAnimation { showUnpinConfirmation = true }
+                    } label: {
+                        Label("Rimuovi", systemImage: "minus.circle")
+                    }
+                    .tint(.red)
+                } else {
+                    Button {
+                        PinnedStore.shared.pin(id: sensor.id, type: .potenza)
+                        pinnedIds.insert(sensor.id)
+                        withAnimation { showPinConfirmation = true }
+                    } label: {
+                        Label("Home", systemImage: "plus.circle")
+                    }
+                    .tint(.purple)
+                }
+            }
     }
 
-    private func startReorder() {
-        manualOrder = displaySensors
-        withAnimation { isReordering = true }
-    }
+    // MARK: - Persistence
 
-    private func saveOrder() {
-        let ids = manualOrder.map { $0.id }
+    private func saveOrder(_ ids: [String]) {
         UserDefaults.standard.set(ids, forKey: orderKey)
     }
 
