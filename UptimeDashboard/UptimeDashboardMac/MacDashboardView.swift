@@ -362,8 +362,23 @@ struct MacDashboardView: View {
             let columns = adaptiveColumns(for: geo.size.width)
             ScrollView {
                 VStack(spacing: 20) {
-                    // Pinned items section
+                    // Section cards
+                    LazyVGrid(columns: columns, spacing: 16) {
+                        ForEach(DashboardSection.allCases) { section in
+                            OverviewCard(
+                                section: section,
+                                statusText: overviewStatusText(for: section),
+                                statusColor: sectionStatusColor(for: section)
+                            ) {
+                                selectedSection = section
+                            }
+                        }
+                    }
+
+                    // Pinned items section (below main cards)
                     if !pinnedItems.isEmpty {
+                        Divider()
+
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Image(systemName: "pin.fill")
@@ -376,7 +391,7 @@ struct MacDashboardView: View {
                             }
                             .padding(.horizontal, 4)
 
-                            LazyVGrid(columns: pinnedColumns(for: geo.size.width), spacing: 10) {
+                            LazyVGrid(columns: columns, spacing: 16) {
                                 ForEach(pinnedItems) { item in
                                     MacPinnedCardView(item: item, viewModel: viewModel)
                                         .contextMenu {
@@ -386,21 +401,6 @@ struct MacDashboardView: View {
                                             }
                                         }
                                 }
-                            }
-                        }
-
-                        Divider()
-                    }
-
-                    // Section cards
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(DashboardSection.allCases) { section in
-                            OverviewCard(
-                                section: section,
-                                statusText: overviewStatusText(for: section),
-                                statusColor: sectionStatusColor(for: section)
-                            ) {
-                                selectedSection = section
                             }
                         }
                     }
@@ -417,12 +417,6 @@ struct MacDashboardView: View {
         pinnedItems = MacPinnedStore.shared.loadAll()
     }
 
-    private func pinnedColumns(for width: CGFloat) -> [GridItem] {
-        let minCardWidth: CGFloat = 100
-        let count = max(2, Int(width / (minCardWidth + 10)))
-        return Array(repeating: GridItem(.flexible(), spacing: 10), count: count)
-    }
-
     private func adaptiveColumns(for width: CGFloat) -> [GridItem] {
         let minCardWidth: CGFloat = 140
         let count = max(1, Int(width / (minCardWidth + 16)))
@@ -432,27 +426,32 @@ struct MacDashboardView: View {
     private func overviewStatusText(for section: DashboardSection) -> String {
         switch section {
         case .portali:
+            let total = viewModel.monitors.count
             let down = viewModel.monitors.filter { $0.isDown }.count
             let mismatch = viewModel.monitors.filter { $0.isMismatch }.count
-            if down > 0 { return "\(down) DOWN" }
-            if mismatch > 0 { return "\(mismatch) Mismatch" }
-            return "OK (\(viewModel.monitors.count))"
+            if down > 0 { return "\(down)/\(total) DOWN" }
+            if mismatch > 0 { return "\(mismatch)/\(total) Mismatch" }
+            return "OK (\(total))"
         case .temperatura:
-            let critical = viewModel.temperatureSensors.filter { $0.status == .critical }.count
-            if critical > 0 { return "\(critical) Critical" }
-            return "OK"
+            let sensors = viewModel.temperatureSensors
+            let critical = sensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical)/\(sensors.count) Critical" }
+            return "OK (\(sensors.count))"
         case .potenza:
-            let critical = viewModel.powerSensors.filter { $0.status == .critical }.count
-            if critical > 0 { return "\(critical) Critical" }
-            return "OK"
+            let sensors = viewModel.powerSensors
+            let critical = sensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical)/\(sensors.count) Critical" }
+            return "OK (\(sensors.count))"
         case .ups:
-            let critical = viewModel.upsSensors.filter { $0.status == .critical }.count
-            if critical > 0 { return "\(critical) Critical" }
-            return "OK"
+            let sensors = viewModel.upsSensors
+            let critical = sensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical)/\(sensors.count) Critical" }
+            return "OK (\(sensors.count))"
         case .generatori:
-            let critical = viewModel.generatorSensors.filter { $0.status == .critical }.count
-            if critical > 0 { return "\(critical) Critical" }
-            return "OK"
+            let sensors = viewModel.generatorSensors
+            let critical = sensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical)/\(sensors.count) Critical" }
+            return "OK (\(sensors.count))"
         }
     }
 
@@ -931,9 +930,9 @@ private struct MacPinnedCardView: View {
     @Environment(\.textScale) var scale
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 10) {
             Image(systemName: iconName)
-                .font(.system(size: 18))
+                .font(.system(size: 28, weight: .medium))
                 .foregroundColor(cardColor)
 
             Text(displayName)
@@ -943,14 +942,14 @@ private struct MacPinnedCardView: View {
                 .foregroundColor(.primary)
 
             Text(statusText)
-                .font(.scaled(.caption2, scale: scale, weight: .bold))
+                .font(.scaled(.subheadline, scale: scale, weight: .bold))
                 .foregroundColor(cardColor)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 90)
+        .frame(height: 140)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 14)
                 .fill(Color(hex: "#1e2a3a"))
         )
     }

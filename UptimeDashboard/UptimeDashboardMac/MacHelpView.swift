@@ -38,8 +38,32 @@ struct HelpWebView: NSViewRepresentable {
     <h1>Dashboard INVA MAC</h1>
     <p>Applicazione di monitoraggio uptime multi-sonda e sensori datacenter per i servizi IN.VA.</p>
 
-    <h2>Schermata principale</h2>
-    <p>La dashboard mostra 5 sezioni (affiancate se la finestra è larga, impilate se stretta):</p>
+    <h2>Layout Sidebar / Detail</h2>
+    <p>L'interfaccia è divisa in due aree:</p>
+    <ul>
+    <li><strong>Sidebar sinistra</strong> — Lista delle 5 sezioni con icona, nome e indicatore di stato. Clicca una sezione per vederne il dettaglio nel pannello destro.</li>
+    <li><strong>Pannello destro (Detail)</strong> — Mostra il contenuto della sezione selezionata oppure la <em>Panoramica</em>.</li>
+    </ul>
+    <p>Per nascondere la sidebar: clicca "Nascondi sidebar" nella sidebar stessa. Per riaprirla: clicca l'icona sidebar nella toolbar.</p>
+
+    <h2>Panoramica</h2>
+    <p>Quando nessuna sezione è selezionata (clicca "Panoramica" nella sidebar), il pannello destro mostra:</p>
+    <ul>
+    <li><strong>In evidenza</strong> — Risorse pinnate con stato live (se presenti)</li>
+    <li><strong>Card sezioni</strong> — Una card per sezione con icona, nome e conteggio: es. "OK (10)" oppure "2/10 DOWN"</li>
+    </ul>
+    <p>Le card si aggiornano automaticamente: se un sensore va in Critical o un portale va DOWN, il conteggio e il colore cambiano in tempo reale.</p>
+    <p>Clicca una card per entrare nella sezione corrispondente.</p>
+
+    <h2>In evidenza (Pin)</h2>
+    <p>Puoi "pinnare" qualsiasi risorsa per tenerla in evidenza nella Panoramica:</p>
+    <ul>
+    <li><strong>Pinnare</strong> — Click destro (o Control+click) su un monitor o sensore → "Aggiungi a In evidenza"</li>
+    <li><strong>Rimuovere</strong> — Click destro sulla card pinnata nella Panoramica → "Rimuovi da In evidenza"</li>
+    </ul>
+    <p>Le card pinnate mostrano icona, nome abbreviato e valore/stato live (es. "UP", "23.5 °C", "DOWN").</p>
+
+    <h2>Sezioni</h2>
     <ul>
     <li><strong>Portali</strong> — Stato dei servizi web monitorati da 5 sonde indipendenti</li>
     <li><strong>Temperatura (°C)</strong> — Sensori di temperatura del datacenter</li>
@@ -90,8 +114,7 @@ struct HelpWebView: NSViewRepresentable {
     <ul>
     <li><span class="key">⌘R</span> — Aggiorna Dashboard</li>
     <li><span class="key">⌘,</span> — Impostazioni</li>
-    <li><span class="key">⌘Q</span> — Nascondi nella menu bar</li>
-    <li><span class="key">⌥⌘Q</span> — Esci definitivamente</li>
+    <li><span class="key">⌘Q</span> — Esci dall'app</li>
     </ul>
 
     <h2>Supporto</h2>
