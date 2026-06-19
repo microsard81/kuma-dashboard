@@ -331,20 +331,66 @@ struct MacDashboardView: View {
         GeometryReader { geo in
             let columns = adaptiveColumns(for: geo.size.width)
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(DashboardSection.allCases) { section in
-                        OverviewCard(
-                            section: section,
-                            statusText: overviewStatusText(for: section),
-                            statusColor: sectionStatusColor(for: section)
-                        ) {
-                            selectedSection = section
+                VStack(spacing: 20) {
+                    // Pinned items section
+                    if !pinnedItems.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "pin.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("In evidenza")
+                                    .font(.scaled(.subheadline, scale: scale, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 4)
+
+                            LazyVGrid(columns: pinnedColumns(for: geo.size.width), spacing: 10) {
+                                ForEach(pinnedItems) { item in
+                                    MacPinnedCardView(item: item, viewModel: viewModel)
+                                        .contextMenu {
+                                            Button("Rimuovi da In evidenza") {
+                                                MacPinnedStore.shared.unpin(id: item.id)
+                                                refreshPinned()
+                                            }
+                                        }
+                                }
+                            }
+                        }
+
+                        Divider()
+                    }
+
+                    // Section cards
+                    LazyVGrid(columns: columns, spacing: 16) {
+                        ForEach(DashboardSection.allCases) { section in
+                            OverviewCard(
+                                section: section,
+                                statusText: overviewStatusText(for: section),
+                                statusColor: sectionStatusColor(for: section)
+                            ) {
+                                selectedSection = section
+                            }
                         }
                     }
                 }
                 .padding(24)
             }
         }
+        .onAppear { refreshPinned() }
+    }
+
+    @State private var pinnedItems: [MacPinnedItem] = MacPinnedStore.shared.loadAll()
+
+    private func refreshPinned() {
+        pinnedItems = MacPinnedStore.shared.loadAll()
+    }
+
+    private func pinnedColumns(for width: CGFloat) -> [GridItem] {
+        let minCardWidth: CGFloat = 100
+        let count = max(2, Int(width / (minCardWidth + 10)))
+        return Array(repeating: GridItem(.flexible(), spacing: 10), count: count)
     }
 
     private func adaptiveColumns(for width: CGFloat) -> [GridItem] {
@@ -456,6 +502,7 @@ struct MacDashboardView: View {
                         ForEach(downItems) { monitor in
                             MacMonitorRow(monitor: monitor)
                                 .background(Color.red.opacity(0.12))
+                                .contextMenu { pinContextMenu(for: monitor.name, type: .portale) }
                         }
                     }
 
@@ -464,6 +511,7 @@ struct MacDashboardView: View {
                         ForEach(mismatchItems) { monitor in
                             MacMonitorRow(monitor: monitor)
                                 .background(Color.yellow.opacity(0.10))
+                                .contextMenu { pinContextMenu(for: monitor.name, type: .portale) }
                         }
                     }
 
@@ -473,6 +521,7 @@ struct MacDashboardView: View {
                         }
                         ForEach(upItems) { monitor in
                             MacMonitorRow(monitor: monitor)
+                                .contextMenu { pinContextMenu(for: monitor.name, type: .portale) }
                         }
                     }
                 }
@@ -516,12 +565,48 @@ struct MacDashboardView: View {
                                 historyPoints: viewModel.sensorHistory[sensor.id] ?? []
                             )
                             .padding(.horizontal, 16)
+                            .contextMenu { pinContextMenuForSensor(sensor) }
                             Divider().padding(.leading, 16)
                         }
                     }
                 }
             }
         }
+    }
+
+    // MARK: - Pin Context Menu
+
+    @ViewBuilder
+    private func pinContextMenu(for id: String, type: MacPinnedItem.PinnedType) -> some View {
+        if MacPinnedStore.shared.isPinned(id: id) {
+            Button {
+                MacPinnedStore.shared.unpin(id: id)
+                refreshPinned()
+            } label: {
+                Label("Rimuovi da In evidenza", systemImage: "pin.slash")
+            }
+        } else {
+            Button {
+                MacPinnedStore.shared.pin(id: id, type: type)
+                refreshPinned()
+            } label: {
+                Label("Aggiungi a In evidenza", systemImage: "pin")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func pinContextMenuForSensor(_ sensor: SensorReading) -> some View {
+        let type: MacPinnedItem.PinnedType = {
+            switch sensor.category {
+            case .temperature: return .temperatura
+            case .power: return .potenza
+            case .ups: return .ups
+            case .generator: return .generatore
+            case .other: return .potenza
+            }
+        }()
+        pinContextMenu(for: sensor.id, type: type)
     }
 
     // MARK: - Helpers
@@ -806,6 +891,99 @@ private struct MacSparklineSegment: Identifiable {
     let n1: Int?
     let u1: Int?
     let timestamp: Date
+}
+
+// MARK: - Mac Pinned Card View
+
+private struct MacPinnedCardView: View {
+    let item: MacPinnedItem
+    @ObservedObject var viewModel: MacAppViewModel
+    @Environment(\.textScale) var scale
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: iconName)
+                .font(.system(size: 18))
+                .foregroundColor(cardColor)
+
+            Text(displayName)
+                .font(.scaled(.caption, scale: scale, weight: .bold))
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .foregroundColor(.primary)
+
+            Text(statusText)
+                .font(.scaled(.caption2, scale: scale, weight: .bold))
+                .foregroundColor(cardColor)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 90)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(hex: "#1e2a3a"))
+        )
+    }
+
+    private var displayName: String {
+        item.id.replacingOccurrences(of: "INVA - ", with: "")
+    }
+
+    private var iconName: String {
+        switch item.type {
+        case .portale: return "globe"
+        case .temperatura: return "thermometer.medium"
+        case .potenza: return "bolt.fill"
+        case .ups: return "battery.75percent"
+        case .generatore: return "fuelpump.fill"
+        }
+    }
+
+    private var cardColor: Color {
+        switch item.type {
+        case .portale:
+            if let monitor = viewModel.monitors.first(where: { $0.name == item.id }) {
+                if monitor.isDown { return .red }
+                if monitor.isMismatch { return .yellow }
+            }
+            return .green
+        case .temperatura:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                if sensor.status == .critical { return .red }
+            }
+            return .orange
+        case .potenza:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                if sensor.status == .critical { return .red }
+            }
+            return .blue
+        case .ups:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                if sensor.status == .critical { return .red }
+            }
+            return .purple
+        case .generatore:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                if sensor.status == .critical { return .red }
+            }
+            return .orange
+        }
+    }
+
+    private var statusText: String {
+        switch item.type {
+        case .portale:
+            if let monitor = viewModel.monitors.first(where: { $0.name == item.id }) {
+                return monitor.finalStatus
+            }
+            return "—"
+        case .temperatura, .potenza, .ups, .generatore:
+            if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
+                return sensor.displayValueWithUnit
+            }
+            return "—"
+        }
+    }
 }
 
 // MARK: - Notification Inline View (macOS — in-window)
