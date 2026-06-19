@@ -114,6 +114,52 @@ struct WatchDashboardView: View {
                     }
                 }
             }
+
+            // UPS
+            if !upsSensors.isEmpty {
+                NavigationLink {
+                    WatchCategoryDetailView(category: .ups)
+                        .environmentObject(viewModel)
+                } label: {
+                    HStack {
+                        Circle()
+                            .fill(upsColor)
+                            .frame(width: 8, height: 8)
+                        Image(systemName: "battery.75percent")
+                            .font(.caption2)
+                            .foregroundColor(upsColor)
+                        Text("UPS")
+                            .font(.caption)
+                        Spacer()
+                        Text(upsStatus)
+                            .font(.caption2)
+                            .foregroundColor(upsColor)
+                    }
+                }
+            }
+
+            // Generatori
+            if !generatorSensors.isEmpty {
+                NavigationLink {
+                    WatchCategoryDetailView(category: .generator)
+                        .environmentObject(viewModel)
+                } label: {
+                    HStack {
+                        Circle()
+                            .fill(generatorColor)
+                            .frame(width: 8, height: 8)
+                        Image(systemName: "fuelpump.fill")
+                            .font(.caption2)
+                            .foregroundColor(generatorColor)
+                        Text("Generatori")
+                            .font(.caption)
+                        Spacer()
+                        Text(generatorStatus)
+                            .font(.caption2)
+                            .foregroundColor(generatorColor)
+                    }
+                }
+            }
         }
     }
 
@@ -125,6 +171,14 @@ struct WatchDashboardView: View {
 
     private var powerSensors: [SensorReading] {
         viewModel.sensors.filter { $0.category == .power }
+    }
+
+    private var upsSensors: [SensorReading] {
+        viewModel.sensors.filter { $0.category == .ups }
+    }
+
+    private var generatorSensors: [SensorReading] {
+        viewModel.sensors.filter { $0.category == .generator }
     }
 
     private var portalsColor: Color {
@@ -161,6 +215,28 @@ struct WatchDashboardView: View {
 
     private var powerStatus: String {
         let alerts = powerSensors.filter { $0.status == .critical }.count
+        if alerts > 0 { return "\(alerts) ⚠" }
+        return "OK"
+    }
+
+    private var upsColor: Color {
+        if upsSensors.contains(where: { $0.status == .critical }) { return .red }
+        return .purple
+    }
+
+    private var upsStatus: String {
+        let alerts = upsSensors.filter { $0.status == .critical }.count
+        if alerts > 0 { return "\(alerts) ⚠" }
+        return "OK"
+    }
+
+    private var generatorColor: Color {
+        if generatorSensors.contains(where: { $0.status == .critical }) { return .red }
+        return .orange
+    }
+
+    private var generatorStatus: String {
+        let alerts = generatorSensors.filter { $0.status == .critical }.count
         if alerts > 0 { return "\(alerts) ⚠" }
         return "OK"
     }

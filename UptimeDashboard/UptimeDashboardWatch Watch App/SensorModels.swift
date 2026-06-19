@@ -126,4 +126,14 @@ extension SensorCategory {
         case .other: return .gray
         }
     }
+
+    var displayName: String {
+        switch self {
+        case .temperature: return "Temperatura"
+        case .power: return "Potenza"
+        case .ups: return "UPS"
+        case .generator: return "Generatori"
+        case .other: return "Altro"
+        }
+    }
 }
