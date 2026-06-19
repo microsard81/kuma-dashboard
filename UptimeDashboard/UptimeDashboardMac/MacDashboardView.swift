@@ -25,9 +25,9 @@ private extension Color {
     }
 }
 
-// MARK: - Sidebar Section Enum
+// MARK: - Dashboard Section
 
-private enum DashboardSection: String, CaseIterable, Identifiable {
+enum DashboardSection: String, CaseIterable, Identifiable {
     case portali
     case temperatura
     case potenza
@@ -46,6 +46,16 @@ private enum DashboardSection: String, CaseIterable, Identifiable {
         }
     }
 
+    var shortName: String {
+        switch self {
+        case .portali: return "Portali"
+        case .temperatura: return "Temp"
+        case .potenza: return "Potenza"
+        case .ups: return "UPS"
+        case .generatori: return "GE"
+        }
+    }
+
     var icon: String {
         switch self {
         case .portali: return "globe"
@@ -57,6 +67,8 @@ private enum DashboardSection: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Main Dashboard View
+
 struct MacDashboardView: View {
     @EnvironmentObject var viewModel: MacAppViewModel
     @Environment(\.colorScheme) var colorScheme
@@ -65,12 +77,6 @@ struct MacDashboardView: View {
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
     @State private var unreadNotifications = NotificationStore.shared.unreadCount
-
-    private let sidebarWidth: CGFloat = 200
-
-    private var orderedSections: [DashboardSection] {
-        DashboardSection.allCases
-    }
 
     private var filteredMonitors: [MacMonitor] {
         var sorted: [MacMonitor]
@@ -118,14 +124,31 @@ struct MacDashboardView: View {
         return .orange
     }
 
+    private func sectionStatusColor(for section: DashboardSection) -> Color {
+        switch section {
+        case .portali: return ledColor
+        case .temperatura: return temperatureStatusColor
+        case .potenza: return powerStatusColor
+        case .ups: return upsStatusColor
+        case .generatori: return generatorStatusColor
+        }
+    }
+
+    private var ledColor: Color {
+        switch viewModel.globalState {
+        case "RED": return .red
+        case "YELLOW": return .yellow
+        default: return .green
+        }
+    }
+
+    // MARK: - Body
+
     var body: some View {
         VStack(spacing: 0) {
-            // Toolbar
             toolbarView
-
             Divider()
 
-            // Main content
             if showNotificationHistory {
                 MacNotificationInlineView()
                     .onAppear {
@@ -133,17 +156,11 @@ struct MacDashboardView: View {
                         unreadNotifications = 0
                     }
             } else {
-                // Sidebar + Detail
-                HStack(spacing: 0) {
-                    // Sidebar
-                    sidebarView
-                        .frame(width: sidebarWidth)
-
-                    Divider()
-
-                    // Detail panel
-                    detailView
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                NavigationSplitView {
+                    sidebarContent
+                        .navigationSplitViewColumnWidth(min: 180, ideal: 210)
+                } detail: {
+                    detailContent
                 }
             }
         }
@@ -175,7 +192,6 @@ struct MacDashboardView: View {
                     .foregroundColor(.secondary)
             }
 
-            // Refresh
             Button {
                 Task { await viewModel.fetchDashboard() }
             } label: {
@@ -187,7 +203,6 @@ struct MacDashboardView: View {
             .buttonStyle(.plain)
             .help("Aggiorna")
 
-            // Notifications
             Button {
                 showNotificationHistory.toggle()
             } label: {
@@ -210,7 +225,6 @@ struct MacDashboardView: View {
             .buttonStyle(.plain)
             .help("Notifiche")
 
-            // Logout
             Button {
                 viewModel.logout()
             } label: {
@@ -228,106 +242,95 @@ struct MacDashboardView: View {
 
     // MARK: - Sidebar
 
-    private var sidebarView: some View {
-        VStack(spacing: 0) {
-            ForEach(orderedSections) { section in
-                sidebarRow(for: section)
-            }
-            Spacer()
-        }
-        .padding(.top, 8)
-    }
-
-    private func sidebarRow(for section: DashboardSection) -> some View {
-        let isSelected = selectedSection == section
-        let statusColor = sectionStatusColor(for: section)
-
-        return Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                if selectedSection == section {
-                    selectedSection = nil
-                } else {
-                    selectedSection = section
-                }
-            }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: section.icon)
-                    .font(.system(size: 14))
-                    .foregroundColor(statusColor)
-                    .frame(width: 20)
-
-                Text(section.displayName)
-                    .font(.scaled(.body, scale: scale))
-                    .foregroundColor(isSelected ? .white : .primary)
-                    .lineLimit(1)
-
-                Spacer()
-
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 8, height: 8)
-                    .shadow(color: statusColor.opacity(0.6), radius: 2)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isSelected ? Color.accentColor.opacity(0.7) : Color.clear)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 1)
-    }
-
-    private func sectionStatusColor(for section: DashboardSection) -> Color {
-        switch section {
-        case .portali: return ledColor
-        case .temperatura: return temperatureStatusColor
-        case .potenza: return powerStatusColor
-        case .ups: return upsStatusColor
-        case .generatori: return generatorStatusColor
-        }
-    }
-
-    // MARK: - Detail Panel
-
-    @ViewBuilder
-    private var detailView: some View {
-        if let section = selectedSection {
-            VStack(spacing: 0) {
-                // Back button header
-                HStack {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedSection = nil
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text("Panoramica")
-                                .font(.scaled(.subheadline, scale: scale))
-                        }
-                        .foregroundColor(.accentColor)
+    private var sidebarContent: some View {
+        List(selection: $selectedSection) {
+            ForEach(DashboardSection.allCases) { section in
+                Label {
+                    HStack {
+                        Text(section.displayName)
+                        Spacer()
+                        Circle()
+                            .fill(sectionStatusColor(for: section))
+                            .frame(width: 8, height: 8)
                     }
-                    .buttonStyle(.plain)
-                    Spacer()
+                } icon: {
+                    Image(systemName: section.icon)
+                        .foregroundColor(sectionStatusColor(for: section))
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-
-                Divider()
-
-                // Section content
-                sectionDetailContent(for: section)
+                .tag(section)
             }
-        } else {
-            overviewView
+        }
+        .listStyle(.sidebar)
+    }
+
+    // MARK: - Detail
+
+    private var detailContent: some View {
+        Group {
+            if let section = selectedSection {
+                sectionDetailContent(for: section)
+            } else {
+                overviewGrid
+            }
         }
     }
+
+    // MARK: - Overview Grid
+
+    private var overviewGrid: some View {
+        GeometryReader { geo in
+            let columns = adaptiveColumns(for: geo.size.width)
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(DashboardSection.allCases) { section in
+                        OverviewCard(
+                            section: section,
+                            statusText: overviewStatusText(for: section),
+                            statusColor: sectionStatusColor(for: section)
+                        ) {
+                            selectedSection = section
+                        }
+                    }
+                }
+                .padding(24)
+            }
+        }
+    }
+
+    private func adaptiveColumns(for width: CGFloat) -> [GridItem] {
+        let minCardWidth: CGFloat = 140
+        let count = max(1, Int(width / (minCardWidth + 16)))
+        return Array(repeating: GridItem(.flexible(), spacing: 16), count: count)
+    }
+
+    private func overviewStatusText(for section: DashboardSection) -> String {
+        switch section {
+        case .portali:
+            let down = viewModel.monitors.filter { $0.isDown }.count
+            let mismatch = viewModel.monitors.filter { $0.isMismatch }.count
+            if down > 0 { return "\(down) DOWN" }
+            if mismatch > 0 { return "\(mismatch) Mismatch" }
+            return "OK (\(viewModel.monitors.count))"
+        case .temperatura:
+            let critical = viewModel.temperatureSensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical) Critical" }
+            return "OK"
+        case .potenza:
+            let critical = viewModel.powerSensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical) Critical" }
+            return "OK"
+        case .ups:
+            let critical = viewModel.upsSensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical) Critical" }
+            return "OK"
+        case .generatori:
+            let critical = viewModel.generatorSensors.filter { $0.status == .critical }.count
+            if critical > 0 { return "\(critical) Critical" }
+            return "OK"
+        }
+    }
+
+    // MARK: - Section Detail Content
 
     @ViewBuilder
     private func sectionDetailContent(for section: DashboardSection) -> some View {
@@ -365,59 +368,10 @@ struct MacDashboardView: View {
         }
     }
 
-    // MARK: - Overview (status cards)
-
-    private var overviewView: some View {
-        VStack {
-            Spacer()
-            HStack(spacing: 12) {
-                ForEach(orderedSections) { section in
-                    OverviewCard(
-                        section: section,
-                        statusText: overviewStatusText(for: section),
-                        statusColor: sectionStatusColor(for: section)
-                    ) {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedSection = section
-                        }
-                    }
-                }
-            }
-            Spacer()
-        }
-    }
-
-    private func overviewStatusText(for section: DashboardSection) -> String {
-        switch section {
-        case .portali:
-            let down = viewModel.monitors.filter { $0.isDown }.count
-            let mismatch = viewModel.monitors.filter { $0.isMismatch }.count
-            if down > 0 { return "\(down) DOWN" }
-            if mismatch > 0 { return "\(mismatch) Mismatch" }
-            return "OK (\(viewModel.monitors.count))"
-        case .temperatura:
-            let critical = viewModel.temperatureSensors.filter { $0.status == .critical }.count
-            if critical > 0 { return "\(critical) Critical" }
-            return "OK"
-        case .potenza:
-            let critical = viewModel.powerSensors.filter { $0.status == .critical }.count
-            if critical > 0 { return "\(critical) Critical" }
-            return "OK"
-        case .ups:
-            let critical = viewModel.upsSensors.filter { $0.status == .critical }.count
-            if critical > 0 { return "\(critical) Critical" }
-            return "OK"
-        case .generatori:
-            let critical = viewModel.generatorSensors.filter { $0.status == .critical }.count
-            if critical > 0 { return "\(critical) Critical" }
-            return "OK"
-        }
-    }
     // MARK: - Portals Detail
 
     private var portalsDetail: some View {
         VStack(spacing: 0) {
-            // Header with filter toggle
             HStack {
                 Image(systemName: "globe")
                     .foregroundColor(ledColor)
@@ -440,7 +394,6 @@ struct MacDashboardView: View {
 
             Divider()
 
-            // Monitor list
             ScrollView {
                 LazyVStack(spacing: 0) {
                     let downItems = filteredMonitors.filter { $0.isDown }
@@ -528,20 +481,11 @@ struct MacDashboardView: View {
         if sortOrder == "alphabetical" {
             return sensors.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         }
-        // Per gravità: critical in cima, poi normal, entrambi alfabetici
         let critical = sensors.filter { $0.status == .critical }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         let normal = sensors.filter { $0.status == .normal }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         return critical + normal
-    }
-
-    private var ledColor: Color {
-        switch viewModel.globalState {
-        case "RED": return .red
-        case "YELLOW": return .yellow
-        default: return .green
-        }
     }
 
     private func rank(_ m: MacMonitor) -> Int {
@@ -554,6 +498,43 @@ struct MacDashboardView: View {
         if m.isDown { return 2 }
         if m.isMismatch { return 1 }
         return 0
+    }
+}
+
+// MARK: - Overview Card
+
+private struct OverviewCard: View {
+    let section: DashboardSection
+    let statusText: String
+    let statusColor: Color
+    let action: () -> Void
+    @Environment(\.textScale) var scale
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 14) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 36, weight: .medium))
+                    .foregroundColor(statusColor)
+
+                Text(section.shortName)
+                    .font(.scaled(.body, scale: scale, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+
+                Text(statusText)
+                    .font(.scaled(.subheadline, scale: scale, weight: .bold))
+                    .foregroundColor(statusColor)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 140)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(hex: "#1e2a3a"))
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -669,52 +650,6 @@ private struct ProbeIndicator: View {
                 .font(.scaled(.caption, scale: scale))
                 .foregroundColor(.secondary)
         }
-    }
-}
-
-// MARK: - Overview Card
-
-private struct OverviewCard: View {
-    let section: DashboardSection
-    let statusText: String
-    let statusColor: Color
-    let action: () -> Void
-    @Environment(\.textScale) var scale
-
-    private var cardLabel: String {
-        switch section {
-        case .portali: return "Portali"
-        case .temperatura: return "Temp"
-        case .potenza: return "Potenza"
-        case .ups: return "UPS"
-        case .generatori: return "GE"
-        }
-    }
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 14) {
-                Image(systemName: section.icon)
-                    .font(.system(size: 36, weight: .medium))
-                    .foregroundColor(statusColor)
-
-                Text(cardLabel)
-                    .font(.scaled(.body, scale: scale, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-
-                Text(statusText)
-                    .font(.scaled(.subheadline, scale: scale, weight: .bold))
-                    .foregroundColor(statusColor)
-                    .lineLimit(1)
-            }
-            .frame(width: 140, height: 160)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(hex: "#1e2a3a"))
-            )
-        }
-        .buttonStyle(.plain)
     }
 }
 
