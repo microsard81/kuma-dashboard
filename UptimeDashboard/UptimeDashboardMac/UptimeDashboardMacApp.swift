@@ -109,14 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUs
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        // ⌘Q nasconde la finestra invece di chiudere l'app
-        for window in NSApp.windows {
-            if window.isVisible && window.identifier?.rawValue != "help-window" {
-                window.orderOut(nil)
-            }
-        }
-        NSApp.setActivationPolicy(.accessory)
-        return .terminateCancel
+        return .terminateNow
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

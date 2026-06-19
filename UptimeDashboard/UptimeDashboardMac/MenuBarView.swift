@@ -79,12 +79,10 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("Esci definitivamente") {
-            // Forza la chiusura reale dell'app
-            NSApp.reply(toApplicationShouldTerminate: true)
-            exit(0)
+        Button("Esci") {
+            NSApp.terminate(nil)
         }
-        .keyboardShortcut("q", modifiers: [.command, .option])
+        .keyboardShortcut("q")
     }
 
     private var ledColor: Color {
