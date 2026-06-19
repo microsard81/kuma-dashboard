@@ -582,7 +582,8 @@ UptimeDashboardTests/
 - **Riordino sezioni** — long press su una macro-card per riordinare le 3 sezioni con drag & drop
 - **Riordino elementi** — swipe a destra su un elemento → drag & drop → "Termina"; ordine salvato
 - **Risorse in evidenza** — swipe a sinistra per pinnare risorse sulla home; card quadrate con stato in tempo reale; long press per riordinare/rimuovere; drag & drop tra card
-- **Storico notifiche** — icona campana con badge non lette; sezioni non lette/lette; swipe per segnare letta/non letta; pull-to-refresh sincronizza dal backend e segna tutte come lette
+- **Storico notifiche** — icona campana con badge non lette; sezioni non lette/lette con raggruppamento temporale collassabile; swipe per segnare letta/non letta; pull-to-refresh sincronizza dal backend e segna tutte come lette
+- **Sezioni collassabili notifiche lette** — le notifiche già lette sono raggruppate in tre sezioni espandibili/collassabili: "Questa settimana" (≤ 7 giorni, aperta di default), "Questo mese" (7–30 giorni, aperta di default), "Precedenti" (> 30 giorni, chiusa di default); tap sul chevron per espandere/collassare con animazione
 - **Event log server-side** — lo storico completo degli eventi (transizioni di stato, alert sensori) è servito dal backend via `/api/events`; le app fanno fetch all'apertura e al pull-to-refresh; lo stato letto/non letto è locale per dispositivo
 - **Auto-refresh** — aggiornamento automatico configurabile (default 60s); pull-to-refresh in ogni scheda
 - **Filtro DOWN** — toggle per mostrare solo i monitor in stato DOWN o mismatch (nella scheda Portali)
@@ -643,7 +644,7 @@ App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
 - Notifiche push APNs native
 - Toggle notifiche push nelle impostazioni (abilita/disabilita con unsubscribe dal backend)
 - Soglia notifica personalizzabile (1–5 sonde DOWN) nelle impostazioni
-- Storico notifiche inline — vista a tutto schermo nella finestra app, sincronizza da `/api/events` (Redis) + push APNs locali; rispetta la dimensione testo configurata
+- Storico notifiche inline — vista a tutto schermo nella finestra app, sincronizza da `/api/events` (Redis) + push APNs locali; rispetta la dimensione testo configurata; notifiche lette raggruppate in sezioni collassabili per periodo (Questa settimana / Questo mese / Precedenti)
 - Tema: Auto/Chiaro/Scuro (default Scuro con sfondo #141c2b)
 - Dimensione testo regolabile (80%-160%)
 - La X minimizza nel Dock invece di chiudere l'app

@@ -51,8 +51,17 @@ private struct SyncEventsResponse: Codable {
 /// View showing notification history (last 30 days).
 /// Unread notifications appear at the top with blue background.
 /// Swipe left to mark as read.
+/// Read notifications are grouped into collapsible time-based sections:
+/// - Questa settimana (≤ 7 days)
+/// - Questo mese (> 7 days, ≤ 30 days)
+/// - Precedenti (> 30 days)
 struct NotificationHistoryView: View {
     @State private var notifications: [NotificationRecord] = []
+
+    // Collapse state for read notification sections
+    @State private var isWeekCollapsed = false
+    @State private var isMonthCollapsed = false
+    @State private var isOlderCollapsed = true
 
     // Read state for server events — persisted locally by event ID
     private let readStateKey = "ios_event_read_state"
@@ -66,6 +75,34 @@ struct NotificationHistoryView: View {
 
     private func saveReadEventIds(_ ids: Set<String>) {
         readStateDefaults.set(Array(ids), forKey: readStateKey)
+    }
+
+    // MARK: - Time-based grouping for read notifications
+
+    private var unreadNotifications: [NotificationRecord] {
+        notifications.filter { !$0.isRead }.sorted { $0.date > $1.date }
+    }
+
+    private var readThisWeek: [NotificationRecord] {
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        return notifications
+            .filter { $0.isRead && $0.date >= weekAgo }
+            .sorted { $0.date > $1.date }
+    }
+
+    private var readThisMonth: [NotificationRecord] {
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let monthAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        return notifications
+            .filter { $0.isRead && $0.date < weekAgo && $0.date >= monthAgo }
+            .sorted { $0.date > $1.date }
+    }
+
+    private var readOlder: [NotificationRecord] {
+        let monthAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        return notifications
+            .filter { $0.isRead && $0.date < monthAgo }
+            .sorted { $0.date > $1.date }
     }
 
     var body: some View {
@@ -87,7 +124,7 @@ struct NotificationHistoryView: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         // Hint pull-to-refresh (solo se ci sono non lette)
-                        if notifications.contains(where: { !$0.isRead }) {
+                        if !unreadNotifications.isEmpty {
                             Text("↓ Scorri per segnare tutte come lette")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
@@ -95,10 +132,10 @@ struct NotificationHistoryView: View {
                                 .padding(.vertical, 6)
                         }
 
-                        // Header "Non lette"
-                        if notifications.contains(where: { !$0.isRead }) {
+                        // MARK: Sezione "Non lette"
+                        if !unreadNotifications.isEmpty {
                             HStack {
-                                Text("Non lette (\(notifications.filter { !$0.isRead }.count))")
+                                Text("Non lette (\(unreadNotifications.count))")
                                     .font(.footnote)
                                     .foregroundColor(.secondary)
                                     .textCase(.uppercase)
@@ -107,31 +144,55 @@ struct NotificationHistoryView: View {
                             .padding(.horizontal, 16)
                             .padding(.top, 12)
                             .padding(.bottom, 4)
+
+                            ForEach(unreadNotifications) { notif in
+                                notificationRow(for: notif)
+                            }
                         }
 
-                        // Singolo ForEach — ordine: non lette prima, poi lette
-                        ForEach($notifications) { $notif in
-                            // Header "Lette" prima del primo elemento letto
-                            if notif.isRead && isFirstRead(notif) {
-                                HStack {
-                                    Text("Lette")
-                                        .font(.footnote)
-                                        .foregroundColor(.secondary)
-                                        .textCase(.uppercase)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.top, 16)
-                                .padding(.bottom, 4)
-                            }
-
-                            NotificationSwipeRow(
-                                notification: $notif,
-                                onAction: {
-                                    toggleReadState(notif)
-                                }
+                        // MARK: Sezione "Questa settimana" (collassabile)
+                        if !readThisWeek.isEmpty {
+                            collapsibleSectionHeader(
+                                title: "Questa settimana",
+                                count: readThisWeek.count,
+                                isCollapsed: $isWeekCollapsed
                             )
-                            .id(notif.id)
+
+                            if !isWeekCollapsed {
+                                ForEach(readThisWeek) { notif in
+                                    notificationRow(for: notif)
+                                }
+                            }
+                        }
+
+                        // MARK: Sezione "Questo mese" (collassabile)
+                        if !readThisMonth.isEmpty {
+                            collapsibleSectionHeader(
+                                title: "Questo mese",
+                                count: readThisMonth.count,
+                                isCollapsed: $isMonthCollapsed
+                            )
+
+                            if !isMonthCollapsed {
+                                ForEach(readThisMonth) { notif in
+                                    notificationRow(for: notif)
+                                }
+                            }
+                        }
+
+                        // MARK: Sezione "Precedenti" (collassabile, default chiusa)
+                        if !readOlder.isEmpty {
+                            collapsibleSectionHeader(
+                                title: "Precedenti",
+                                count: readOlder.count,
+                                isCollapsed: $isOlderCollapsed
+                            )
+
+                            if !isOlderCollapsed {
+                                ForEach(readOlder) { notif in
+                                    notificationRow(for: notif)
+                                }
+                            }
                         }
                     }
                     .padding(.bottom, 16)
@@ -154,6 +215,62 @@ struct NotificationHistoryView: View {
         .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
             Task { await fetchServerEvents() }
         }
+    }
+
+    // MARK: - Collapsible Section Header
+
+    private func collapsibleSectionHeader(
+        title: String,
+        count: Int,
+        isCollapsed: Binding<Bool>
+    ) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                isCollapsed.wrappedValue.toggle()
+            }
+        } label: {
+            HStack {
+                Image(systemName: isCollapsed.wrappedValue ? "chevron.right" : "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .frame(width: 12)
+                Text("\(title) (\(count))")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                Spacer()
+            }
+            .contentShape(Rectangle())
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 4)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Notification Row Helper
+
+    private func notificationRow(for notif: NotificationRecord) -> some View {
+        NotificationSwipeRow(
+            notification: bindingForNotification(notif),
+            onAction: {
+                toggleReadState(notif)
+            }
+        )
+        .id(notif.id)
+    }
+
+    private func bindingForNotification(_ notif: NotificationRecord) -> Binding<NotificationRecord> {
+        Binding(
+            get: {
+                notifications.first(where: { $0.id == notif.id }) ?? notif
+            },
+            set: { newValue in
+                if let idx = notifications.firstIndex(where: { $0.id == notif.id }) {
+                    notifications[idx] = newValue
+                }
+            }
+        )
     }
 
     private func loadNotifications() {
@@ -195,10 +312,7 @@ struct NotificationHistoryView: View {
             }
 
             await MainActor.run {
-                notifications = records.sorted {
-                    if $0.isRead != $1.isRead { return !$0.isRead }
-                    return $0.date > $1.date
-                }
+                notifications = records.sorted { $0.date > $1.date }
                 // Update badge count
                 let unreadCount = notifications.filter { !$0.isRead }.count
                 readStateDefaults.set(unreadCount, forKey: "ios_event_unread_count")
@@ -235,20 +349,12 @@ struct NotificationHistoryView: View {
 
         withAnimation(.easeInOut(duration: 0.35)) {
             notifications[idx].isRead = newState
-            notifications.sort {
-                if $0.isRead != $1.isRead { return !$0.isRead }
-                return $0.date > $1.date
-            }
         }
 
         // Update badge — save unread count to UserDefaults for DashboardView
         let unreadCount = notifications.filter { !$0.isRead }.count
         readStateDefaults.set(unreadCount, forKey: "ios_event_unread_count")
         NotificationCenter.default.post(name: .notificationReadStateChanged, object: nil)
-    }
-
-    private func isFirstRead(_ notif: NotificationRecord) -> Bool {
-        notifications.first(where: { $0.isRead })?.id == notif.id
     }
 
     private func markAllServerEventsAsRead() {
@@ -270,10 +376,7 @@ struct NotificationHistoryView: View {
 
     private func reloadNotifications() {
         let all = NotificationStore.shared.loadAll()
-        notifications = all.sorted {
-            if $0.isRead != $1.isRead { return !$0.isRead }
-            return $0.date > $1.date
-        }
+        notifications = all.sorted { $0.date > $1.date }
     }
 }
 
