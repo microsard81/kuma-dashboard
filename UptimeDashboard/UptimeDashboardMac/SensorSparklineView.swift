@@ -31,14 +31,14 @@ struct SensorSparklineView: View {
                 ForEach(Array(points.enumerated()), id: \.offset) { index, point in
                     LineMark(
                         x: .value("Index", index),
-                        y: .value("Valore", point.v)
+                        y: .value("Valore", point.numericValue ?? 0)
                     )
                     .foregroundStyle(color.gradient)
                     .interpolationMethod(.catmullRom)
 
                     AreaMark(
                         x: .value("Index", index),
-                        y: .value("Valore", point.v)
+                        y: .value("Valore", point.numericValue ?? 0)
                     )
                     .foregroundStyle(color.opacity(0.1).gradient)
                     .interpolationMethod(.catmullRom)
@@ -56,7 +56,7 @@ struct SensorSparklineView: View {
                 GeometryReader { geo in
                     let xPos = geo.size.width * CGFloat(idx) / CGFloat(max(points.count - 1, 1))
                     VStack(spacing: 1) {
-                        Text(String(format: "%.1f", point.v))
+                        Text(String(format: "%.1f", point.numericValue ?? 0))
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(color)
                         Text(timeLabel)
