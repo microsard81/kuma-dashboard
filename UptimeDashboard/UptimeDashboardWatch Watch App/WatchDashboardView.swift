@@ -144,29 +144,23 @@ struct WatchDashboardView: View {
     }
 
     private var temperatureColor: Color {
-        guard let t = viewModel.sensorThresholds else { return .orange }
-        if temperatureSensors.contains(where: { $0.alertStatus(thresholds: t) == .critical }) { return .red }
-        if temperatureSensors.contains(where: { $0.alertStatus(thresholds: t) == .warning }) { return .yellow }
+        if temperatureSensors.contains(where: { $0.status == .critical }) { return .red }
         return .orange
     }
 
     private var temperatureStatus: String {
-        guard let t = viewModel.sensorThresholds else { return "—" }
-        let alerts = temperatureSensors.filter { $0.alertStatus(thresholds: t) != .normal }.count
+        let alerts = temperatureSensors.filter { $0.status == .critical }.count
         if alerts > 0 { return "\(alerts) ⚠" }
         return "OK"
     }
 
     private var powerColor: Color {
-        guard let t = viewModel.sensorThresholds else { return .blue }
-        if powerSensors.contains(where: { $0.alertStatus(thresholds: t) == .critical }) { return .red }
-        if powerSensors.contains(where: { $0.alertStatus(thresholds: t) == .warning }) { return .yellow }
+        if powerSensors.contains(where: { $0.status == .critical }) { return .red }
         return .blue
     }
 
     private var powerStatus: String {
-        guard let t = viewModel.sensorThresholds else { return "—" }
-        let alerts = powerSensors.filter { $0.alertStatus(thresholds: t) != .normal }.count
+        let alerts = powerSensors.filter { $0.status == .critical }.count
         if alerts > 0 { return "\(alerts) ⚠" }
         return "OK"
     }
