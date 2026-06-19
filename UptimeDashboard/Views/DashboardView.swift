@@ -17,7 +17,16 @@ struct DashboardView: View {
     @State private var isReorderingPinned = false
     @State private var draggingPinnedItem: PinnedItem? = nil
     @State private var selectedPinnedItem: PinnedItem? = nil
-    @State private var sectionOrder: [String] = UserDefaults.standard.stringArray(forKey: "ios_section_order") ?? ["portali", "temperatura", "potenza", "ups", "generatori"]
+    @State private var sectionOrder: [String] = {
+        let allSections = ["portali", "temperatura", "potenza", "ups", "generatori"]
+        guard var saved = UserDefaults.standard.stringArray(forKey: "ios_section_order") else {
+            return allSections
+        }
+        for section in allSections where !saved.contains(section) {
+            saved.append(section)
+        }
+        return saved
+    }()
     @State private var isReorderingSections = false
     @State private var selectedSection: String? = nil
 

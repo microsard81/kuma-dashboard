@@ -32,7 +32,17 @@ struct MacDashboardView: View {
     @State private var showOnlyProblems = false
     @State private var showNotificationHistory = false
     @State private var unreadNotifications = NotificationStore.shared.unreadCount
-    @State private var sectionOrder: [String] = UserDefaults.standard.stringArray(forKey: "mac_dashboard_section_order") ?? ["portali", "temperatura", "potenza", "ups", "generatori"]
+    @State private var sectionOrder: [String] = {
+        let allSections = ["portali", "temperatura", "potenza", "ups", "generatori"]
+        guard var saved = UserDefaults.standard.stringArray(forKey: "mac_dashboard_section_order") else {
+            return allSections
+        }
+        // Migrazione: aggiungi nuove sezioni non presenti nel vecchio ordine salvato
+        for section in allSections where !saved.contains(section) {
+            saved.append(section)
+        }
+        return saved
+    }()
     @State private var isPortalsCollapsed = false
     @State private var isTemperatureCollapsed = false
     @State private var isPowerCollapsed = false
