@@ -821,10 +821,16 @@ private struct OverviewCard: View {
             .frame(height: 140)
             .background(
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(hex: "#1e2a3a"))
+                    .fill(cardBackground)
             )
         }
         .buttonStyle(.plain)
+    }
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var cardBackground: Color {
+        colorScheme == .dark ? Color(hex: "#1e2a3a") : Color(nsColor: .controlBackgroundColor)
     }
 }
 
@@ -1077,11 +1083,17 @@ private struct MacPinnedCardView: View {
         .frame(height: 140)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color(hex: "#1e2a3a"))
+                .fill(pinnedCardBackground)
         )
         .onTapGesture(count: 2) {
             onDoubleTap()
         }
+    }
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var pinnedCardBackground: Color {
+        colorScheme == .dark ? Color(hex: "#1e2a3a") : Color(nsColor: .controlBackgroundColor)
     }
 
     private var displayName: String {
