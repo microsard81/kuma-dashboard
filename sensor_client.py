@@ -38,12 +38,9 @@ def _determine_category(sensor_type: str, room: str, name: str) -> str:
     mapped = _TYPE_CATEGORY_MAP.get(sensor_type)
     if mapped is not None:
         # VOLTAGE va in generator, POWER_KWATTS in power, TEMPERATURE in temperature
-        # Ma le fasi UPS (POWER_KWATTS con room UPS) vanno in ups
+        # Le fasi UPS (POWER_KWATTS con room UPS) vanno in ups
         if sensor_type == "POWER_KWATTS" and "UPS" in (room or ""):
             return "ups"
-        # I carichi GE (POWER_KWATTS con room GE) vanno in generator
-        if sensor_type == "POWER_KWATTS" and "GE" in (room or "").upper():
-            return "generator"
         return mapped
 
     # Per STATE e NUMBER, determina dalla room
