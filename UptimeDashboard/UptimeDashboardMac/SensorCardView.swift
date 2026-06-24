@@ -34,7 +34,8 @@ struct SensorCardView: View {
                 SensorSparklineView(
                     historyPoints: Array(numericPoints.suffix(60)),
                     color: displayColor,
-                    category: sensor.category
+                    category: sensor.category,
+                    unit: sensor.unit
                 )
                 .frame(height: 50)
             }

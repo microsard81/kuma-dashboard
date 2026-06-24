@@ -12,12 +12,35 @@ struct SensorSparklineView: View {
     let historyPoints: [SensorHistoryPoint]
     let color: Color
     var category: SensorCategory = .temperature
+    var unit: String = ""
 
     @State private var selectedIndex: Int? = nil
 
-    /// Fixed Y scale based on category
-    private var yMin: Double { category == .power ? 1 : 10 }
-    private var yMax: Double { category == .power ? 100 : 65 }
+    /// Fixed Y scale based on unit
+    private var yMin: Double {
+        switch unit.lowercased() {
+        case "°c": return 15
+        case "v": return 0
+        case "%": return 0
+        case "min": return 1
+        case "kw": return 0
+        default:
+            // Fallback per categoria
+            return category == .power ? 0 : 15
+        }
+    }
+
+    private var yMax: Double {
+        switch unit.lowercased() {
+        case "°c": return 60
+        case "v": return 250
+        case "%": return 100
+        case "min": return 280
+        case "kw": return 100
+        default:
+            return category == .power ? 100 : 60
+        }
+    }
 
     /// Data points from the last 60 history entries.
     private var points: [SensorHistoryPoint] {
@@ -121,24 +144,40 @@ struct SensorSparklineView: View {
         return formatter.string(from: date)
     }
 
-    /// Extract HH:mm from a raw timestamp string
+    /// Extract HH:mm from a raw timestamp string, converting UTC to Europe/Rome
     private func extractTimeFromString(_ str: String) -> String {
         guard !str.isEmpty, str != "null", str != "None", str.count > 4 else { return "" }
-        // Look for T followed by HH:mm (e.g. "2026-05-29T08:37:00+00:00")
-        if let tIndex = str.firstIndex(of: "T"),
-           str.distance(from: str.startIndex, to: tIndex) >= 8 {
-            let timeStart = str.index(after: tIndex)
-            if str.distance(from: timeStart, to: str.endIndex) >= 5 {
-                return String(str[timeStart...].prefix(5))
-            }
+
+        // Try full ISO 8601 parsing and convert to Rome timezone
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        var date = isoFormatter.date(from: str)
+        if date == nil {
+            isoFormatter.formatOptions = [.withInternetDateTime]
+            date = isoFormatter.date(from: str)
         }
-        // Look for space followed by HH:mm (e.g. "2026-05-29 08:37:00")
-        if let spaceIndex = str.lastIndex(of: " ") {
-            let timeStart = str.index(after: spaceIndex)
-            if str.distance(from: timeStart, to: str.endIndex) >= 5 {
-                return String(str[timeStart...].prefix(5))
-            }
+        // Try "yyyy-MM-dd HH:mm:ss" format (UTC)
+        if date == nil {
+            let df = DateFormatter()
+            df.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            df.timeZone = TimeZone(identifier: "UTC")
+            date = df.date(from: str)
         }
+        // Try "yyyy-MM-dd'T'HH:mm:ss" without timezone (assume UTC)
+        if date == nil {
+            let df = DateFormatter()
+            df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+            df.timeZone = TimeZone(identifier: "UTC")
+            date = df.date(from: str)
+        }
+
+        if let date = date {
+            let outputFormatter = DateFormatter()
+            outputFormatter.dateFormat = "HH:mm"
+            outputFormatter.timeZone = TimeZone(identifier: "Europe/Rome")
+            return outputFormatter.string(from: date)
+        }
+
         return ""
     }
 }
