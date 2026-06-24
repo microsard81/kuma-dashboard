@@ -114,46 +114,22 @@ struct SettingsView: View {
             }
 
             // MARK: - Sezione Limiti Grafici
-            Section("Limiti Grafici") {
-                ForEach(ChartLimitsSettings.configurableUnits, id: \.unit) { item in
-                    let sliderMax = chartSliderMax(for: item.unit)
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(item.label)
-                                .font(.subheadline)
-                            Spacer()
-                            Text("\(Int(ChartLimitsSettings.shared.yMin(for: item.unit)))–\(Int(ChartLimitsSettings.shared.yMax(for: item.unit)))")
-                                .font(.caption.monospacedDigit())
-                                .foregroundColor(.secondary)
-                        }
-
-                        if item.unit == "%" {
-                            Slider(
-                                value: Binding(
-                                    get: { ChartLimitsSettings.shared.yMax(for: "%") },
-                                    set: { ChartLimitsSettings.shared.setYMax($0, for: "%") }
-                                ),
-                                in: 10...100,
-                                step: 5
-                            )
-                        } else {
-                            RangeSliderView(
-                                lowerValue: Binding(
-                                    get: { ChartLimitsSettings.shared.yMin(for: item.unit) },
-                                    set: { ChartLimitsSettings.shared.setYMin($0, for: item.unit) }
-                                ),
-                                upperValue: Binding(
-                                    get: { ChartLimitsSettings.shared.yMax(for: item.unit) },
-                                    set: { ChartLimitsSettings.shared.setYMax($0, for: item.unit) }
-                                ),
-                                bounds: 0...sliderMax,
-                                step: chartSliderStep(for: item.unit),
-                                accentColor: chartSliderColor(for: item.unit)
-                            )
-                        }
-                    }
-                }
-
+            Section("Temperatura (°C)") {
+                chartLimitSliders(unit: "°C", color: .orange, max: 72, step: 1)
+            }
+            Section("Tensione (V)") {
+                chartLimitSliders(unit: "V", color: .yellow, max: 300, step: 5)
+            }
+            Section("Capacità (%)") {
+                chartLimitSliders(unit: "%", color: .blue, max: 100, step: 5)
+            }
+            Section("Durata (min)") {
+                chartLimitSliders(unit: "min", color: .purple, max: 336, step: 5)
+            }
+            Section("Potenza (kW)") {
+                chartLimitSliders(unit: "kW", color: .blue, max: 120, step: 5)
+            }
+            Section {
                 Button("Ripristina predefiniti") {
                     ChartLimitsSettings.shared.resetAll()
                 }
@@ -223,104 +199,47 @@ struct SettingsView: View {
         }
     }
 
-    private func chartSliderMax(for unit: String) -> Double {
-        switch unit {
-        case "°C": return 72
-        case "V": return 300
-        case "min": return 336
-        case "kW": return 120
-        default: return 100
+    @ViewBuilder
+    private func chartLimitSliders(unit: String, color: Color, max sliderMax: Double, step: Double) -> some View {
+        HStack {
+            Text("Min")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .frame(width: 30, alignment: .leading)
+            Slider(
+                value: Binding(
+                    get: { ChartLimitsSettings.shared.yMin(for: unit) },
+                    set: { ChartLimitsSettings.shared.setYMin($0, for: unit) }
+                ),
+                in: 0...sliderMax,
+                step: step
+            )
+            .tint(color)
+            Text("\(Int(ChartLimitsSettings.shared.yMin(for: unit)))")
+                .font(.caption.monospacedDigit())
+                .foregroundColor(.secondary)
+                .frame(width: 36, alignment: .trailing)
         }
-    }
-
-    private func chartSliderStep(for unit: String) -> Double {
-        switch unit {
-        case "°C": return 1
-        case "V": return 5
-        case "min": return 5
-        case "kW": return 5
-        default: return 1
-        }
-    }
-
-    private func chartSliderColor(for unit: String) -> Color {
-        switch unit {
-        case "°C": return .orange
-        case "V": return .yellow
-        case "min": return .purple
-        case "kW": return .blue
-        default: return .accentColor
+        HStack {
+            Text("Max")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .frame(width: 30, alignment: .leading)
+            Slider(
+                value: Binding(
+                    get: { ChartLimitsSettings.shared.yMax(for: unit) },
+                    set: { ChartLimitsSettings.shared.setYMax($0, for: unit) }
+                ),
+                in: 0...sliderMax,
+                step: step
+            )
+            .tint(color)
+            Text("\(Int(ChartLimitsSettings.shared.yMax(for: unit)))")
+                .font(.caption.monospacedDigit())
+                .foregroundColor(.secondary)
+                .frame(width: 36, alignment: .trailing)
         }
     }
 }
 
 
-// MARK: - Range Slider
-
-struct RangeSliderView: View {
-    @Binding var lowerValue: Double
-    @Binding var upperValue: Double
-    let bounds: ClosedRange<Double>
-    var step: Double = 1
-    var accentColor: Color = .accentColor
-
-    private let thumbSize: CGFloat = 22
-    private let trackHeight: CGFloat = 4
-
-    var body: some View {
-        GeometryReader { geo in
-            let width = geo.size.width - thumbSize
-            let range = bounds.upperBound - bounds.lowerBound
-
-            ZStack(alignment: .leading) {
-                // Background track
-                RoundedRectangle(cornerRadius: trackHeight / 2)
-                    .fill(Color.gray.opacity(0.25))
-                    .frame(height: trackHeight)
-                    .padding(.horizontal, thumbSize / 2)
-
-                // Active range track
-                let lowerX = width * (lowerValue - bounds.lowerBound) / range
-                let upperX = width * (upperValue - bounds.lowerBound) / range
-                RoundedRectangle(cornerRadius: trackHeight / 2)
-                    .fill(accentColor)
-                    .frame(width: max(0, upperX - lowerX), height: trackHeight)
-                    .offset(x: lowerX + thumbSize / 2)
-
-                // Lower thumb
-                Circle()
-                    .fill(Color.white)
-                    .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
-                    .frame(width: thumbSize, height: thumbSize)
-                    .offset(x: lowerX)
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                let raw = bounds.lowerBound + (value.location.x / width) * range
-                                let stepped = round(raw / step) * step
-                                let clamped = min(max(stepped, bounds.lowerBound), upperValue - step)
-                                lowerValue = clamped
-                            }
-                    )
-
-                // Upper thumb
-                Circle()
-                    .fill(Color.white)
-                    .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
-                    .frame(width: thumbSize, height: thumbSize)
-                    .offset(x: upperX)
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                let raw = bounds.lowerBound + (value.location.x / width) * range
-                                let stepped = round(raw / step) * step
-                                let clamped = max(min(stepped, bounds.upperBound), lowerValue + step)
-                                upperValue = clamped
-                            }
-                    )
-            }
-            .frame(height: thumbSize)
-        }
-        .frame(height: thumbSize)
-    }
-}

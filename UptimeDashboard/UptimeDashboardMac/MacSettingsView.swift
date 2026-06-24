@@ -101,47 +101,22 @@ struct MacSettingsView: View {
             .foregroundColor(.secondary)
 
             // Limiti Grafici
-            Section("Limiti Grafici") {
-                ForEach(ChartLimitsSettings.configurableUnits, id: \.unit) { item in
-                    let sliderMax = chartSliderMax(for: item.unit)
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(item.label)
-                                .font(.subheadline)
-                            Spacer()
-                            Text("\(Int(ChartLimitsSettings.shared.yMin(for: item.unit)))–\(Int(ChartLimitsSettings.shared.yMax(for: item.unit)))")
-                                .font(.caption.monospacedDigit())
-                                .foregroundColor(.secondary)
-                        }
-
-                        if item.unit == "%" {
-                            // Simple slider for percentage (always 0-100)
-                            Slider(
-                                value: Binding(
-                                    get: { ChartLimitsSettings.shared.yMax(for: "%") },
-                                    set: { ChartLimitsSettings.shared.setYMax($0, for: "%") }
-                                ),
-                                in: 10...100,
-                                step: 5
-                            )
-                        } else {
-                            RangeSliderView(
-                                lowerValue: Binding(
-                                    get: { ChartLimitsSettings.shared.yMin(for: item.unit) },
-                                    set: { ChartLimitsSettings.shared.setYMin($0, for: item.unit) }
-                                ),
-                                upperValue: Binding(
-                                    get: { ChartLimitsSettings.shared.yMax(for: item.unit) },
-                                    set: { ChartLimitsSettings.shared.setYMax($0, for: item.unit) }
-                                ),
-                                bounds: 0...sliderMax,
-                                step: chartSliderStep(for: item.unit),
-                                accentColor: chartSliderColor(for: item.unit)
-                            )
-                        }
-                    }
-                }
-
+            Section("Temperatura (°C)") {
+                chartLimitSliders(unit: "°C", color: .orange, max: 72, step: 1)
+            }
+            Section("Tensione (V)") {
+                chartLimitSliders(unit: "V", color: .yellow, max: 300, step: 5)
+            }
+            Section("Capacità (%)") {
+                chartLimitSliders(unit: "%", color: .blue, max: 100, step: 5)
+            }
+            Section("Durata (min)") {
+                chartLimitSliders(unit: "min", color: .purple, max: 336, step: 5)
+            }
+            Section("Potenza (kW)") {
+                chartLimitSliders(unit: "kW", color: .blue, max: 120, step: 5)
+            }
+            Section {
                 Button("Ripristina predefiniti") {
                     ChartLimitsSettings.shared.resetAll()
                 }
@@ -183,10 +158,10 @@ struct MacSettingsView: View {
 
     private func chartSliderMax(for unit: String) -> Double {
         switch unit {
-        case "°C": return 72     // 60 + 20%
-        case "V": return 300     // 250 + 20%
-        case "min": return 336   // 280 + 20%
-        case "kW": return 120    // 100 + 20%
+        case "°C": return 72
+        case "V": return 300
+        case "min": return 336
+        case "kW": return 120
         default: return 100
         }
     }
@@ -208,6 +183,48 @@ struct MacSettingsView: View {
         case "min": return .purple
         case "kW": return .blue
         default: return .accentColor
+        }
+    }
+
+    @ViewBuilder
+    private func chartLimitSliders(unit: String, color: Color, max sliderMax: Double, step: Double) -> some View {
+        HStack {
+            Text("Min")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .frame(width: 30, alignment: .leading)
+            Slider(
+                value: Binding(
+                    get: { ChartLimitsSettings.shared.yMin(for: unit) },
+                    set: { ChartLimitsSettings.shared.setYMin($0, for: unit) }
+                ),
+                in: 0...sliderMax,
+                step: step
+            )
+            .tint(color)
+            Text("\(Int(ChartLimitsSettings.shared.yMin(for: unit)))")
+                .font(.caption.monospacedDigit())
+                .foregroundColor(.secondary)
+                .frame(width: 36, alignment: .trailing)
+        }
+        HStack {
+            Text("Max")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .frame(width: 30, alignment: .leading)
+            Slider(
+                value: Binding(
+                    get: { ChartLimitsSettings.shared.yMax(for: unit) },
+                    set: { ChartLimitsSettings.shared.setYMax($0, for: unit) }
+                ),
+                in: 0...sliderMax,
+                step: step
+            )
+            .tint(color)
+            Text("\(Int(ChartLimitsSettings.shared.yMax(for: unit)))")
+                .font(.caption.monospacedDigit())
+                .foregroundColor(.secondary)
+                .frame(width: 36, alignment: .trailing)
         }
     }
 }
