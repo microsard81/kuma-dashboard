@@ -615,7 +615,7 @@ UptimeDashboardTests/
 - **Sensori Potenza** — lista sensori con sparkline, badge valore, colore blu (normal), rosso (critical); ordinati per gravità
 - **Sensori UPS** — stato batteria, sorgente, capacità, durata, fasi; colore viola (normal), rosso (critical)
 - **Sensori Generatori** — stato controller, tensione, carico, carburante; colore arancione (normal), rosso (critical)
-- **Tooltip interattivo** — tocca il grafico di un sensore per vedere valore e orario (HH:mm) del punto
+- **Tooltip interattivo** — tocca il grafico di un sensore per vedere valore e orario (HH:mm, timezone Europe/Rome) del punto
 - **Riordino sezioni** — long press su una macro-card per riordinare le 3 sezioni con drag & drop
 - **Riordino elementi** — swipe a destra su un elemento → drag & drop → "Termina"; ordine salvato
 - **Risorse in evidenza** — swipe a sinistra per pinnare risorse sulla home; card quadrate con stato in tempo reale; long press per riordinare/rimuovere; drag & drop tra card; tap per aprire la sezione e scrollare direttamente alla risorsa con evidenziazione temporanea
@@ -627,7 +627,7 @@ UptimeDashboardTests/
 - **Filtro DOWN** — toggle per mostrare solo i monitor in stato DOWN o mismatch (nella scheda Portali)
 - **Badge icona app** — numero di risorse con problemi mostrato sull'icona dell'app (disattivabile)
 - **Notifiche push** — notifiche native APNs al cambio di stato globale e al superamento soglie sensori
-- **Impostazioni** — tema (auto default/chiaro/scuro), ordinamento, intervallo auto-refresh, notifiche, biometria, haptic feedback, badge, info app
+- **Impostazioni** — tema (auto default/chiaro/scuro), ordinamento, intervallo auto-refresh, notifiche, biometria, haptic feedback, badge, limiti grafici configurabili (°C, V, %, min, kW), info app
 - **Help** — documentazione completa in-app con tutte le funzionalità
 - **Logout** — con conferma, elimina il token dal Keychain
 
@@ -672,24 +672,29 @@ App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
 
 ### Funzionalità
 
+- **Layout Sidebar / Detail** — sidebar fissa con le 5 sezioni e "Panoramica"; pannello destro mostra il contenuto o la panoramica con card di stato
+- **Panoramica** — card per ogni sezione con icona, nome e conteggio live (es. "OK (10)", "2/10 DOWN"); si aggiornano in tempo reale; sotto, sezione "In evidenza" con le risorse pinnate
+- **In evidenza (Pin)** — click destro su monitor o sensore → "Aggiungi a In evidenza"; doppio click sulla card pinnata apre la sezione corrispondente; click destro per rimuovere
+- **Riordino manuale** — pulsante ↑↓ nell'header di ogni sezione attiva la modalità drag & drop; ordine salvato per sezione
 - Login con supporto 1Password (`.textContentType`)
 - Cambio password obbligatorio e TOTP enrollment con QR code
 - Dashboard con sparkline, sonde colorate, raggruppamento per stato
-- Hover sulle sparkline mostra orario e stato; su mismatch evidenzia le sonde DOWN
+- Hover sulle sparkline mostra orario (timezone Europe/Rome) e stato; su mismatch evidenzia le sonde DOWN
 - Auto-refresh configurabile (10s/30s/60s/disabilitato)
 - Ordinamento: per gravità, alfabetico, per stato globale
 - Badge Dock con contatore risorse DOWN/mismatch (disattivabile)
 - Notifiche push APNs native
 - Toggle notifiche push nelle impostazioni (abilita/disabilita con unsubscribe dal backend)
 - Soglia notifica personalizzabile (1–5 sonde DOWN) nelle impostazioni
-- Storico notifiche inline — vista a tutto schermo nella finestra app, sincronizza da `/api/events` (Redis) + push APNs locali; rispetta la dimensione testo configurata; notifiche lette raggruppate in sezioni collassabili per periodo (Questa settimana / Questo mese / Precedenti)
-- Tema: Auto/Chiaro/Scuro (default Scuro con sfondo #141c2b)
+- Storico notifiche inline — vista a tutto schermo nella finestra app, sincronizza da `/api/events` (Redis) + push APNs locali
+- Tema: Auto/Chiaro/Scuro (default Scuro con sfondo #141c2b); card adattive al tema
 - Dimensione testo regolabile (80%-160%)
-- La X minimizza nel Dock invece di chiudere l'app
+- **Limiti Grafici** — range Y-axis configurabili nelle Impostazioni per unità (°C, V, %, min, kW)
+- ⌘Q chiude l'app normalmente
 - Widget macOS (small/medium/large) con stato servizi, LED globale, 5 pallini sonde per monitor
 - Icona nella barra dei menu con pallino stato globale e menu a tendina (risorse anomale, azioni rapide)
 - Help macOS nativo (menu Help → Aiuto Dashboard INVA MAC)
-- **Autenticazione biometrica** — Touch ID e Apple Watch unlock per accesso rapido senza digitare credenziali; abilitabile/disabilitabile nelle impostazioni
+- **Autenticazione biometrica** — Touch ID e Apple Watch unlock per accesso rapido
 
 ### Autenticazione Biometrica (Touch ID / Apple Watch)
 

@@ -90,6 +90,7 @@ struct HelpView: View {
                     infoRow(icon: "bell", text: "Notifiche: abilita/disabilita e configura la soglia")
                     infoRow(icon: "hand.tap", text: "Feedback aptico: vibrazione al tocco sullo storico")
                     infoRow(icon: "faceid", text: "Sicurezza: accesso rapido con Face ID / Touch ID")
+                    infoRow(icon: "chart.xyaxis.line", text: "Limiti Grafici: configura i range min/max dell'asse Y per ogni tipo di sensore (°C, V, %, min, kW)")
                 }
 
                 // Riordino manuale

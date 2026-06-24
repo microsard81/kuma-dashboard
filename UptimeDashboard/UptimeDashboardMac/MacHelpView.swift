@@ -140,6 +140,18 @@ struct HelpWebView: NSViewRepresentable {
     <h2>Autenticazione biometrica</h2>
     <p>Al primo login con username + password + 2FA, l'app salva un token nel Keychain protetto da Touch ID o Apple Watch. Ai successivi avvii puoi sbloccare con la biometria senza reinserire le credenziali. Il token scade dopo 90 giorni.</p>
 
+    <h2>Limiti Grafici</h2>
+    <p>Nelle Impostazioni puoi personalizzare i range dell'asse Y dei grafici sparkline per ogni tipo di sensore:</p>
+    <table>
+    <tr><th>Unità</th><th>Min default</th><th>Max default</th></tr>
+    <tr><td>Temperatura (°C)</td><td>15</td><td>60</td></tr>
+    <tr><td>Tensione (V)</td><td>0</td><td>250</td></tr>
+    <tr><td>Capacità (%)</td><td>0</td><td>100</td></tr>
+    <tr><td>Durata (min)</td><td>1</td><td>280</td></tr>
+    <tr><td>Potenza (kW)</td><td>0</td><td>100</td></tr>
+    </table>
+    <p>Modifica i valori per adattare la scala dei grafici alle tue esigenze. I valori fuori range verranno comunque mostrati ma il grafico sarà troncato.</p>
+
     <h2>Scorciatoie</h2>
     <table>
     <tr><th>Tasto</th><th>Azione</th></tr>
