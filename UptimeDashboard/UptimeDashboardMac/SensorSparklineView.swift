@@ -18,28 +18,11 @@ struct SensorSparklineView: View {
 
     /// Fixed Y scale based on unit
     private var yMin: Double {
-        switch unit.lowercased() {
-        case "°c": return 15
-        case "v": return 0
-        case "%": return 0
-        case "min": return 1
-        case "kw": return 0
-        default:
-            // Fallback per categoria
-            return category == .power ? 0 : 15
-        }
+        ChartLimitsSettings.shared.yMin(for: unit)
     }
 
     private var yMax: Double {
-        switch unit.lowercased() {
-        case "°c": return 60
-        case "v": return 250
-        case "%": return 100
-        case "min": return 280
-        case "kw": return 100
-        default:
-            return category == .power ? 100 : 60
-        }
+        ChartLimitsSettings.shared.yMax(for: unit)
     }
 
     /// Data points from the last 60 history entries.

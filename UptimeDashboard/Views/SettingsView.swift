@@ -113,6 +113,48 @@ struct SettingsView: View {
                 }
             }
 
+            // MARK: - Sezione Limiti Grafici
+            Section("Limiti Grafici") {
+                ForEach(ChartLimitsSettings.configurableUnits, id: \.unit) { item in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.label)
+                            .font(.subheadline)
+                        HStack {
+                            Text("Min")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(width: 30)
+                            TextField("Min", value: Binding(
+                                get: { ChartLimitsSettings.shared.yMin(for: item.unit) },
+                                set: { ChartLimitsSettings.shared.setYMin($0, for: item.unit) }
+                            ), format: .number)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 70)
+
+                            Spacer()
+
+                            Text("Max")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(width: 30)
+                            TextField("Max", value: Binding(
+                                get: { ChartLimitsSettings.shared.yMax(for: item.unit) },
+                                set: { ChartLimitsSettings.shared.setYMax($0, for: item.unit) }
+                            ), format: .number)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 70)
+                        }
+                    }
+                }
+
+                Button("Ripristina predefiniti") {
+                    ChartLimitsSettings.shared.resetAll()
+                }
+                .foregroundColor(.secondary)
+            }
+
             // MARK: - Sezione Info App
             Section("Info App") {
                 HStack {

@@ -96,11 +96,42 @@ struct MacSettingsView: View {
                 viewModel.setRefreshInterval(60)
                 viewModel.setSortOrder("severity")
                 viewModel.setBadgeEnabled(true)
+                ChartLimitsSettings.shared.resetAll()
             }
             .foregroundColor(.secondary)
+
+            // Limiti Grafici
+            Section("Limiti Grafici") {
+                ForEach(ChartLimitsSettings.configurableUnits, id: \.unit) { item in
+                    HStack {
+                        Text(item.label)
+                            .frame(width: 130, alignment: .leading)
+                        Spacer()
+                        Text("Min:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("", value: Binding(
+                            get: { ChartLimitsSettings.shared.yMin(for: item.unit) },
+                            set: { ChartLimitsSettings.shared.setYMin($0, for: item.unit) }
+                        ), format: .number)
+                        .frame(width: 50)
+                        .textFieldStyle(.roundedBorder)
+
+                        Text("Max:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("", value: Binding(
+                            get: { ChartLimitsSettings.shared.yMax(for: item.unit) },
+                            set: { ChartLimitsSettings.shared.setYMax($0, for: item.unit) }
+                        ), format: .number)
+                        .frame(width: 50)
+                        .textFieldStyle(.roundedBorder)
+                    }
+                }
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 400, height: 460)
+        .frame(width: 400, height: 620)
         .padding()
     }
 
