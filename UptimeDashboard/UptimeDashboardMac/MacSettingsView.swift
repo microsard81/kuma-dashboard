@@ -103,31 +103,49 @@ struct MacSettingsView: View {
             // Limiti Grafici
             Section("Limiti Grafici") {
                 ForEach(ChartLimitsSettings.configurableUnits, id: \.unit) { item in
-                    HStack {
-                        Text(item.label)
-                            .frame(width: 130, alignment: .leading)
-                        Spacer()
-                        Text("Min:")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        TextField("", value: Binding(
-                            get: { ChartLimitsSettings.shared.yMin(for: item.unit) },
-                            set: { ChartLimitsSettings.shared.setYMin($0, for: item.unit) }
-                        ), format: .number)
-                        .frame(width: 50)
-                        .textFieldStyle(.roundedBorder)
+                    let sliderMax = chartSliderMax(for: item.unit)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(item.label)
+                                .font(.subheadline)
+                            Spacer()
+                            Text("\(Int(ChartLimitsSettings.shared.yMin(for: item.unit)))–\(Int(ChartLimitsSettings.shared.yMax(for: item.unit)))")
+                                .font(.caption.monospacedDigit())
+                                .foregroundColor(.secondary)
+                        }
 
-                        Text("Max:")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        TextField("", value: Binding(
-                            get: { ChartLimitsSettings.shared.yMax(for: item.unit) },
-                            set: { ChartLimitsSettings.shared.setYMax($0, for: item.unit) }
-                        ), format: .number)
-                        .frame(width: 50)
-                        .textFieldStyle(.roundedBorder)
+                        if item.unit == "%" {
+                            // Simple slider for percentage (always 0-100)
+                            Slider(
+                                value: Binding(
+                                    get: { ChartLimitsSettings.shared.yMax(for: "%") },
+                                    set: { ChartLimitsSettings.shared.setYMax($0, for: "%") }
+                                ),
+                                in: 10...100,
+                                step: 5
+                            )
+                        } else {
+                            RangeSliderView(
+                                lowerValue: Binding(
+                                    get: { ChartLimitsSettings.shared.yMin(for: item.unit) },
+                                    set: { ChartLimitsSettings.shared.setYMin($0, for: item.unit) }
+                                ),
+                                upperValue: Binding(
+                                    get: { ChartLimitsSettings.shared.yMax(for: item.unit) },
+                                    set: { ChartLimitsSettings.shared.setYMax($0, for: item.unit) }
+                                ),
+                                bounds: 0...sliderMax,
+                                step: chartSliderStep(for: item.unit),
+                                accentColor: chartSliderColor(for: item.unit)
+                            )
+                        }
                     }
                 }
+
+                Button("Ripristina predefiniti") {
+                    ChartLimitsSettings.shared.resetAll()
+                }
+                .foregroundColor(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -160,6 +178,36 @@ struct MacSettingsView: View {
         case 4: return "4 sonde DOWN"
         case 5: return "5 sonde DOWN (tutte)"
         default: return "\(value) sonde DOWN"
+        }
+    }
+
+    private func chartSliderMax(for unit: String) -> Double {
+        switch unit {
+        case "°C": return 72     // 60 + 20%
+        case "V": return 300     // 250 + 20%
+        case "min": return 336   // 280 + 20%
+        case "kW": return 120    // 100 + 20%
+        default: return 100
+        }
+    }
+
+    private func chartSliderStep(for unit: String) -> Double {
+        switch unit {
+        case "°C": return 1
+        case "V": return 5
+        case "min": return 5
+        case "kW": return 5
+        default: return 1
+        }
+    }
+
+    private func chartSliderColor(for unit: String) -> Color {
+        switch unit {
+        case "°C": return .orange
+        case "V": return .yellow
+        case "min": return .purple
+        case "kW": return .blue
+        default: return .accentColor
         }
     }
 }
