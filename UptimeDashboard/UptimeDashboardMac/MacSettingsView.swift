@@ -3,6 +3,17 @@ import SwiftUI
 struct MacSettingsView: View {
     @EnvironmentObject var viewModel: MacAppViewModel
 
+    // Chart limit states
+    @State private var tempMin = ChartLimitsSettings.shared.yMin(for: "°C")
+    @State private var tempMax = ChartLimitsSettings.shared.yMax(for: "°C")
+    @State private var voltMin = ChartLimitsSettings.shared.yMin(for: "V")
+    @State private var voltMax = ChartLimitsSettings.shared.yMax(for: "V")
+    @State private var percMax = ChartLimitsSettings.shared.yMax(for: "%")
+    @State private var minMin = ChartLimitsSettings.shared.yMin(for: "min")
+    @State private var minMax = ChartLimitsSettings.shared.yMax(for: "min")
+    @State private var kwMin = ChartLimitsSettings.shared.yMin(for: "kW")
+    @State private var kwMax = ChartLimitsSettings.shared.yMax(for: "kW")
+
     var body: some View {
         Form {
             // Tema
@@ -102,23 +113,36 @@ struct MacSettingsView: View {
 
             // Limiti Grafici
             Section("Temperatura (°C)") {
-                chartLimitSliders(unit: "°C", color: .orange, max: 72, step: 1)
+                chartSlider(label: "Min", value: $tempMin, range: 0...72, step: 1, color: .orange, onChanged: { ChartLimitsSettings.shared.setYMin($0, for: "°C") })
+                chartSlider(label: "Max", value: $tempMax, range: 0...72, step: 1, color: .orange, onChanged: { ChartLimitsSettings.shared.setYMax($0, for: "°C") })
             }
             Section("Tensione (V)") {
-                chartLimitSliders(unit: "V", color: .yellow, max: 300, step: 5)
+                chartSlider(label: "Min", value: $voltMin, range: 0...300, step: 5, color: .yellow, onChanged: { ChartLimitsSettings.shared.setYMin($0, for: "V") })
+                chartSlider(label: "Max", value: $voltMax, range: 0...300, step: 5, color: .yellow, onChanged: { ChartLimitsSettings.shared.setYMax($0, for: "V") })
             }
             Section("Capacità (%)") {
-                chartLimitSliders(unit: "%", color: .blue, max: 100, step: 5)
+                chartSlider(label: "Max", value: $percMax, range: 0...100, step: 5, color: .blue, onChanged: { ChartLimitsSettings.shared.setYMax($0, for: "%") })
             }
             Section("Durata (min)") {
-                chartLimitSliders(unit: "min", color: .purple, max: 336, step: 5)
+                chartSlider(label: "Min", value: $minMin, range: 0...336, step: 5, color: .purple, onChanged: { ChartLimitsSettings.shared.setYMin($0, for: "min") })
+                chartSlider(label: "Max", value: $minMax, range: 0...336, step: 5, color: .purple, onChanged: { ChartLimitsSettings.shared.setYMax($0, for: "min") })
             }
             Section("Potenza (kW)") {
-                chartLimitSliders(unit: "kW", color: .blue, max: 120, step: 5)
+                chartSlider(label: "Min", value: $kwMin, range: 0...120, step: 5, color: .blue, onChanged: { ChartLimitsSettings.shared.setYMin($0, for: "kW") })
+                chartSlider(label: "Max", value: $kwMax, range: 0...120, step: 5, color: .blue, onChanged: { ChartLimitsSettings.shared.setYMax($0, for: "kW") })
             }
             Section {
                 Button("Ripristina predefiniti") {
                     ChartLimitsSettings.shared.resetAll()
+                    tempMin = ChartLimitsSettings.shared.yMin(for: "°C")
+                    tempMax = ChartLimitsSettings.shared.yMax(for: "°C")
+                    voltMin = ChartLimitsSettings.shared.yMin(for: "V")
+                    voltMax = ChartLimitsSettings.shared.yMax(for: "V")
+                    percMax = ChartLimitsSettings.shared.yMax(for: "%")
+                    minMin = ChartLimitsSettings.shared.yMin(for: "min")
+                    minMax = ChartLimitsSettings.shared.yMax(for: "min")
+                    kwMin = ChartLimitsSettings.shared.yMin(for: "kW")
+                    kwMax = ChartLimitsSettings.shared.yMax(for: "kW")
                 }
                 .foregroundColor(.secondary)
             }
@@ -187,41 +211,18 @@ struct MacSettingsView: View {
     }
 
     @ViewBuilder
-    private func chartLimitSliders(unit: String, color: Color, max sliderMax: Double, step: Double) -> some View {
+    private func chartSlider(label: String, value: Binding<Double>, range: ClosedRange<Double>, step: Double, color: Color, onChanged: @escaping (Double) -> Void) -> some View {
         HStack {
-            Text("Min")
+            Text(label)
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .frame(width: 30, alignment: .leading)
-            Slider(
-                value: Binding(
-                    get: { ChartLimitsSettings.shared.yMin(for: unit) },
-                    set: { ChartLimitsSettings.shared.setYMin($0, for: unit) }
-                ),
-                in: 0...sliderMax,
-                step: step
-            )
-            .tint(color)
-            Text("\(Int(ChartLimitsSettings.shared.yMin(for: unit)))")
-                .font(.caption.monospacedDigit())
-                .foregroundColor(.secondary)
-                .frame(width: 36, alignment: .trailing)
-        }
-        HStack {
-            Text("Max")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .frame(width: 30, alignment: .leading)
-            Slider(
-                value: Binding(
-                    get: { ChartLimitsSettings.shared.yMax(for: unit) },
-                    set: { ChartLimitsSettings.shared.setYMax($0, for: unit) }
-                ),
-                in: 0...sliderMax,
-                step: step
-            )
-            .tint(color)
-            Text("\(Int(ChartLimitsSettings.shared.yMax(for: unit)))")
+            Slider(value: value, in: range, step: step)
+                .tint(color)
+                .onChange(of: value.wrappedValue) { newVal in
+                    onChanged(newVal)
+                }
+            Text("\(Int(value.wrappedValue))")
                 .font(.caption.monospacedDigit())
                 .foregroundColor(.secondary)
                 .frame(width: 36, alignment: .trailing)
