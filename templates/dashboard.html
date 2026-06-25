@@ -48,6 +48,9 @@
         <div class="d-none d-md-flex align-items-center">
             <span class="badge bg-danger me-3" id="down-count-badge"></span>
             <span class="me-3"><span id="global-status-led" class="status-led status-led-green"></span></span>
+            <button class="btn btn-auto me-3 d-flex align-items-center" onclick="toggleNotificationPanel()" title="Storico notifiche">
+                <i class="bi bi-clock-history"></i>
+            </button>
             <div class="dropdown me-3">
                 <button id="push-btn" class="btn btn-auto d-flex align-items-center" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                     <i id="push-icon" class="bi bi-bell"></i>
@@ -120,6 +123,11 @@
             <button class="btn btn-auto w-100 mb-2 d-flex align-items-center" onclick="location.reload()">
                 <i class="bi bi-arrow-clockwise me-2"></i>
                 <span>Refresh</span>
+            </button>
+
+            <button class="btn btn-auto w-100 mb-2 d-flex align-items-center" onclick="toggleNotificationPanel()">
+                <i class="bi bi-clock-history me-2"></i>
+                <span>Storico notifiche</span>
             </button>
 
             <div class="mb-2">
@@ -258,6 +266,23 @@
                 </small>
             </div>
 
+        </div>
+    </div>
+
+    <!-- NOTIFICATION HISTORY PANEL -->
+    <div id="notification-panel" class="notification-panel d-none">
+        <div class="notification-panel-header">
+            <h5 class="m-0">Notifiche</h5>
+            <button class="btn btn-sm btn-close" onclick="closeNotificationPanel()"></button>
+        </div>
+        <div class="notification-search">
+            <input type="text" id="notification-search-input" class="form-control form-control-sm" placeholder="Cerca notifiche..." oninput="filterNotifications()">
+        </div>
+        <div id="notification-list" class="notification-list">
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-bell-slash fs-1"></i>
+                <p class="mt-2">Caricamento...</p>
+            </div>
         </div>
     </div>
 

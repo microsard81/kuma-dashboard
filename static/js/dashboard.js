@@ -1027,3 +1027,153 @@ document.addEventListener("DOMContentLoaded", () => {
         updateInverterTimestamp(INVERTER_INITIAL_DATA.timestamp);
     }
 });
+
+
+/************************************************************
+ * NOTIFICATION HISTORY PANEL
+ ************************************************************/
+let _notifEvents = [];
+let _notifSections = { week: true, month: true, older: false };
+
+function toggleNotificationPanel() {
+    const panel = document.getElementById("notification-panel");
+    if (!panel) return;
+    if (panel.classList.contains("d-none")) {
+        panel.classList.remove("d-none");
+        fetchNotificationEvents();
+    } else {
+        panel.classList.add("d-none");
+    }
+}
+
+function closeNotificationPanel() {
+    const panel = document.getElementById("notification-panel");
+    if (panel) panel.classList.add("d-none");
+}
+
+async function fetchNotificationEvents() {
+    try {
+        const resp = await fetch("/api/events?limit=200");
+        if (!resp.ok) return;
+        const data = await resp.json();
+        _notifEvents = (data.events || []).filter(e => e.type !== "global");
+        renderNotifications();
+    } catch (e) {
+        console.error("Errore fetch notifiche:", e);
+    }
+}
+
+function filterNotifications() {
+    renderNotifications();
+}
+
+function renderNotifications() {
+    const container = document.getElementById("notification-list");
+    if (!container) return;
+
+    const query = (document.getElementById("notification-search-input")?.value || "").toLowerCase();
+    let events = _notifEvents;
+    if (query) {
+        events = events.filter(e =>
+            (e.name || "").toLowerCase().includes(query) ||
+            (e.detail || "").toLowerCase().includes(query)
+        );
+    }
+
+    if (events.length === 0) {
+        container.innerHTML = `<div class="text-center text-muted py-4">
+            <i class="bi bi-${query ? 'search' : 'bell-slash'} fs-1"></i>
+            <p class="mt-2">${query ? 'Nessun risultato' : 'Nessuna notifica'}</p>
+        </div>`;
+        return;
+    }
+
+    // Group by calendar periods
+    const now = new Date();
+    const weekStart = getISOWeekStart(now);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const thisWeek = [];
+    const thisMonth = [];
+    const older = [];
+
+    for (const e of events) {
+        const d = new Date(e.ts);
+        if (d >= weekStart) thisWeek.push(e);
+        else if (d >= monthStart) thisMonth.push(e);
+        else older.push(e);
+    }
+
+    let html = "";
+    if (thisWeek.length > 0) {
+        html += renderSection("week", "Questa settimana", thisWeek);
+    }
+    if (thisMonth.length > 0) {
+        html += renderSection("month", "Questo mese", thisMonth);
+    }
+    if (older.length > 0) {
+        html += renderSection("older", "Precedenti", older);
+    }
+
+    container.innerHTML = html;
+}
+
+function renderSection(key, title, events) {
+    const expanded = _notifSections[key];
+    const chevron = expanded ? "bi-chevron-down" : "bi-chevron-right";
+    let html = `<div class="notification-section-header" onclick="toggleNotifSection('${key}')">
+        <i class="bi ${chevron}"></i> ${title} (${events.length})
+    </div>`;
+    if (expanded) {
+        for (const e of events) {
+            html += renderNotifItem(e);
+        }
+    }
+    return html;
+}
+
+function renderNotifItem(e) {
+    const d = new Date(e.ts);
+    const timeStr = formatNotifDate(d);
+    const body = e.detail || "";
+    return `<div class="notification-item">
+        <div class="notification-item-title">${escapeHtml(e.name || "")}</div>
+        ${body ? `<div class="notification-item-body">${escapeHtml(body)}</div>` : ""}
+        <div class="notification-item-time">${timeStr}</div>
+    </div>`;
+}
+
+function toggleNotifSection(key) {
+    _notifSections[key] = !_notifSections[key];
+    renderNotifications();
+}
+
+function getISOWeekStart(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = (day === 0 ? -6 : 1) - day; // Monday = 1
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+function formatNotifDate(date) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+
+    if (date >= today) return `${hh}:${mm}`;
+    if (date >= yesterday) return `Ieri ${hh}:${mm}`;
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mo = String(date.getMonth() + 1).padStart(2, "0");
+    return `${dd}/${mo} ${hh}:${mm}`;
+}
+
+function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+}
