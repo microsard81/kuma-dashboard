@@ -34,7 +34,7 @@ struct HelpWebView: NSViewRepresentable {
     <html lang="it">
     <head><meta charset="utf-8"><title>Aiuto</title>
     <style>
-    body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:680px;margin:40px auto;padding:0 24px;color:#222;line-height:1.7;font-size:14px}
+    body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:100%;margin:40px auto;padding:0 40px;color:#222;line-height:1.7;font-size:14px}
     h1{font-size:26px;margin-bottom:4px}
     h2{font-size:18px;margin-top:32px;border-bottom:1px solid #ddd;padding-bottom:6px}
     h3{font-size:15px;margin-top:20px}
