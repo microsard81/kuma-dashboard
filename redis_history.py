@@ -216,6 +216,20 @@ def push_event(
     r.ltrim(_EVENTS_KEY, 0, _MAX_EVENTS - 1)
 
 
+def delete_event(event_id: str) -> bool:
+    """
+    Elimina un evento specifico dal log Redis per ID.
+    Ritorna True se trovato e rimosso, False altrimenti.
+    """
+    raw = r.lrange(_EVENTS_KEY, 0, _MAX_EVENTS - 1)
+    for item in (raw or []):
+        event = json.loads(item)
+        if event.get("id") == event_id:
+            r.lrem(_EVENTS_KEY, 1, item)
+            return True
+    return False
+
+
 
 # ------------------ PROBE STATE PER MONITOR (per granular event log) ------------------ #
 

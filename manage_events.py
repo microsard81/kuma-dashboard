@@ -7,6 +7,7 @@ Uso:
     python manage_events.py list 20             # Ultimi 20 eventi
     python manage_events.py list all            # Tutti gli eventi (max 500)
     python manage_events.py count               # Conteggio totale
+    python manage_events.py delete <event_id>   # Elimina un singolo evento per ID
     python manage_events.py clear               # Cancella tutti gli eventi
     python manage_events.py add <tipo> <desc>   # Aggiunge un evento di test
 """
@@ -61,6 +62,15 @@ def cmd_clear():
         print("Annullato.")
 
 
+def cmd_delete(event_id: str):
+    """Elimina un singolo evento per ID."""
+    from redis_history import delete_event
+    if delete_event(event_id):
+        print(f"Evento {event_id} eliminato.")
+    else:
+        print(f"Evento {event_id} non trovato.")
+
+
 def cmd_add(event_type: str, detail: str):
     """Aggiunge un evento di test."""
     push_event(event_type, "test", "GREEN", "GREEN", detail=detail, severity=0)
@@ -87,6 +97,12 @@ def main():
 
     elif cmd == "clear":
         cmd_clear()
+
+    elif cmd == "delete":
+        if len(sys.argv) < 3:
+            print("Uso: python manage_events.py delete <event_id>")
+            sys.exit(1)
+        cmd_delete(sys.argv[2])
 
     elif cmd == "add":
         if len(sys.argv) < 4:

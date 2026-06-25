@@ -754,6 +754,24 @@ def api_events():
     return jsonify({"events": events[:limit], "count": len(events[:limit])})
 
 
+@app.route("/api/events/<event_id>", methods=["DELETE"])
+@login_required
+def api_delete_event(event_id):
+    """Elimina un evento specifico dal log Redis.
+
+    Autenticazione: sessione Flask (@login_required).
+    """
+    from redis_history import delete_event
+
+    if not event_id:
+        return {"ok": False, "error": "missing event_id"}, 400
+
+    removed = delete_event(event_id)
+    if removed:
+        return {"ok": True}, 200
+    return {"ok": False, "error": "event not found"}, 404
+
+
 @app.route("/api/watch-data")
 def api_watch_data():
     """Endpoint leggero per l'Apple Watch. Autenticato con token statico via header."""
