@@ -1255,36 +1255,29 @@ private struct MacNotificationInlineView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List {
-                    if !thisWeek.isEmpty {
-                        Section(isExpanded: $weekExpanded) {
-                            ForEach(thisWeek) { notif in
-                                notificationRow(notif)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        if !thisWeek.isEmpty {
+                            macCollapsibleHeader(title: "Questa settimana", count: thisWeek.count, isExpanded: $weekExpanded)
+                            if weekExpanded {
+                                ForEach(thisWeek) { notif in notificationRow(notif) }
                             }
-                        } header: {
-                            Text("Questa settimana (\(thisWeek.count))")
+                        }
+                        if !thisMonth.isEmpty {
+                            macCollapsibleHeader(title: "Questo mese", count: thisMonth.count, isExpanded: $monthExpanded)
+                            if monthExpanded {
+                                ForEach(thisMonth) { notif in notificationRow(notif) }
+                            }
+                        }
+                        if !older.isEmpty {
+                            macCollapsibleHeader(title: "Precedenti", count: older.count, isExpanded: $olderExpanded)
+                            if olderExpanded {
+                                ForEach(older) { notif in notificationRow(notif) }
+                            }
                         }
                     }
-                    if !thisMonth.isEmpty {
-                        Section(isExpanded: $monthExpanded) {
-                            ForEach(thisMonth) { notif in
-                                notificationRow(notif)
-                            }
-                        } header: {
-                            Text("Questo mese (\(thisMonth.count))")
-                        }
-                    }
-                    if !older.isEmpty {
-                        Section(isExpanded: $olderExpanded) {
-                            ForEach(older) { notif in
-                                notificationRow(notif)
-                            }
-                        } header: {
-                            Text("Precedenti (\(older.count))")
-                        }
-                    }
+                    .padding(.bottom, 16)
                 }
-                .listStyle(.sidebar)
             }
         }
         .task {
@@ -1310,7 +1303,34 @@ private struct MacNotificationInlineView: View {
                     .lineLimit(3)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        Divider().padding(.leading, 16)
+    }
+
+    private func macCollapsibleHeader(title: String, count: Int, isExpanded: Binding<Bool>) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isExpanded.wrappedValue.toggle()
+            }
+        } label: {
+            HStack {
+                Image(systemName: isExpanded.wrappedValue ? "chevron.down" : "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .frame(width: 12)
+                Text("\(title) (\(count))")
+                    .font(.scaled(.caption, scale: scale, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                Spacer()
+            }
+            .contentShape(Rectangle())
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 6)
+        }
+        .buttonStyle(.plain)
     }
 
     private func fetchServerEvents() async {
