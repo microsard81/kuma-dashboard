@@ -1137,9 +1137,11 @@ function renderNotifItem(e) {
     const timeStr = formatNotifDate(d);
     const body = e.detail || "";
     return `<div class="notification-item">
-        <div class="notification-item-title">${escapeHtml(e.name || "")}</div>
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="notification-item-title">${escapeHtml(e.name || "")}</div>
+            <div class="notification-item-time ms-2 text-nowrap">${timeStr}</div>
+        </div>
         ${body ? `<div class="notification-item-body">${escapeHtml(body)}</div>` : ""}
-        <div class="notification-item-time">${timeStr}</div>
     </div>`;
 }
 
