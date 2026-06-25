@@ -57,6 +57,7 @@ private struct SyncEventsResponse: Codable {
 /// - Precedenti (> 30 days)
 struct NotificationHistoryView: View {
     @State private var notifications: [NotificationRecord] = []
+    @State private var searchText: String = ""
 
     // Collapse state for read notification sections
     @State private var isWeekCollapsed = false
@@ -77,31 +78,47 @@ struct NotificationHistoryView: View {
         readStateDefaults.set(Array(ids), forKey: readStateKey)
     }
 
-    // MARK: - Time-based grouping for read notifications
+    // MARK: - Filtered notifications (search)
+
+    private var filteredNotifications: [NotificationRecord] {
+        guard !searchText.isEmpty else { return notifications }
+        let query = searchText.lowercased()
+        return notifications.filter {
+            $0.title.lowercased().contains(query) || $0.body.lowercased().contains(query)
+        }
+    }
+
+    // MARK: - Calendar-based grouping for read notifications
 
     private var unreadNotifications: [NotificationRecord] {
-        notifications.filter { !$0.isRead }.sorted { $0.date > $1.date }
+        filteredNotifications.filter { !$0.isRead }.sorted { $0.date > $1.date }
     }
 
+    /// Current calendar week (Monday to Sunday)
     private var readThisWeek: [NotificationRecord] {
-        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        return notifications
-            .filter { $0.isRead && $0.date >= weekAgo }
+        let calendar = Calendar(identifier: .iso8601)
+        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start else { return [] }
+        return filteredNotifications
+            .filter { $0.isRead && $0.date >= weekStart }
             .sorted { $0.date > $1.date }
     }
 
+    /// Current calendar month (1st to end)
     private var readThisMonth: [NotificationRecord] {
-        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        let monthAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        return notifications
-            .filter { $0.isRead && $0.date < weekAgo && $0.date >= monthAgo }
+        let calendar = Calendar(identifier: .iso8601)
+        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start,
+              let monthStart = calendar.dateInterval(of: .month, for: Date())?.start else { return [] }
+        return filteredNotifications
+            .filter { $0.isRead && $0.date >= monthStart && $0.date < weekStart }
             .sorted { $0.date > $1.date }
     }
 
+    /// Older than current month
     private var readOlder: [NotificationRecord] {
-        let monthAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        return notifications
-            .filter { $0.isRead && $0.date < monthAgo }
+        let calendar = Calendar(identifier: .iso8601)
+        guard let monthStart = calendar.dateInterval(of: .month, for: Date())?.start else { return [] }
+        return filteredNotifications
+            .filter { $0.isRead && $0.date < monthStart }
             .sorted { $0.date > $1.date }
     }
 
@@ -121,7 +138,26 @@ struct NotificationHistoryView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
+                VStack(spacing: 0) {
+                    // Search field
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+                        TextField("Cerca notifiche...", text: $searchText)
+                            .textFieldStyle(.plain)
+                        if !searchText.isEmpty {
+                            Button { searchText = "" } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color(.secondarySystemBackground))
+
+                    ScrollView {
                     LazyVStack(spacing: 0) {
                         // Hint pull-to-refresh (solo se ci sono non lette)
                         if !unreadNotifications.isEmpty {
@@ -202,6 +238,7 @@ struct NotificationHistoryView: View {
                     await fetchServerEvents()
                     markAllServerEventsAsRead()
                 }
+                } // end VStack (search + scroll)
             }
         }
         .navigationTitle("Notifiche")

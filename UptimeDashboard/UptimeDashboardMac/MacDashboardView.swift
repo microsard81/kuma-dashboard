@@ -1172,12 +1172,62 @@ private struct MacPinnedCardView: View {
 private struct MacNotificationInlineView: View {
     @State private var notifications: [NotificationRecord] = []
     @State private var isLoading = false
+    @State private var searchText: String = ""
     @Environment(\.textScale) var scale
 
     private let baseURL = "https://kuma-dashboard.sundata.cloud"
 
+    // MARK: - Filtered & grouped
+
+    private var filteredNotifications: [NotificationRecord] {
+        guard !searchText.isEmpty else { return notifications }
+        let query = searchText.lowercased()
+        return notifications.filter {
+            $0.title.lowercased().contains(query) || $0.body.lowercased().contains(query)
+        }
+    }
+
+    private var thisWeek: [NotificationRecord] {
+        let calendar = Calendar(identifier: .iso8601)
+        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start else { return [] }
+        return filteredNotifications.filter { $0.date >= weekStart }.sorted { $0.date > $1.date }
+    }
+
+    private var thisMonth: [NotificationRecord] {
+        let calendar = Calendar(identifier: .iso8601)
+        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start,
+              let monthStart = calendar.dateInterval(of: .month, for: Date())?.start else { return [] }
+        return filteredNotifications.filter { $0.date >= monthStart && $0.date < weekStart }.sorted { $0.date > $1.date }
+    }
+
+    private var older: [NotificationRecord] {
+        let calendar = Calendar(identifier: .iso8601)
+        guard let monthStart = calendar.dateInterval(of: .month, for: Date())?.start else { return [] }
+        return filteredNotifications.filter { $0.date < monthStart }.sorted { $0.date > $1.date }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
+            // Search field
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                TextField("Cerca...", text: $searchText)
+                    .textFieldStyle(.plain)
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial)
+
+            Divider()
+
             if isLoading && notifications.isEmpty {
                 VStack(spacing: 16) {
                     ProgressView()
@@ -1186,38 +1236,44 @@ private struct MacNotificationInlineView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if notifications.isEmpty {
+            } else if filteredNotifications.isEmpty {
                 VStack(spacing: 16) {
-                    Image(systemName: "bell.slash")
+                    Image(systemName: searchText.isEmpty ? "bell.slash" : "magnifyingglass")
                         .font(.system(size: 36))
                         .foregroundColor(.secondary)
-                    Text("Nessuna notifica")
+                    Text(searchText.isEmpty ? "Nessuna notifica" : "Nessun risultato")
                         .font(.scaled(.title3, scale: scale))
                         .foregroundColor(.secondary)
-                    Text("Gli eventi appariranno qui")
-                        .font(.scaled(.subheadline, scale: scale))
-                        .foregroundColor(.secondary)
+                    if searchText.isEmpty {
+                        Text("Gli eventi appariranno qui")
+                            .font(.scaled(.subheadline, scale: scale))
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(notifications) { notif in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(notif.title)
-                                .font(.scaled(.subheadline, scale: scale).bold())
-                            Spacer()
-                            Text(formatDate(notif.date))
-                                .font(.scaled(.caption, scale: scale))
-                                .foregroundColor(.secondary)
-                        }
-                        if !notif.body.isEmpty {
-                            Text(notif.body)
-                                .font(.scaled(.body, scale: scale))
-                                .foregroundColor(.secondary)
-                                .lineLimit(3)
+                List {
+                    if !thisWeek.isEmpty {
+                        Section("Questa settimana") {
+                            ForEach(thisWeek) { notif in
+                                notificationRow(notif)
+                            }
                         }
                     }
-                    .padding(.vertical, 4)
+                    if !thisMonth.isEmpty {
+                        Section("Questo mese") {
+                            ForEach(thisMonth) { notif in
+                                notificationRow(notif)
+                            }
+                        }
+                    }
+                    if !older.isEmpty {
+                        Section("Precedenti") {
+                            ForEach(older) { notif in
+                                notificationRow(notif)
+                            }
+                        }
+                    }
                 }
                 .listStyle(.plain)
             }
@@ -1225,6 +1281,27 @@ private struct MacNotificationInlineView: View {
         .task {
             await fetchServerEvents()
         }
+    }
+
+    @ViewBuilder
+    private func notificationRow(_ notif: NotificationRecord) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(notif.title)
+                    .font(.scaled(.subheadline, scale: scale).bold())
+                Spacer()
+                Text(formatDate(notif.date))
+                    .font(.scaled(.caption, scale: scale))
+                    .foregroundColor(.secondary)
+            }
+            if !notif.body.isEmpty {
+                Text(notif.body)
+                    .font(.scaled(.body, scale: scale))
+                    .foregroundColor(.secondary)
+                    .lineLimit(3)
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     private func fetchServerEvents() async {
