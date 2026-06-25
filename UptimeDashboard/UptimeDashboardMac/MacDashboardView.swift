@@ -1173,6 +1173,9 @@ private struct MacNotificationInlineView: View {
     @State private var notifications: [NotificationRecord] = []
     @State private var isLoading = false
     @State private var searchText: String = ""
+    @State private var weekExpanded: Bool = true
+    @State private var monthExpanded: Bool = true
+    @State private var olderExpanded: Bool = false
     @Environment(\.textScale) var scale
 
     private let baseURL = "https://kuma-dashboard.sundata.cloud"
@@ -1254,28 +1257,34 @@ private struct MacNotificationInlineView: View {
             } else {
                 List {
                     if !thisWeek.isEmpty {
-                        Section("Questa settimana") {
+                        Section(isExpanded: $weekExpanded) {
                             ForEach(thisWeek) { notif in
                                 notificationRow(notif)
                             }
+                        } header: {
+                            Text("Questa settimana (\(thisWeek.count))")
                         }
                     }
                     if !thisMonth.isEmpty {
-                        Section("Questo mese") {
+                        Section(isExpanded: $monthExpanded) {
                             ForEach(thisMonth) { notif in
                                 notificationRow(notif)
                             }
+                        } header: {
+                            Text("Questo mese (\(thisMonth.count))")
                         }
                     }
                     if !older.isEmpty {
-                        Section("Precedenti") {
+                        Section(isExpanded: $olderExpanded) {
                             ForEach(older) { notif in
                                 notificationRow(notif)
                             }
+                        } header: {
+                            Text("Precedenti (\(older.count))")
                         }
                     }
                 }
-                .listStyle(.plain)
+                .listStyle(.sidebar)
             }
         }
         .task {
