@@ -28,16 +28,17 @@ def cmd_list(limit: int = 50):
         print("Nessun evento in Redis.")
         return
 
-    print(f"{'Timestamp':<20} {'Tipo':<9} {'Nome':<35} {'Da':<10} {'A':<10} Dettaglio")
-    print("-" * 120)
+    print(f"{'ID':<38} {'Timestamp':<20} {'Tipo':<9} {'Nome':<35} {'Da':<10} {'A':<10} Dettaglio")
+    print("-" * 150)
     for e in events:
+        eid = e.get("id", "?")[:36]
         ts = e["ts"][:19].replace("T", " ")
         tipo = e.get("type", "?")
         nome = e.get("name", "")[:34]
         da = e.get("from", "")[:9]
         a = e.get("to", "")[:9]
-        detail = e.get("detail", "")[:50]
-        print(f"{ts:<20} {tipo:<9} {nome:<35} {da:<10} {a:<10} {detail}")
+        detail = e.get("detail", "")[:40]
+        print(f"{eid:<38} {ts:<20} {tipo:<9} {nome:<35} {da:<10} {a:<10} {detail}")
 
     print(f"\n— {len(events)} eventi mostrati (totale in Redis: {r.llen(_EVENTS_KEY)})")
 
