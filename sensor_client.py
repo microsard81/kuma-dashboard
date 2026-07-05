@@ -178,6 +178,10 @@ def fetch_inverter_data() -> dict:
 
         category = _determine_category(sensor_type, room, name)
 
+        # Sanitizza valore NaN (non è JSON valido per i client)
+        if isinstance(value, float) and (value != value):
+            value = None
+
         # Valuta lo stato alert dal threshold per-sensore
         status = _evaluate_threshold(value, threshold)
 
@@ -197,13 +201,18 @@ def fetch_inverter_data() -> dict:
         })
 
     # Normalizza history: timestamps epoch → ISO, supporta valori stringa
+    # I valori NaN indicano sensore non gestito (es. GE disinserito) — sostituiti con null
     raw_history = data.get("history", {})
     history = {}
     for key, entries in raw_history.items():
-        history[key] = [
-            {"t": _epoch_to_iso(e.get("t")), "v": e.get("v")}
-            for e in entries
-        ]
+        clean_entries = []
+        for e in entries:
+            v = e.get("v")
+            # NaN → null (sensore non gestito in quel momento)
+            if isinstance(v, float) and (v != v):
+                v = None
+            clean_entries.append({"t": _epoch_to_iso(e.get("t")), "v": v})
+        history[key] = clean_entries
 
     return {
         "sensors": sensors,
