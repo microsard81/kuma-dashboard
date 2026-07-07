@@ -179,7 +179,7 @@ struct MacSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 400, height: 700)
+        .frame(minWidth: 450, minHeight: 500)
         .padding()
     }
 
