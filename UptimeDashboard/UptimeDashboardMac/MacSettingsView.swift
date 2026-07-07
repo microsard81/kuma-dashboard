@@ -109,9 +109,14 @@ struct MacSettingsView: View {
             Section("Registro eventi locale") {
                 Toggle("Salva eventi in locale", isOn: $localLogEnabled)
                     .onChange(of: localLogEnabled) { newValue in
-                        UserDefaults.standard.set(newValue, forKey: "mac_local_event_log_enabled")
-                        if newValue && localLogPath.isEmpty {
+                        if newValue {
                             chooseLogFilePath()
+                        } else {
+                            // OFF: cancella il percorso salvato (non il file)
+                            localLogPath = ""
+                            UserDefaults.standard.removeObject(forKey: "mac_local_event_log_path")
+                            UserDefaults.standard.removeObject(forKey: "mac_local_event_log_bookmark")
+                            UserDefaults.standard.set(false, forKey: "mac_local_event_log_enabled")
                         }
                     }
 
