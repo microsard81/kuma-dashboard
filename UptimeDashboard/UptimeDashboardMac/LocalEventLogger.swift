@@ -27,6 +27,11 @@ final class LocalEventLogger {
         let url = resolveFileURL(path: path)
         guard let url = url else { return }
 
+        // Se il file non esiste, ricrealo (l'utente potrebbe averlo cancellato)
+        if !FileManager.default.fileExists(atPath: url.path) {
+            FileManager.default.createFile(atPath: url.path, contents: nil)
+        }
+
         // If file is empty, backfill all events (reset written IDs)
         let fileIsEmpty: Bool
         if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
