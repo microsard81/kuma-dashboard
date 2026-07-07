@@ -1426,6 +1426,12 @@ private struct MacNotificationInlineView: View {
                 requestId: event.id
             )
         }
+
+        // Append to local CSV if enabled
+        let eventsForLog = json.events
+            .filter { $0.type != "global" }
+            .map { (id: $0.id, date: $0.date, title: $0.title, body: $0.body) }
+        LocalEventLogger.shared.appendEvents(eventsForLog)
     }
 
     private func formatDate(_ date: Date) -> String {

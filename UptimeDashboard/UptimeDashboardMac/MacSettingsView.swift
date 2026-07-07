@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MacSettingsView: View {
     @EnvironmentObject var viewModel: MacAppViewModel
@@ -13,6 +14,10 @@ struct MacSettingsView: View {
     @State private var minMax = ChartLimitsSettings.shared.yMax(for: "min")
     @State private var kwMin = ChartLimitsSettings.shared.yMin(for: "kW")
     @State private var kwMax = ChartLimitsSettings.shared.yMax(for: "kW")
+
+    // Local event log
+    @State private var localLogEnabled = UserDefaults.standard.bool(forKey: "mac_local_event_log_enabled")
+    @State private var localLogPath = UserDefaults.standard.string(forKey: "mac_local_event_log_path") ?? ""
 
     var body: some View {
         Form {
@@ -100,6 +105,32 @@ struct MacSettingsView: View {
                 }
             }
 
+            // Salvataggio eventi in locale
+            Section("Registro eventi locale") {
+                Toggle("Salva eventi in locale", isOn: $localLogEnabled)
+                    .onChange(of: localLogEnabled) { newValue in
+                        UserDefaults.standard.set(newValue, forKey: "mac_local_event_log_enabled")
+                    }
+
+                if localLogEnabled {
+                    HStack {
+                        TextField("Percorso file...", text: $localLogPath)
+                            .textFieldStyle(.roundedBorder)
+                            .disabled(true)
+                        Button("Scegli...") {
+                            chooseLogFilePath()
+                        }
+                    }
+                    if !localLogPath.isEmpty {
+                        Text(localLogPath)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+            }
+
             // Reset
             Button("Ripristina valori predefiniti") {
                 viewModel.setTheme("dark")
@@ -148,8 +179,27 @@ struct MacSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 400, height: 620)
+        .frame(width: 400, height: 700)
         .padding()
+    }
+
+    private func chooseLogFilePath() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.commaSeparatedText]
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyyMMdd"
+        panel.nameFieldStringValue = "\(fmt.string(from: Date()))_inva_eventi.csv"
+        panel.canCreateDirectories = true
+        panel.begin { result in
+            if result == .OK, let url = panel.url {
+                localLogPath = url.path
+                UserDefaults.standard.set(url.path, forKey: "mac_local_event_log_path")
+                // Salva anche il security-scoped bookmark per accesso futuro
+                if let bookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
+                    UserDefaults.standard.set(bookmark, forKey: "mac_local_event_log_bookmark")
+                }
+            }
+        }
     }
 
     private var textScaleLabel: String {
