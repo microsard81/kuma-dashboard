@@ -20,24 +20,44 @@ final class LocalEventLogger {
 
     /// Appends new events to the local log file.
     /// Only writes events whose IDs haven't been written before.
+    /// If the file is empty, writes all provided events (backfill).
     func appendEvents(_ events: [(id: String, date: Date, title: String, body: String)]) {
         guard isEnabled, let path = filePath, !path.isEmpty else { return }
 
         let url = resolveFileURL(path: path)
         guard let url = url else { return }
 
+        // If file is empty or just created, write all events (backfill)
+        let fileIsEmpty: Bool
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+           let size = attrs[.size] as? UInt64 {
+            fileIsEmpty = size == 0
+        } else {
+            fileIsEmpty = true
+        }
+
         // Load already written IDs
         var writtenIds = Set(defaults.stringArray(forKey: writtenIdsKey) ?? [])
-        let newEvents = events.filter { !writtenIds.contains($0.id) }
+
+        let newEvents: [(id: String, date: Date, title: String, body: String)]
+        if fileIsEmpty {
+            // Backfill: scrivi tutti gli eventi, resetta gli ID scritti
+            writtenIds.removeAll()
+            newEvents = events
+        } else {
+            newEvents = events.filter { !writtenIds.contains($0.id) }
+        }
+
         guard !newEvents.isEmpty else { return }
 
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         dateFormatter.timeZone = TimeZone(identifier: "Europe/Rome")
 
-        // Build log lines
+        // Build log lines (sorted oldest first for backfill)
+        let sorted = newEvents.sorted { $0.date < $1.date }
         var lines = ""
-        for event in newEvents {
+        for event in sorted {
             let date = dateFormatter.string(from: event.date)
             let body = event.body.replacingOccurrences(of: "\n", with: " | ")
             lines += "[\(date)] \(event.title)\(body.isEmpty ? "" : " — \(body)")\n"
@@ -57,7 +77,7 @@ final class LocalEventLogger {
         }
 
         // Persist written IDs (keep last 1000 to avoid unbounded growth)
-        for event in newEvents {
+        for event in sorted {
             writtenIds.insert(event.id)
         }
         let trimmed = Array(writtenIds.suffix(1000))
