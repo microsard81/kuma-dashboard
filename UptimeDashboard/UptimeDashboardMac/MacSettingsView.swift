@@ -201,6 +201,8 @@ struct MacSettingsView: View {
                 if !FileManager.default.fileExists(atPath: url.path) {
                     FileManager.default.createFile(atPath: url.path, contents: nil)
                 }
+                // Backfill immediato con gli eventi dal server
+                LocalEventLogger.shared.backfillIfNeeded()
             } else {
                 if localLogPath.isEmpty {
                     localLogEnabled = false
