@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Color hex extension for macOS
 private extension Color {
@@ -160,7 +161,10 @@ struct MacDashboardView: View {
             Divider()
 
             if showNotificationHistory {
-                MacNotificationInlineView()
+                MacNotificationInlineView(onNavigate: { section in
+                    selectedSection = section
+                    showNotificationHistory = false
+                })
                     .onAppear {
                         NotificationStore.shared.markAllAsRead()
                         unreadNotifications = 0
@@ -1178,6 +1182,8 @@ private struct MacNotificationInlineView: View {
     @State private var olderExpanded: Bool = false
     @Environment(\.textScale) var scale
 
+    var onNavigate: (DashboardSection) -> Void = { _ in }
+
     private let baseURL = "https://kuma-dashboard.sundata.cloud"
 
     // MARK: - Filtered & grouped
@@ -1211,8 +1217,8 @@ private struct MacNotificationInlineView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search field
-            HStack {
+            // Search + Export
+            HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
                 TextField("Cerca...", text: $searchText)
@@ -1224,6 +1230,13 @@ private struct MacNotificationInlineView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                Divider().frame(height: 16)
+                Button { exportCSV() } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Esporta CSV")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -1287,25 +1300,78 @@ private struct MacNotificationInlineView: View {
 
     @ViewBuilder
     private func notificationRow(_ notif: NotificationRecord) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(notif.title)
-                    .font(.scaled(.subheadline, scale: scale).bold())
-                Spacer()
-                Text(formatDate(notif.date))
-                    .font(.scaled(.caption, scale: scale))
-                    .foregroundColor(.secondary)
+        Button {
+            navigateToResource(notif)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(notif.title)
+                        .font(.scaled(.subheadline, scale: scale).bold())
+                    Spacer()
+                    Text(formatDate(notif.date))
+                        .font(.scaled(.caption, scale: scale))
+                        .foregroundColor(.secondary)
+                }
+                if !notif.body.isEmpty {
+                    Text(notif.body)
+                        .font(.scaled(.body, scale: scale))
+                        .foregroundColor(.secondary)
+                        .lineLimit(3)
+                }
             }
-            if !notif.body.isEmpty {
-                Text(notif.body)
-                    .font(.scaled(.body, scale: scale))
-                    .foregroundColor(.secondary)
-                    .lineLimit(3)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        Divider().padding(.leading, 16)
+    }
+
+    // MARK: - Navigate to resource
+
+    private func navigateToResource(_ notif: NotificationRecord) {
+        let title = notif.title.lowercased()
+        let section: DashboardSection
+        if title.contains("temperatura") || title.contains("temp") {
+            section = .temperatura
+        } else if title.contains("carico kw") || title.contains("potenza") {
+            section = .potenza
+        } else if title.contains("ups") || title.contains("batteria") || title.contains("sorgente") || title.contains("durata") || title.contains("capacità") {
+            section = .ups
+        } else if title.contains("ge-") || title.contains("generatore") || title.contains("controller") || title.contains("tensione") {
+            section = .generatori
+        } else {
+            section = .portali
+        }
+        onNavigate(section)
+    }
+
+    // MARK: - Export CSV
+
+    private func exportCSV() {
+        let events = filteredNotifications
+        guard !events.isEmpty else { return }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "it_IT")
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+
+        var csv = "Data;Titolo;Dettaglio\n"
+        for e in events {
+            let date = dateFormatter.string(from: e.date)
+            let title = e.title.replacingOccurrences(of: ";", with: ",")
+            let body = e.body.replacingOccurrences(of: ";", with: ",").replacingOccurrences(of: "\n", with: " ")
+            csv += "\(date);\(title);\(body)\n"
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.nameFieldStringValue = "notifiche_\(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none).replacingOccurrences(of: "/", with: "-")).csv"
+        panel.begin { result in
+            if result == .OK, let url = panel.url {
+                try? csv.write(to: url, atomically: true, encoding: .utf8)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        Divider().padding(.leading, 16)
     }
 
     private func macCollapsibleHeader(title: String, count: Int, isExpanded: Binding<Bool>) -> some View {
