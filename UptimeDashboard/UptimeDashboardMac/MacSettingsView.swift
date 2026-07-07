@@ -110,24 +110,17 @@ struct MacSettingsView: View {
                 Toggle("Salva eventi in locale", isOn: $localLogEnabled)
                     .onChange(of: localLogEnabled) { newValue in
                         UserDefaults.standard.set(newValue, forKey: "mac_local_event_log_enabled")
-                    }
-
-                if localLogEnabled {
-                    HStack {
-                        TextField("Percorso file...", text: $localLogPath)
-                            .textFieldStyle(.roundedBorder)
-                            .disabled(true)
-                        Button("Scegli...") {
+                        if newValue && localLogPath.isEmpty {
                             chooseLogFilePath()
                         }
                     }
-                    if !localLogPath.isEmpty {
-                        Text(localLogPath)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
+
+                if localLogEnabled {
+                    Text(localLogPath.isEmpty ? "Nessun percorso configurato" : localLogPath)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
             }
 
@@ -194,9 +187,14 @@ struct MacSettingsView: View {
             if result == .OK, let url = panel.url {
                 localLogPath = url.path
                 UserDefaults.standard.set(url.path, forKey: "mac_local_event_log_path")
-                // Salva anche il security-scoped bookmark per accesso futuro
                 if let bookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
                     UserDefaults.standard.set(bookmark, forKey: "mac_local_event_log_bookmark")
+                }
+            } else {
+                // Annullato: disattiva se non c'è un percorso
+                if localLogPath.isEmpty {
+                    localLogEnabled = false
+                    UserDefaults.standard.set(false, forKey: "mac_local_event_log_enabled")
                 }
             }
         }
