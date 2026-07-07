@@ -1366,11 +1366,9 @@ private struct MacNotificationInlineView: View {
 
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.commaSeparatedText]
-        let fileDate = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
-            .replacingOccurrences(of: "/", with: "-")
-            .replacingOccurrences(of: ":", with: ".")
-            .replacingOccurrences(of: " ", with: "_")
-        panel.nameFieldStringValue = "notifiche_\(fileDate).csv"
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyyMMdd-HHmmss"
+        panel.nameFieldStringValue = "\(fmt.string(from: Date()))_inva_notifiche.csv"
         panel.begin { result in
             if result == .OK, let url = panel.url {
                 try? csv.write(to: url, atomically: true, encoding: .utf8)
