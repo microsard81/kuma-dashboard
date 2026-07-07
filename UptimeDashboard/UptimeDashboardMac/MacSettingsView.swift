@@ -185,9 +185,10 @@ struct MacSettingsView: View {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.commaSeparatedText]
         let fmt = DateFormatter()
-        fmt.dateFormat = "yyyyMMdd"
+        fmt.dateFormat = "yyyyMMdd-HHmmss"
         panel.nameFieldStringValue = "\(fmt.string(from: Date()))_inva_eventi.csv"
         panel.canCreateDirectories = true
+        panel.message = "Scegli dove salvare il registro eventi. Se selezioni un file esistente, i nuovi eventi verranno aggiunti in fondo."
         panel.begin { result in
             if result == .OK, let url = panel.url {
                 localLogPath = url.path
