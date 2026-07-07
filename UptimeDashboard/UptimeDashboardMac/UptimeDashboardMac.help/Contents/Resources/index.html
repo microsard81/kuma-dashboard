@@ -102,6 +102,10 @@ hr{border:none;border-top:1px solid #e0e0e0;margin:24px 0}
 <li><span class="green">●</span> Sensore rientrato nella norma</li>
 </ul>
 <p>Clicca l'icona 🔔 nella toolbar per vedere lo storico notifiche. Usa il campo "Cerca" per filtrare. Le notifiche sono raggruppate per settimana solare (lunedì–domenica) e mese corrente, con sezioni collassabili.</p>
+<ul>
+<li><strong>Doppio click</strong> su un evento → naviga alla sezione corrispondente (Portali, Temperatura, Potenza, UPS, Generatori)</li>
+<li><strong>Esporta CSV</strong> — pulsante ↑ accanto al campo cerca per esportare le notifiche filtrate in un file CSV</li>
+</ul>
 
 <h3>Soglia notifica</h3>
 <p>Puoi configurare quante sonde devono essere DOWN prima di ricevere la notifica (da 1 a 5). Vai in Impostazioni → Soglia notifica. Con soglia 3, ad esempio, ricevi la notifica solo quando almeno 3 sonde rilevano il DOWN.</p>
@@ -123,6 +127,15 @@ hr{border:none;border-top:1px solid #e0e0e0;margin:24px 0}
 <tr><td>Potenza (kW)</td><td>0</td><td>100</td></tr>
 </table>
 <p>Modifica i valori per adattare la scala dei grafici alle tue esigenze.</p>
+
+<h2>Registro eventi locale</h2>
+<p>Nelle Impostazioni puoi attivare il salvataggio automatico degli eventi in un file CSV locale:</p>
+<ul>
+<li>Attiva "Salva eventi in locale" e scegli il file di destinazione</li>
+<li>Il file non viene mai sovrascritto — ogni nuovo evento viene aggiunto in fondo (append)</li>
+<li>Formato: <code>Data;Titolo;Dettaglio</code> (separatore ;, timezone Europe/Rome)</li>
+<li>Gli stessi eventi non vengono scritti due volte (deduplicazione per ID)</li>
+</ul>
 
 <h2>Scorciatoie</h2>
 <table>

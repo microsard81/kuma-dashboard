@@ -1300,30 +1300,28 @@ private struct MacNotificationInlineView: View {
 
     @ViewBuilder
     private func notificationRow(_ notif: NotificationRecord) -> some View {
-        Button {
-            navigateToResource(notif)
-        } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(notif.title)
-                        .font(.scaled(.subheadline, scale: scale).bold())
-                    Spacer()
-                    Text(formatDate(notif.date))
-                        .font(.scaled(.caption, scale: scale))
-                        .foregroundColor(.secondary)
-                }
-                if !notif.body.isEmpty {
-                    Text(notif.body)
-                        .font(.scaled(.body, scale: scale))
-                        .foregroundColor(.secondary)
-                        .lineLimit(3)
-                }
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(notif.title)
+                    .font(.scaled(.subheadline, scale: scale).bold())
+                Spacer()
+                Text(formatDate(notif.date))
+                    .font(.scaled(.caption, scale: scale))
+                    .foregroundColor(.secondary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
+            if !notif.body.isEmpty {
+                Text(notif.body)
+                    .font(.scaled(.body, scale: scale))
+                    .foregroundColor(.secondary)
+                    .lineLimit(3)
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            navigateToResource(notif)
+        }
         Divider().padding(.leading, 16)
     }
 
