@@ -185,7 +185,7 @@ struct MacSettingsView: View {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.plainText]
         let fmt = DateFormatter()
-        fmt.dateFormat = "yyyyMMdd-HHmmss"
+        fmt.dateFormat = "yyyyMMdd"
         panel.nameFieldStringValue = "\(fmt.string(from: Date()))_inva_eventi.log"
         panel.canCreateDirectories = true
         panel.message = "Scegli dove salvare il registro eventi. Se selezioni un file esistente, i nuovi eventi verranno aggiunti in fondo."
