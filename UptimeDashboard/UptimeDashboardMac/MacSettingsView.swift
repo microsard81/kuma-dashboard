@@ -183,21 +183,25 @@ struct MacSettingsView: View {
 
     private func chooseLogFilePath() {
         let panel = NSSavePanel()
-        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.allowedContentTypes = [.plainText]
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyyMMdd-HHmmss"
-        panel.nameFieldStringValue = "\(fmt.string(from: Date()))_inva_eventi.csv"
+        panel.nameFieldStringValue = "\(fmt.string(from: Date()))_inva_eventi.log"
         panel.canCreateDirectories = true
         panel.message = "Scegli dove salvare il registro eventi. Se selezioni un file esistente, i nuovi eventi verranno aggiunti in fondo."
         panel.begin { result in
             if result == .OK, let url = panel.url {
                 localLogPath = url.path
                 UserDefaults.standard.set(url.path, forKey: "mac_local_event_log_path")
+                UserDefaults.standard.set(true, forKey: "mac_local_event_log_enabled")
                 if let bookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
                     UserDefaults.standard.set(bookmark, forKey: "mac_local_event_log_bookmark")
                 }
+                // Crea il file subito se non esiste
+                if !FileManager.default.fileExists(atPath: url.path) {
+                    FileManager.default.createFile(atPath: url.path, contents: nil)
+                }
             } else {
-                // Annullato: disattiva se non c'è un percorso
                 if localLogPath.isEmpty {
                     localLogEnabled = false
                     UserDefaults.standard.set(false, forKey: "mac_local_event_log_enabled")

@@ -18,7 +18,7 @@ final class LocalEventLogger {
         defaults.string(forKey: "mac_local_event_log_path")
     }
 
-    /// Appends new events to the local CSV file.
+    /// Appends new events to the local log file.
     /// Only writes events whose IDs haven't been written before.
     func appendEvents(_ events: [(id: String, date: Date, title: String, body: String)]) {
         guard isEnabled, let path = filePath, !path.isEmpty else { return }
@@ -35,23 +35,12 @@ final class LocalEventLogger {
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         dateFormatter.timeZone = TimeZone(identifier: "Europe/Rome")
 
-        // Build CSV lines
+        // Build log lines
         var lines = ""
-
-        // If file doesn't exist, write header
-        if !FileManager.default.fileExists(atPath: url.path) {
-            lines += "Data;Titolo;Dettaglio\n"
-        }
-
         for event in newEvents {
             let date = dateFormatter.string(from: event.date)
-            let title = event.title
-                .replacingOccurrences(of: ";", with: ",")
-                .replacingOccurrences(of: "\n", with: " ")
-            let body = event.body
-                .replacingOccurrences(of: ";", with: ",")
-                .replacingOccurrences(of: "\n", with: " ")
-            lines += "\(date);\(title);\(body)\n"
+            let body = event.body.replacingOccurrences(of: "\n", with: " | ")
+            lines += "[\(date)] \(event.title)\(body.isEmpty ? "" : " — \(body)")\n"
         }
 
         // Append to file
