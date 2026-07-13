@@ -48,6 +48,25 @@ private struct SyncEventsResponse: Codable {
     let count: Int
 }
 
+/// Navigation target from notification tap
+private enum NotificationNavTarget: Identifiable {
+    case portali(scrollTo: String?)
+    case temperatura(scrollTo: String?)
+    case potenza(scrollTo: String?)
+    case ups(scrollTo: String?)
+    case generatori(scrollTo: String?)
+
+    var id: String {
+        switch self {
+        case .portali(let s): return "portali-\(s ?? "")"
+        case .temperatura(let s): return "temp-\(s ?? "")"
+        case .potenza(let s): return "potenza-\(s ?? "")"
+        case .ups(let s): return "ups-\(s ?? "")"
+        case .generatori(let s): return "gen-\(s ?? "")"
+        }
+    }
+}
+
 /// View showing notification history (last 30 days).
 /// Unread notifications appear at the top with blue background.
 /// Swipe left to mark as read.
@@ -56,11 +75,14 @@ private struct SyncEventsResponse: Codable {
 /// - Questo mese (> 7 days, ≤ 30 days)
 /// - Precedenti (> 30 days)
 struct NotificationHistoryView: View {
+    @ObservedObject var viewModel: DashboardViewModel
     @State private var notifications: [NotificationRecord] = []
     @State private var searchText: String = ""
+    @State private var navigateToSection: NotificationNavTarget? = nil
 
     // Collapse state for read notification sections
     @State private var isWeekCollapsed = false
+    @State private var isPrevWeeksCollapsed = false
     @State private var isMonthCollapsed = false
     @State private var isOlderCollapsed = true
 
@@ -103,13 +125,24 @@ struct NotificationHistoryView: View {
             .sorted { $0.date > $1.date }
     }
 
-    /// Current calendar month (1st to end)
+    /// Previous 2 calendar weeks (from 2 weeks ago Monday to this week's Monday)
+    private var readPrevWeeks: [NotificationRecord] {
+        let calendar = Calendar(identifier: .iso8601)
+        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start,
+              let twoWeeksAgo = calendar.date(byAdding: .weekOfYear, value: -2, to: weekStart) else { return [] }
+        return filteredNotifications
+            .filter { $0.isRead && $0.date >= twoWeeksAgo && $0.date < weekStart }
+            .sorted { $0.date > $1.date }
+    }
+
+    /// Current calendar month (1st to start of 2 weeks ago)
     private var readThisMonth: [NotificationRecord] {
         let calendar = Calendar(identifier: .iso8601)
         guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start,
+              let twoWeeksAgo = calendar.date(byAdding: .weekOfYear, value: -2, to: weekStart),
               let monthStart = calendar.dateInterval(of: .month, for: Date())?.start else { return [] }
         return filteredNotifications
-            .filter { $0.isRead && $0.date >= monthStart && $0.date < weekStart }
+            .filter { $0.isRead && $0.date >= monthStart && $0.date < twoWeeksAgo }
             .sorted { $0.date > $1.date }
     }
 
@@ -201,6 +234,21 @@ struct NotificationHistoryView: View {
                             }
                         }
 
+                        // MARK: Sezione "Ultime 2 settimane" (collassabile)
+                        if !readPrevWeeks.isEmpty {
+                            collapsibleSectionHeader(
+                                title: "Ultime 2 settimane",
+                                count: readPrevWeeks.count,
+                                isCollapsed: $isPrevWeeksCollapsed
+                            )
+
+                            if !isPrevWeeksCollapsed {
+                                ForEach(readPrevWeeks) { notif in
+                                    notificationRow(for: notif)
+                                }
+                            }
+                        }
+
                         // MARK: Sezione "Questo mese" (collassabile)
                         if !readThisMonth.isEmpty {
                             collapsibleSectionHeader(
@@ -243,6 +291,19 @@ struct NotificationHistoryView: View {
         }
         .navigationTitle("Notifiche")
         .navigationBarTitleDisplayMode(.inline)
+        .background(
+            NavigationLink(
+                destination: Group {
+                    if let target = navigateToSection {
+                        notificationDestination(for: target)
+                    }
+                },
+                isActive: Binding(
+                    get: { navigateToSection != nil },
+                    set: { if !$0 { navigateToSection = nil } }
+                )
+            ) { EmptyView() }
+        )
         .onAppear {
             // Clear local push badge when viewing notifications
             NotificationStore.shared.markAllAsRead()
@@ -306,7 +367,46 @@ struct NotificationHistoryView: View {
                 toggleReadState(notif)
             }
         )
+        .onTapGesture(count: 2) {
+            navigateToResource(notif)
+        }
         .id("\(notif.id)-\(notif.isRead)")
+    }
+
+    private func navigateToResource(_ notif: NotificationRecord) {
+        let title = notif.title.lowercased()
+        let resourceName = notif.title
+            .replacingOccurrences(of: "⛔ ", with: "")
+            .replacingOccurrences(of: "✅ ", with: "")
+            .replacingOccurrences(of: "⚠️ ", with: "")
+
+        if title.contains("temperatura") || title.contains("temp") {
+            navigateToSection = .temperatura(scrollTo: resourceName)
+        } else if title.contains("carico kw") || title.contains("potenza") {
+            navigateToSection = .potenza(scrollTo: resourceName)
+        } else if title.contains("ups") || title.contains("batteria") || title.contains("sorgente") || title.contains("durata") || title.contains("capacità") {
+            navigateToSection = .ups(scrollTo: resourceName)
+        } else if title.contains("ge-") || title.contains("generatore") || title.contains("controller") || title.contains("tensione") {
+            navigateToSection = .generatori(scrollTo: resourceName)
+        } else {
+            navigateToSection = .portali(scrollTo: resourceName)
+        }
+    }
+
+    @ViewBuilder
+    private func notificationDestination(for target: NotificationNavTarget) -> some View {
+        switch target {
+        case .portali(let scrollTo):
+            PortalsDetailView(viewModel: viewModel, scrollToId: scrollTo)
+        case .temperatura(let scrollTo):
+            TemperatureDetailView(viewModel: viewModel, scrollToId: scrollTo)
+        case .potenza(let scrollTo):
+            PowerDetailView(viewModel: viewModel, scrollToId: scrollTo)
+        case .ups(let scrollTo):
+            UPSDetailView(viewModel: viewModel, scrollToId: scrollTo)
+        case .generatori(let scrollTo):
+            GeneratorDetailView(viewModel: viewModel, scrollToId: scrollTo)
+        }
     }
 
     private func loadNotifications() {

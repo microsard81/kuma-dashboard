@@ -106,6 +106,8 @@ struct UPSDetailView: View {
         .refreshable { await viewModel.refresh() }
         .navigationTitle("UPS")
         .navigationBarTitleDisplayMode(.inline)
+        .overlay { CheckmarkPopup(isPresented: $showPinConfirmation) }
+        .overlay { CheckmarkPopup(isPresented: $showUnpinConfirmation, isRemoval: true) }
         .toolbar {
             if isReordering {
                 ToolbarItem(placement: .navigationBarTrailing) {

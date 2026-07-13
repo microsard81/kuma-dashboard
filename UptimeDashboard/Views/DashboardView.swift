@@ -345,7 +345,7 @@ struct DashboardView: View {
                 Divider()
                 HStack(spacing: 32) {
                     NavigationLink {
-                        NotificationHistoryView()
+                        NotificationHistoryView(viewModel: viewModel)
                     } label: {
                         VStack(spacing: 4) {
                             ZStack(alignment: .topTrailing) {
