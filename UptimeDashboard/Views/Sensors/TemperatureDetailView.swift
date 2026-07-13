@@ -151,7 +151,7 @@ struct TemperatureDetailView: View {
             .id(sensor.id)
             .listRowSeparator(.visible)
             .overlay(
-                Color.blue.opacity(highlightedId == sensor.id ? 0.2 : 0)
+                Color.blue.opacity(highlightedId == sensor.id ? 0.4 : 0)
                     .animation(.easeOut(duration: 3.0), value: highlightedId)
                     .allowsHitTesting(false)
             )

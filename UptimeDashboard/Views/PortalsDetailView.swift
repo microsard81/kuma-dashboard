@@ -161,7 +161,7 @@ struct PortalsDetailView: View {
             .id(item.name)
             .listRowBackground(rowBackground(for: item.rowColor))
             .overlay(
-                Color.blue.opacity(highlightedId == item.name ? 0.2 : 0)
+                Color.blue.opacity(highlightedId == item.name ? 0.4 : 0)
                     .animation(.easeOut(duration: 3.0), value: highlightedId)
                     .allowsHitTesting(false)
             )
