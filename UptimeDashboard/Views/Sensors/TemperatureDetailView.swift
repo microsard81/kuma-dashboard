@@ -150,7 +150,11 @@ struct TemperatureDetailView: View {
         SensorCardView(sensor: sensor, historyPoints: viewModel.sensorHistory[sensor.id] ?? [])
             .id(sensor.id)
             .listRowSeparator(.visible)
-            .background(Color.blue.opacity(highlightedId == sensor.id ? 0.2 : 0).animation(.easeOut(duration: 3.0), value: highlightedId))
+            .overlay(
+                Color.blue.opacity(highlightedId == sensor.id ? 0.2 : 0)
+                    .animation(.easeOut(duration: 3.0), value: highlightedId)
+                    .allowsHitTesting(false)
+            )
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                 if !isReordering {
                     Button {
