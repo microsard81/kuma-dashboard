@@ -375,10 +375,17 @@ struct NotificationHistoryView: View {
 
     private func navigateToResource(_ notif: NotificationRecord) {
         let title = notif.title.lowercased()
-        let resourceName = notif.title
-            .replacingOccurrences(of: "⛔ ", with: "")
-            .replacingOccurrences(of: "✅ ", with: "")
-            .replacingOccurrences(of: "⚠️ ", with: "")
+        // Rimuovi emoji e spazi iniziali dal titolo per ottenere il nome risorsa
+        var resourceName = notif.title
+        // Rimuovi prefissi emoji comuni
+        let emojiPrefixes = ["⛔ ", "✅ ", "⚠️ ", "⛔", "✅", "⚠️", "🔴 ", "🟡 ", "🟢 ", "🔴", "🟡", "🟢"]
+        for prefix in emojiPrefixes {
+            if resourceName.hasPrefix(prefix) {
+                resourceName = String(resourceName.dropFirst(prefix.count))
+                break
+            }
+        }
+        resourceName = resourceName.trimmingCharacters(in: .whitespaces)
 
         if title.contains("temperatura") || title.contains("temp") {
             navigateToSection = .temperatura(scrollTo: resourceName)
@@ -398,6 +405,7 @@ struct NotificationHistoryView: View {
         switch target {
         case .portali(let scrollTo):
             PortalsDetailView(viewModel: viewModel, scrollToId: scrollTo)
+                .environmentObject(SettingsViewModel())
         case .temperatura(let scrollTo):
             TemperatureDetailView(viewModel: viewModel, scrollToId: scrollTo)
         case .potenza(let scrollTo):
