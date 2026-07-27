@@ -116,6 +116,7 @@ Copia `.env.example` in `.env` e compila tutti i campi:
 | `BIOMETRIC_SECRET` | — | Segreto per firmare i token biometrici (default: `FLASK_SECRET_KEY`) |
 | `PUSH_LOG_FILE` | — | Percorso file di log per le notifiche push VAPID e APNs (vuoto = disabilitato) |
 | `INVERTER_STATUS_URL` | — | URL endpoint invadcstatus (default: `http://127.0.0.1:9000/invadcstatus`) |
+| `SENSOR_CRITICAL_DEBOUNCE` | — | Rilevamenti consecutivi oltre soglia prima di confermare critical (default: `5`) |
 | `REDIS_HOST` | — | Host Redis (default: `127.0.0.1`) |
 | `REDIS_PORT` | — | Porta Redis (default: `6379`) |
 | `REDIS_DB` | — | Database Redis (default: `0`) |
@@ -349,8 +350,11 @@ Il `history_worker.py` registra ogni transizione di stato (globale, per-monitor,
 
 Il sistema invia notifiche push (VAPID + APNs) quando un sensore supera la soglia configurata nel webhook `/invadcstatus`. Le soglie sono per-sensore e definiscono solo lo stato CRITICAL (non c'è più warning).
 
-- Le notifiche vengono inviate solo alle **transizioni** di stato (normal→critical, critical→normal)
+- Le notifiche vengono inviate solo alle **transizioni confermate** di stato (normal→critical dopo debounce, critical→normal immediato)
+- **Debounce**: la transizione normal→critical richiede `SENSOR_CRITICAL_DEBOUNCE` rilevamenti consecutivi oltre soglia (default: 5, ~5 minuti con ciclo 60s). Se il sensore rientra prima, il contatore si resetta senza cambiare stato
+- La transizione critical→normal è immediata (senza debounce)
 - Lo stato di ogni sensore è persistito in Redis (`inverter:alert_state:<nome>`)
+- Il contatore debounce è in Redis (`inverter:critical_count:<nome>`)
 - Il check avviene nel `history_worker.py` ad ogni ciclo (60s)
 - Badge nella dashboard: verde (normale), rosso (critical), ambra (stale)
 
