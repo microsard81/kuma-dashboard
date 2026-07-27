@@ -7,7 +7,7 @@
 		<key>Dashboard INVA.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>3</integer>
+			<integer>7</integer>
 		</dict>
 		<key>UptimeDashboard.xcscheme_^#shared#^_</key>
 		<dict>
@@ -52,12 +52,37 @@
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
+		<key>8119B5D02F8CD47E00D887AC</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>816E9C5F2F893486004F93EF</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>8178D0502F9243E10002E724</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
 		<key>819D22D92F8D01A7006BDA8D</key>
 		<dict>
 			<key>primary</key>
 			<true/>
 		</dict>
 		<key>81CFDD092F8D0816004F2EA8</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>81FF066D2FCD8CD6005CE888</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>B0010014</key>
 		<dict>
 			<key>primary</key>
 			<true/>

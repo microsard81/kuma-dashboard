@@ -19,6 +19,7 @@ from config import (
     PROBE_NODEPING,
     PROBE_UPTIME,
     SLEEP,
+    SENSOR_CRITICAL_DEBOUNCE,
 )
 from kuma_client import load_monitors
 from status_client import load_status
@@ -405,6 +406,8 @@ def maybe_send_global_push(new_state, monitor_details=None):
 # Stato precedente dei sensori salvato in Redis: inverter:alert_state:<sensor_name>
 # Valori: "normal", "critical"
 # Il threshold è per-sensore e arriva dal webhook (non più da variabili d'ambiente).
+# Debounce: la transizione normal→critical richiede N rilevamenti consecutivi
+# oltre soglia (SENSOR_CRITICAL_DEBOUNCE, default 5) prima di confermare.
 
 def _get_sensor_alert_state(sensor_name):
     """Legge lo stato di alert precedente per un sensore da Redis."""
@@ -418,11 +421,32 @@ def _set_sensor_alert_state(sensor_name, state):
     r.set(f"inverter:alert_state:{sensor_name}", state)
 
 
+def _get_sensor_critical_count(sensor_name):
+    """Legge il contatore rilevamenti consecutivi critical per un sensore."""
+    from redis_history import r
+    val = r.get(f"inverter:critical_count:{sensor_name}")
+    return int(val) if val else 0
+
+
+def _set_sensor_critical_count(sensor_name, count):
+    """Salva il contatore rilevamenti consecutivi critical."""
+    from redis_history import r
+    r.set(f"inverter:critical_count:{sensor_name}", str(count))
+
+
+def _format_detail(value, unit: str) -> str:
+    """Formatta il dettaglio per l'event log."""
+    if isinstance(value, (int, float)):
+        return f"{value} {unit}" if unit else str(value)
+    return str(value) if value is not None else ""
+
+
 def check_inverter_alerts():
     """Controlla i sensori inverter e invia push alle transizioni di stato.
 
-    Il threshold è per-sensore (campo 'threshold' in ogni sensore dal webhook).
-    Solo due stati: normal e critical. Le notifiche partono solo alle transizioni.
+    Transizione normal→critical: richiede SENSOR_CRITICAL_DEBOUNCE rilevamenti
+    consecutivi con soglia superata prima di confermare e inviare push.
+    Transizione critical→normal: immediata.
     """
     if not PUSH_ENABLED:
         return
@@ -451,44 +475,52 @@ def check_inverter_alerts():
 
         prev_state = _get_sensor_alert_state(name)
 
-        # Invia push solo alle transizioni (non a ogni ciclo)
-        if new_state != prev_state:
-            _set_sensor_alert_state(name, new_state)
+        # --- Debounce normal → critical ---
+        if prev_state == "normal" and new_state == "critical":
+            count = _get_sensor_critical_count(name) + 1
+            _set_sensor_critical_count(name, count)
 
-            # Severity per l'event log
-            sev = 2 if new_state == "critical" else 0
+            if count < SENSOR_CRITICAL_DEBOUNCE:
+                # Non ancora confermato — logga ma NON cambia stato né push
+                logging.info(
+                    "Sensor %s: soglia superata (%d/%d)",
+                    name, count, SENSOR_CRITICAL_DEBOUNCE
+                )
+                continue
 
-            # Formatta il dettaglio per l'evento
+            # Raggiunto il debounce: conferma la transizione
+            _set_sensor_critical_count(name, 0)
+            _set_sensor_alert_state(name, "critical")
+
+            detail = _format_detail(value, unit)
+            push_event("sensor", f"🔴 {name}", "normal", "critical",
+                       detail=detail, severity=2)
+
+            title = f"⛔ {name}"
+            body = _build_alert_body(value, unit, threshold, description, now_str)
+            _send_inverter_push(title, body)
+            continue
+
+        # --- Ritorno critical → normal (immediato) ---
+        if prev_state == "critical" and new_state == "normal":
+            _set_sensor_critical_count(name, 0)
+            _set_sensor_alert_state(name, "normal")
+
+            detail = _format_detail(value, unit)
+            push_event("sensor", f"✅ {name}", "critical", "normal",
+                       detail=detail, severity=0)
+
+            title = f"✅ {name}"
             if isinstance(value, (int, float)):
-                detail = f"{value} {unit}" if unit else str(value)
+                body = f"Valore rientrato nella norma: {value} {unit}\nOre {now_str}"
             else:
-                detail = str(value) if value is not None else ""
+                body = f"Valore rientrato nella norma: {value}\nOre {now_str}"
+            _send_inverter_push(title, body)
+            continue
 
-            # Emoji in base allo stato di arrivo
-            if new_state == "normal":
-                event_name = f"✅ {name}"
-            elif new_state == "critical":
-                event_name = f"⛔ {name}"
-            else:
-                event_name = name
-
-            push_event("sensor", event_name, prev_state, new_state,
-                       detail=detail, severity=sev)
-
-            # Transizione verso critical
-            if new_state == "critical":
-                title = f"⛔ {name}"
-                body = _build_alert_body(value, unit, threshold, description, now_str)
-                _send_inverter_push(title, body)
-
-            # Ritorno a normal da critical
-            elif new_state == "normal" and prev_state == "critical":
-                title = f"✅ {name}"
-                if isinstance(value, (int, float)):
-                    body = f"Valore rientrato nella norma: {value} {unit}\nOre {now_str}"
-                else:
-                    body = f"Valore rientrato nella norma: {value}\nOre {now_str}"
-                _send_inverter_push(title, body)
+        # --- Stato invariato normal: reset contatore se c'era un tentativo ---
+        if new_state == "normal" and _get_sensor_critical_count(name) > 0:
+            _set_sensor_critical_count(name, 0)
 
 
 def _build_alert_body(value, unit: str, threshold: dict, description: str, now_str: str) -> str:
