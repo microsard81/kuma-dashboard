@@ -139,9 +139,9 @@ def maybe_send_global_push(new_state, monitor_details=None):
         data = {"state": "RED"}
         max_down = _compute_max_down_probes(details)
         logging.info("Notifica RED: max_down_probes=%d", max_down)
-        send_push_to_all(title, body, data, max_down_probes=max_down)
+        send_push_to_all(title, body, data, max_down_probes=max_down, category="portali")
         try:
-            send_apns_to_all(title, body, data, max_down_probes=max_down)
+            send_apns_to_all(title, body, data, max_down_probes=max_down, category="portali")
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato RED")
         set_last_max_down_probes(max_down)
@@ -160,9 +160,9 @@ def maybe_send_global_push(new_state, monitor_details=None):
             data = {"state": "RED"}
             max_down = _compute_max_down_probes(new_details)
 
-            send_push_to_all(title, body, data, max_down_probes=max_down)
+            send_push_to_all(title, body, data, max_down_probes=max_down, category="portali")
             try:
-                send_apns_to_all(title, body, data, max_down_probes=max_down)
+                send_apns_to_all(title, body, data, max_down_probes=max_down, category="portali")
             except Exception:
                 logging.exception("Errore nell'invio notifica APNs per same-state RED")
             set_last_max_down_probes(max_down)
@@ -178,9 +178,9 @@ def maybe_send_global_push(new_state, monitor_details=None):
         data = {"state": "YELLOW"}
         max_down = _compute_max_down_probes(details)
         logging.info("Notifica YELLOW: max_down_probes=%d", max_down)
-        send_push_to_all(title, body, data, max_down_probes=max_down)
+        send_push_to_all(title, body, data, max_down_probes=max_down, category="portali")
         try:
-            send_apns_to_all(title, body, data, max_down_probes=max_down)
+            send_apns_to_all(title, body, data, max_down_probes=max_down, category="portali")
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato YELLOW")
         set_last_max_down_probes(max_down)
@@ -199,9 +199,9 @@ def maybe_send_global_push(new_state, monitor_details=None):
             data = {"state": "YELLOW"}
             max_down = _compute_max_down_probes(new_details)
 
-            send_push_to_all(title, body, data, max_down_probes=max_down)
+            send_push_to_all(title, body, data, max_down_probes=max_down, category="portali")
             try:
-                send_apns_to_all(title, body, data, max_down_probes=max_down)
+                send_apns_to_all(title, body, data, max_down_probes=max_down, category="portali")
             except Exception:
                 logging.exception("Errore nell'invio notifica APNs per same-state YELLOW")
             set_last_max_down_probes(max_down)
@@ -227,9 +227,9 @@ def maybe_send_global_push(new_state, monitor_details=None):
                 data = {"state": "YELLOW"}
 
             logging.info("Notifica ESCALATION %s: max_down_probes=%d (precedente=%d)", new_state, max_down, last_max_down)
-            send_push_to_all(title, body, data, max_down_probes=max_down)
+            send_push_to_all(title, body, data, max_down_probes=max_down, category="portali")
             try:
-                send_apns_to_all(title, body, data, max_down_probes=max_down)
+                send_apns_to_all(title, body, data, max_down_probes=max_down, category="portali")
             except Exception:
                 logging.exception("Errore nell'invio notifica APNs per escalation %s", new_state)
             set_last_max_down_probes(max_down)
@@ -273,9 +273,9 @@ def maybe_send_global_push(new_state, monitor_details=None):
         if last_max_down is None:
             last_max_down = 5
         logging.info("Notifica GREEN: last_max_down_probes=%s", last_max_down)
-        send_push_to_all(title, body, data, max_down_probes=last_max_down)
+        send_push_to_all(title, body, data, max_down_probes=last_max_down, category="portali")
         try:
-            send_apns_to_all(title, body, data, max_down_probes=last_max_down)
+            send_apns_to_all(title, body, data, max_down_probes=last_max_down, category="portali")
         except Exception:
             logging.exception("Errore nell'invio notifica APNs per stato GREEN")
         clear_last_max_down_probes()
@@ -465,6 +465,7 @@ def check_inverter_alerts():
         unit = sensor.get("unit", "")
         threshold = sensor.get("threshold")
         description = sensor.get("description", "")
+        sensor_category = sensor.get("category", "sensor")
 
         # Lo status è già calcolato da sensor_client._evaluate_threshold
         new_state = sensor.get("status", "normal")
@@ -498,7 +499,7 @@ def check_inverter_alerts():
 
             title = f"⛔ {name}"
             body = _build_alert_body(value, unit, threshold, description, now_str)
-            _send_inverter_push(title, body)
+            _send_inverter_push(title, body, category=sensor_category)
             continue
 
         # --- Ritorno critical → normal (immediato) ---
@@ -515,7 +516,7 @@ def check_inverter_alerts():
                 body = f"Valore rientrato nella norma: {value} {unit}\nOre {now_str}"
             else:
                 body = f"Valore rientrato nella norma: {value}\nOre {now_str}"
-            _send_inverter_push(title, body)
+            _send_inverter_push(title, body, category=sensor_category)
             continue
 
         # --- Stato invariato normal: reset contatore se c'era un tentativo ---
@@ -553,14 +554,18 @@ def _build_alert_body(value, unit: str, threshold: dict, description: str, now_s
     return f"Valore: {value} {unit}\nOre {now_str}"
 
 
-def _send_inverter_push(title, body):
-    """Invia notifica push inverter a tutti i dispositivi (bypassa soglia sonde)."""
+def _send_inverter_push(title, body, category="sensor"):
+    """Invia notifica push inverter a tutti i dispositivi (bypassa soglia sonde).
+
+    category: categoria del sensore (temperature, power, ups, generator)
+              usata per filtrare i device che hanno quella categoria abilitata.
+    """
     data = {"type": "inverter_alert"}
     logging.info("Notifica inverter: %s — %s", title, body.replace('\n', ' | '))
     # max_down_probes=None bypassa il filtro soglia: tutti ricevono la notifica
-    send_push_to_all(title, body, data, max_down_probes=None)
+    send_push_to_all(title, body, data, max_down_probes=None, category=category)
     try:
-        send_apns_to_all(title, body, data, max_down_probes=None)
+        send_apns_to_all(title, body, data, max_down_probes=None, category=category)
     except Exception:
         logging.exception("Errore invio APNs per alert inverter")
 

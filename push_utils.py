@@ -109,8 +109,9 @@ def _build_payload(title: str, body: str, data: Dict[str, Any]) -> str:
 # ----------------------------------------------------------------------
 
 def send_push_to_all(title: str, body: str, data: Dict[str, Any] | None = None,
-                     max_down_probes: int | None = None) -> None:
-    """Invia una push alle subscription valide, filtrando per soglia se richiesto."""
+                     max_down_probes: int | None = None,
+                     category: str | None = None) -> None:
+    """Invia una push alle subscription valide, filtrando per soglia e categoria."""
     if not PUSH_ENABLED:
         logger.info("PUSH disabilitate in config")
         return
@@ -132,6 +133,12 @@ def send_push_to_all(title: str, body: str, data: Dict[str, Any] | None = None,
         threshold = sub.get("threshold", 1)  # fallback retrocompatibile
         if max_down_probes is not None and threshold > max_down_probes:
             continue  # soglia non raggiunta, skip
+
+        # Filtraggio per categoria
+        if category is not None:
+            sub_categories = sub.get("categories")
+            if sub_categories and category not in sub_categories:
+                continue
 
         if "permanently-removed.invalid" in endpoint:
             logger.warning("Rimossa subscription Edge Android finta.")

@@ -414,7 +414,8 @@ def apns_subscribe():
 
     device_id = data.get("device_id", "")
     environment = data.get("environment", "production")
-    add_apns_subscription(device_token, device_id, environment, threshold=threshold)
+    categories = data.get("categories")  # lista o None
+    add_apns_subscription(device_token, device_id, environment, threshold=threshold, categories=categories)
     return {"ok": True}, 201
 
 
@@ -452,6 +453,58 @@ def apns_threshold():
 
     record = json.loads(raw)
     record["threshold"] = threshold
+    _redis.hset("apns:subs_by_token", device_token, json.dumps(record))
+    return {"ok": True}, 200
+
+
+# ============================================================================
+# APNS CATEGORIES — aggiornamento categorie push per device
+# ============================================================================
+@app.route("/push/apns/categories", methods=["POST"])
+@login_required
+def apns_categories():
+    """Aggiorna le categorie push abilitate per un device APNs iOS."""
+    data = request.get_json(silent=True) or {}
+    device_token = data.get("device_token")
+    categories = data.get("categories")
+
+    if not device_token:
+        return {"ok": False, "error": "missing device_token"}, 400
+    if categories is not None and not isinstance(categories, list):
+        return {"ok": False, "error": "categories must be a list"}, 400
+
+    raw = _redis.hget("apns:subs_by_token", device_token)
+    if not raw:
+        return {"ok": False, "error": "subscription not found"}, 404
+
+    record = json.loads(raw)
+    record["categories"] = categories or []
+    _redis.hset("apns:subs_by_token", device_token, json.dumps(record))
+    return {"ok": True}, 200
+
+
+@app.route("/api/mac/apns/categories", methods=["POST"])
+def api_mac_apns_categories():
+    """Aggiorna le categorie push abilitate per un device APNs Mac."""
+    token = request.headers.get("X-Watch-Token", "")
+    if not WATCH_API_TOKEN or not hmac.compare_digest(token, WATCH_API_TOKEN):
+        return {"ok": False, "error": "unauthorized"}, 401
+
+    data = request.get_json(silent=True) or {}
+    device_token = data.get("device_token")
+    categories = data.get("categories")
+
+    if not device_token:
+        return {"ok": False, "error": "missing device_token"}, 400
+    if categories is not None and not isinstance(categories, list):
+        return {"ok": False, "error": "categories must be a list"}, 400
+
+    raw = _redis.hget("apns:subs_by_token", device_token)
+    if not raw:
+        return {"ok": False, "error": "subscription not found"}, 404
+
+    record = json.loads(raw)
+    record["categories"] = categories or []
     _redis.hset("apns:subs_by_token", device_token, json.dumps(record))
     return {"ok": True}, 200
 
@@ -813,7 +866,8 @@ def api_mac_apns_subscribe():
     device_id = data.get("device_id", "")
     environment = data.get("environment", "production")
     bundle_id = data.get("bundle_id")
-    add_apns_subscription(device_token, device_id, environment, bundle_id=bundle_id, threshold=threshold)
+    categories = data.get("categories")  # lista o None
+    add_apns_subscription(device_token, device_id, environment, bundle_id=bundle_id, threshold=threshold, categories=categories)
     return {"ok": True}, 201
 
 
