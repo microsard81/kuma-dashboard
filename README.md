@@ -857,8 +857,9 @@ Ogni dispositivo/subscription può configurare una soglia (1–5) che indica qua
 - **Conteggio:** la funzione `count_down_probes()` in `severity.py` calcola il numero di sonde DOWN per monitor
 - **Filtraggio:** avviene in `send_push_to_all()` e `send_apns_to_all()` tramite il parametro `max_down_probes`
 - **UI PWA:** popover nella navbar con toggle abilita/disabilita e selettore soglia (desktop e mobile)
-- **UI iOS:** Picker nella sezione "Notifiche" di SettingsView (visibile solo con notifiche abilitate)
-- **UI macOS:** Toggle notifiche + Picker soglia in MacSettingsView
+- **UI iOS:** Picker nella sezione "Notifiche" di SettingsView (visibile solo con notifiche abilitate) + toggle per categoria
+- **UI macOS:** Toggle notifiche + Picker soglia + toggle per categoria in MacSettingsView
+- **Categorie push per-dispositivo:** ogni device può scegliere quali categorie ricevere (portali, temperature, power, ups, generator). Subscription senza campo categories = tutte abilitate (retrocompatibilità PWA)
 
 > La notifica GREEN non include il campo `badge` nel payload APNs: questo evita che iOS cancelli automaticamente le notifiche precedenti dal centro notifiche. Il badge viene azzerato dall'app quando l'utente la apre e vede che è tutto verde.
 

@@ -307,12 +307,14 @@ final class NetworkClient: NetworkClientProtocol {
 
         // Includi la soglia notifica corrente (salvata in UserDefaults)
         let threshold = UserDefaults.standard.object(forKey: "notificationThreshold") as? Int ?? 1
+        let categories = UserDefaults.standard.stringArray(forKey: "notificationCategories") ?? ["portali", "temperature", "power", "ups", "generator"]
 
         let payload: [String: Any] = [
             "device_token": deviceToken,
             "device_id": deviceId,
             "environment": environment,
-            "threshold": threshold
+            "threshold": threshold,
+            "categories": categories
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 

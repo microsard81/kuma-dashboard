@@ -103,6 +103,31 @@ struct MacSettingsView: View {
                         Text(thresholdLabel(value)).tag(value)
                     }
                 }
+
+                // Categorie push
+                Text("Categorie abilitate:")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Toggle("Portali", isOn: Binding(
+                    get: { viewModel.notificationCategories.contains("portali") },
+                    set: { _ in viewModel.toggleNotificationCategory("portali") }
+                ))
+                Toggle("Temperatura", isOn: Binding(
+                    get: { viewModel.notificationCategories.contains("temperature") },
+                    set: { _ in viewModel.toggleNotificationCategory("temperature") }
+                ))
+                Toggle("Potenza", isOn: Binding(
+                    get: { viewModel.notificationCategories.contains("power") },
+                    set: { _ in viewModel.toggleNotificationCategory("power") }
+                ))
+                Toggle("UPS", isOn: Binding(
+                    get: { viewModel.notificationCategories.contains("ups") },
+                    set: { _ in viewModel.toggleNotificationCategory("ups") }
+                ))
+                Toggle("Generatori", isOn: Binding(
+                    get: { viewModel.notificationCategories.contains("generator") },
+                    set: { _ in viewModel.toggleNotificationCategory("generator") }
+                ))
             }
 
             // Salvataggio eventi in locale

@@ -75,9 +75,23 @@ struct HelpView: View {
 
                 // Soglia
                 section("Soglia notifica") {
-                    Text("Puoi configurare quante sonde devono essere DOWN prima di ricevere la notifica (1–5).")
+                    Text("Puoi configurare quante sonde devono essere DOWN prima di ricevere la notifica (1–5). Riguarda solo le notifiche Portali.")
                         .font(.subheadline)
                     Text("Esempio: con soglia 3, ricevi la notifica solo quando almeno 3 sonde vedono DOWN. Le notifiche sensori arrivano sempre, indipendentemente dalla soglia.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                // Categorie push
+                section("Categorie notifiche") {
+                    Text("Puoi scegliere quali categorie di notifiche ricevere su questo dispositivo:")
+                        .font(.subheadline)
+                    infoRow(icon: "globe", text: "Portali — servizi DOWN o ripristinati (soggetta a soglia sonde)")
+                    infoRow(icon: "thermometer.medium", text: "Temperatura — alert sensori ambientali")
+                    infoRow(icon: "bolt.fill", text: "Potenza — alert sensori potenza")
+                    infoRow(icon: "battery.75percent", text: "UPS — alert UPS (batteria, sorgente, capacità)")
+                    infoRow(icon: "fuelpump.fill", text: "Generatori — alert gruppi elettrogeni")
+                    Text("Disabilitando una categoria non riceverai push per quella tipologia. La configurazione è per-dispositivo.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

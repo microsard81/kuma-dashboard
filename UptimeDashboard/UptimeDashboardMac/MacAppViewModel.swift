@@ -88,6 +88,7 @@ final class MacAppViewModel: ObservableObject {
     @Published var badgeEnabled: Bool
     @Published var notificationsEnabled: Bool
     @Published var notificationThreshold: Int
+    @Published var notificationCategories: Set<String>
     @Published var biometricEnabled: Bool
 
     func setTheme(_ mode: String) {
@@ -208,6 +209,36 @@ final class MacAppViewModel: ObservableObject {
         }
     }
 
+    func toggleNotificationCategory(_ category: String) {
+        if notificationCategories.contains(category) {
+            notificationCategories.remove(category)
+        } else {
+            notificationCategories.insert(category)
+        }
+        let array = Array(notificationCategories)
+        defaults.set(array, forKey: "mac_notification_categories")
+
+        // Sync con backend
+        guard let deviceToken = defaults.string(forKey: "apnsDeviceToken") else { return }
+        guard let token = Bundle.main.object(forInfoDictionaryKey: "WATCH_API_TOKEN") as? String,
+              let baseURL = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String,
+              let url = URL(string: "\(baseURL)/api/mac/apns/categories") else { return }
+
+        Task {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(token, forHTTPHeaderField: "X-Watch-Token")
+
+            let payload: [String: Any] = [
+                "device_token": deviceToken,
+                "categories": array
+            ]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+            _ = try? await URLSession.shared.data(for: request)
+        }
+    }
+
     func setBiometricEnabled(_ enabled: Bool) {
         biometricEnabled = enabled
         defaults.set(enabled, forKey: "mac_biometric_enabled")
@@ -238,6 +269,10 @@ final class MacAppViewModel: ObservableObject {
         // Read notificationThreshold with safe fallback (default: 1)
         let storedThreshold = defaults.object(forKey: "mac_notification_threshold") as? Int ?? 1
         self.notificationThreshold = (1...5).contains(storedThreshold) ? storedThreshold : 1
+
+        // Notification categories (default: all enabled)
+        let storedCategories = defaults.stringArray(forKey: "mac_notification_categories") ?? ["portali", "temperature", "power", "ups", "generator"]
+        self.notificationCategories = Set(storedCategories)
 
         // Biometric enabled (default: true)
         self.biometricEnabled = defaults.object(forKey: "mac_biometric_enabled") as? Bool ?? true

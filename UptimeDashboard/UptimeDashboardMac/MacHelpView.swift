@@ -132,7 +132,18 @@ struct HelpWebView: NSViewRepresentable {
     <p>Clicca l'icona 🔔 nella toolbar per vedere lo storico notifiche.</p>
 
     <h3>Soglia notifica</h3>
-    <p>Puoi configurare quante sonde devono essere DOWN prima di ricevere la notifica (da 1 a 5). Vai in Impostazioni → Soglia notifica. Con soglia 3, ad esempio, ricevi la notifica solo quando almeno 3 sonde rilevano il DOWN.</p>
+    <p>Puoi configurare quante sonde devono essere DOWN prima di ricevere la notifica (da 1 a 5). Si applica solo alla categoria Portali. Impostazioni → Soglia notifica.</p>
+
+    <h3>Categorie notifiche</h3>
+    <p>Puoi scegliere quali categorie di notifiche ricevere (Impostazioni → toggle per categoria):</p>
+    <ul>
+    <li><strong>Portali</strong> — servizi DOWN o ripristinati (soggetta a soglia sonde)</li>
+    <li><strong>Temperatura</strong> — alert sensori ambientali</li>
+    <li><strong>Potenza</strong> — alert sensori potenza</li>
+    <li><strong>UPS</strong> — alert UPS</li>
+    <li><strong>Generatori</strong> — alert gruppi elettrogeni</li>
+    </ul>
+    <p>La configurazione è per-dispositivo.</p>
 
     <h2>Menu bar</h2>
     <p>L'app mostra un'icona nella barra dei menu con un pallino colorato che indica lo stato globale. Clicca per vedere un riepilogo rapido: risorse anomale, ultimo aggiornamento, e azioni (Aggiorna, Apri Dashboard, Impostazioni, Esci).</p>

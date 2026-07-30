@@ -93,6 +93,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var notificationsEnabled: Bool = false
     @Published var notificationPermissionDenied: Bool = false
     @Published var notificationThreshold: Int
+    @Published var notificationCategories: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "notificationCategories") ?? ["portali", "temperature", "power", "ups", "generator"])
     @Published var connectionStatus: ConnectionStatus = .checking
 
     // MARK: - Computed properties
@@ -265,6 +266,42 @@ final class SettingsViewModel: ObservableObject {
     }
 
     // MARK: - Notification actions
+
+    func toggleNotificationCategory(_ category: String) {
+        if notificationCategories.contains(category) {
+            notificationCategories.remove(category)
+        } else {
+            notificationCategories.insert(category)
+        }
+        let array = Array(notificationCategories)
+        defaults.set(array, forKey: "notificationCategories")
+
+        // Sync con backend
+        guard let deviceToken = defaults.string(forKey: "apnsDeviceToken") else { return }
+        Task {
+            do {
+                let url = AppConfig.baseURL.appendingPathComponent("push/apns/categories")
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+                let payload: [String: Any] = [
+                    "device_token": deviceToken,
+                    "categories": array
+                ]
+                request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+                let config = URLSessionConfiguration.default
+                config.httpCookieStorage = HTTPCookieStorage.shared
+                config.httpShouldSetCookies = true
+                config.httpCookieAcceptPolicy = .always
+                let session = URLSession(configuration: config)
+                let (_, _) = try await session.data(for: request)
+            } catch {
+                // Silently fail — local setting is still saved
+            }
+        }
+    }
 
     func toggleNotifications() async {
         if notificationsEnabled {

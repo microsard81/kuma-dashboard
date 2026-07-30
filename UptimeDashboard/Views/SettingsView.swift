@@ -92,6 +92,28 @@ struct SettingsView: View {
                     .onChange(of: settingsVM.notificationThreshold) { newValue in
                         settingsVM.setNotificationThreshold(newValue)
                     }
+
+                    // Categorie push
+                    Toggle("Portali", isOn: Binding(
+                        get: { settingsVM.notificationCategories.contains("portali") },
+                        set: { _ in settingsVM.toggleNotificationCategory("portali") }
+                    ))
+                    Toggle("Temperatura", isOn: Binding(
+                        get: { settingsVM.notificationCategories.contains("temperature") },
+                        set: { _ in settingsVM.toggleNotificationCategory("temperature") }
+                    ))
+                    Toggle("Potenza", isOn: Binding(
+                        get: { settingsVM.notificationCategories.contains("power") },
+                        set: { _ in settingsVM.toggleNotificationCategory("power") }
+                    ))
+                    Toggle("UPS", isOn: Binding(
+                        get: { settingsVM.notificationCategories.contains("ups") },
+                        set: { _ in settingsVM.toggleNotificationCategory("ups") }
+                    ))
+                    Toggle("Generatori", isOn: Binding(
+                        get: { settingsVM.notificationCategories.contains("generator") },
+                        set: { _ in settingsVM.toggleNotificationCategory("generator") }
+                    ))
                 }
             }
 
