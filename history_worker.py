@@ -493,7 +493,7 @@ def check_inverter_alerts():
             _set_sensor_alert_state(name, "critical")
 
             detail = _format_detail(value, unit)
-            push_event("sensor", f"🔴 {name}", "normal", "critical",
+            push_event("sensor", f"⛔ {name}", "normal", "critical",
                        detail=detail, severity=2)
 
             title = f"⛔ {name}"
