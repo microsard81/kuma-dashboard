@@ -33,6 +33,8 @@ PUSH_VAPID_CLAIMS = {"sub": f"mailto:{PUSH_VAPID_EMAIL}"}
 # --- STATUS SERVER / WEBHOOK ---
 STATUS_URL   = "http://127.0.0.1:9000/status"
 INVERTER_STATUS_URL = os.environ.get("INVERTER_STATUS_URL", "http://127.0.0.1:9000/invadcstatus")
+# Stato sonde Kuma (check NodePing) — stesso webhook, autenticato con STATUS_TOKEN
+PROBE_HEALTH_URL = os.environ.get("PROBE_HEALTH_URL", "http://127.0.0.1:9000/probe-health")
 
 # --- Debounce sensori ---
 # Numero di rilevamenti consecutivi oltre soglia prima di confermare critical

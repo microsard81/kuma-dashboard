@@ -259,3 +259,18 @@ def set_monitor_probes_state(state: dict[str, set[str]]):
         if probes:
             pipe.hset(_MONITOR_PROBES_KEY, name, ",".join(sorted(probes)))
     pipe.execute()
+
+
+# ------------------ PROBE HEALTH STATE (sonde Kuma / NodePing) ------------------ #
+# Stato operativo precedente di ogni sonda di monitoraggio, per rilevare le
+# transizioni operativa <-> non operativa nel worker.
+# Chiave per sonda: probe:health_state:<check_id>  — valori: "operative" / "down"
+
+def get_probe_health_state(check_id: str) -> str | None:
+    """Ritorna lo stato precedente della sonda ('operative'/'down') o None se sconosciuto."""
+    return r.get(f"probe:health_state:{check_id}")
+
+
+def set_probe_health_state(check_id: str, state: str) -> None:
+    """Salva lo stato operativo corrente della sonda."""
+    r.set(f"probe:health_state:{check_id}", state)

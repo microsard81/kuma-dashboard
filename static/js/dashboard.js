@@ -799,7 +799,83 @@ async function refreshDashboard() {
         console.error("Errore auto-refresh inverter:", e);
         showInverterError("Errore di rete");
     }
+
+    // Probe health refresh (indipendente — errore non blocca la dashboard)
+    try {
+        const res = await fetch("/api/probe-health", { cache: "no-store" });
+        if (res.ok) {
+            renderProbeHealth(await res.json());
+        }
+    } catch (e) {
+        console.error("Errore auto-refresh sonde:", e);
+    }
 }
+
+/************************************************************
+ * PROBE HEALTH — Stato sonde di monitoraggio Kuma
+ ************************************************************/
+function renderProbeHealth(data) {
+    const section = document.getElementById("probe-health-section");
+    const grid = document.getElementById("probe-health-grid");
+    const summary = document.getElementById("probe-health-summary");
+    const ts = document.getElementById("probe-health-timestamp");
+    if (!section || !grid) return;
+
+    // Monitor disabilitato o errore: nascondi la sezione (come da specifica).
+    if (!data || data.status !== "ok") {
+        section.classList.add("d-none");
+        return;
+    }
+
+    section.classList.remove("d-none");
+
+    const probes = data.probes || [];
+    const nonOp = data.non_operative_count || 0;
+
+    // Badge riepilogo
+    if (summary) {
+        if (nonOp === 0) {
+            summary.textContent = "Tutte operative";
+            summary.className = "badge bg-success";
+        } else {
+            summary.textContent = `${nonOp} non operativa${nonOp > 1 ? "e" : ""}`;
+            summary.className = "badge bg-danger";
+        }
+    }
+
+    // Card per sonda
+    grid.innerHTML = "";
+    probes.forEach(p => {
+        const op = !!p.is_operative;
+        const card = document.createElement("div");
+        card.className = "inverter-card";
+        card.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="fw-semibold">${_escapeHtml(p.label || "Sonda")}</span>
+                <span class="badge ${op ? "bg-success" : "bg-danger"}">
+                    ${op ? "Operativa" : "Non operativa"}
+                </span>
+            </div>
+            <div class="text-muted small mt-1">
+                <i class="bi ${op ? "bi-check-circle" : "bi-x-octagon"} me-1"></i>
+                ${op ? "Monitoraggio attivo" : "Sonda non raggiungibile"}
+            </div>`;
+        grid.appendChild(card);
+    });
+
+    if (ts && data.last_check) {
+        const d = new Date(data.last_check);
+        ts.textContent = "Ultimo controllo: " + (isNaN(d) ? data.last_check : d.toLocaleString("it-IT"));
+    }
+}
+
+function _escapeHtml(s) {
+    const div = document.createElement("div");
+    div.textContent = s == null ? "" : String(s);
+    return div.innerHTML;
+}
+
+window.renderProbeHealth = renderProbeHealth;
 
 /************************************************************
  * PUSH DESKTOP (UNICA VERSIONE)

@@ -116,6 +116,7 @@ Copia `.env.example` in `.env` e compila tutti i campi:
 | `BIOMETRIC_SECRET` | — | Segreto per firmare i token biometrici (default: `FLASK_SECRET_KEY`) |
 | `PUSH_LOG_FILE` | — | Percorso file di log per le notifiche push VAPID e APNs (vuoto = disabilitato) |
 | `INVERTER_STATUS_URL` | — | URL endpoint invadcstatus (default: `http://127.0.0.1:9000/invadcstatus`) |
+| `PROBE_HEALTH_URL` | — | URL endpoint probe-health del webhook (default: `http://127.0.0.1:9000/probe-health`). Auth: stesso `STATUS_TOKEN` |
 | `SENSOR_CRITICAL_DEBOUNCE` | — | Rilevamenti consecutivi oltre soglia prima di confermare critical (default: `5`) |
 | `REDIS_HOST` | — | Host Redis (default: `127.0.0.1`) |
 | `REDIS_PORT` | — | Porta Redis (default: `6379`) |
@@ -173,7 +174,8 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 | `GET` | `/` | ✅ | Dashboard web |
 | `GET` | `/api/dashboard-data` | ✅ | Dati dashboard in JSON |
 | `GET` | `/api/inverter-data` | ✅ | Dati sensori inverter in JSON |
-| `GET` | `/api/events` | ✅/Token | Storico eventi (transizioni stato globale, monitor, sensori). Auth: sessione Flask o `X-Watch-Token` |
+| `GET` | `/api/probe-health` | ✅ | Stato sonde di monitoraggio Kuma (check NodePing) in JSON |
+| `GET` | `/api/events` | ✅/Token | Storico eventi (transizioni stato globale, monitor, sensori, sonde). Auth: sessione Flask o `X-Watch-Token` |
 | `POST` | `/api/login` | — | Login JSON (app iOS) |
 | `POST` | `/api/2fa` | — | Verifica 2FA JSON (app iOS) |
 | `POST` | `/api/change-password` | — | Cambio password JSON (app iOS) |
@@ -305,6 +307,38 @@ La dashboard integra dati in tempo reale da un endpoint locale `invadcstatus` ch
 > I sensori senza `threshold` (valore `null`) sono solo informativi e non generano alert.
 
 **Configurazione:** la variabile `INVERTER_STATUS_URL` nel `.env` permette di puntare a un endpoint diverso (default: `http://127.0.0.1:9000/invadcstatus`). Il token di autenticazione è lo stesso `STATUS_TOKEN` già usato per l'uptime.
+
+### Stato Sonde Kuma
+
+La dashboard mostra la **salute delle sonde di monitoraggio** (i check NodePing: Sestu, Bergamo, Sinnai), distinta dai portali. Indica se gli agenti di monitoraggio stessi sono operativi: se una sonda non è operativa, il monitoraggio dei portali è meno affidabile.
+
+**Funzionalità:**
+- Sezione "Stato Sonde" nella dashboard (PWA + app iOS/macOS/watchOS), sotto i sensori datacenter
+- Una card per sonda con stato Operativa / Non operativa
+- Badge riepilogo con il numero di sonde non operative
+- Push immediato (categoria `sonde`) alla transizione operativa ↔ non operativa, senza debounce: basta una sonda non operativa per segnalare
+- Gli eventi `probe` confluiscono nello storico eventi (sezione Notifiche)
+- Se il monitoraggio sonde è disabilitato lato webhook (`status: "disabled"`), la sezione viene nascosta
+
+**Endpoint:** `GET /api/probe-health` (autenticato). Fonte dati: `GET /probe-health` sul webhook locale, autenticato con `STATUS_TOKEN`.
+
+**Formato risposta:**
+
+```json
+{
+  "status": "ok",
+  "probes": [
+    { "check_id": "...", "label": "Sonda Kuma Sestu", "is_operative": true, "state": 1 }
+  ],
+  "non_operative_count": 0,
+  "effective_threshold": 5,
+  "down_threshold_configured": 5,
+  "last_check": "2026-10-23T10:07:10+00:00",
+  "error": null
+}
+```
+
+Il consumatore deve controllare sempre `status` (`ok` / `disabled` / `error`) prima di leggere `probes`, e usare `is_operative` (già normalizzato) come riferimento affidabile.
 
 ### Event Log (Storico Eventi)
 
@@ -859,7 +893,7 @@ Ogni dispositivo/subscription può configurare una soglia (1–5) che indica qua
 - **UI PWA:** popover nella navbar con toggle abilita/disabilita e selettore soglia (desktop e mobile)
 - **UI iOS:** Picker nella sezione "Notifiche" di SettingsView (visibile solo con notifiche abilitate) + toggle per categoria
 - **UI macOS:** Toggle notifiche + Picker soglia + toggle per categoria in MacSettingsView
-- **Categorie push per-dispositivo:** ogni device può scegliere quali categorie ricevere (portali, temperature, power, ups, generator). Subscription senza campo categories = tutte abilitate (retrocompatibilità PWA)
+- **Categorie push per-dispositivo:** ogni device può scegliere quali categorie ricevere (portali, temperature, power, ups, generator, sonde). Subscription senza campo categories = tutte abilitate (retrocompatibilità PWA)
 
 > La notifica GREEN non include il campo `badge` nel payload APNs: questo evita che iOS cancelli automaticamente le notifiche precedenti dal centro notifiche. Il badge viene azzerato dall'app quando l'utente la apre e vede che è tutto verde.
 

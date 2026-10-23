@@ -266,6 +266,22 @@
                 </small>
             </div>
 
+            <!-- PROBE HEALTH SECTION — Stato sonde di monitoraggio Kuma -->
+            <div id="probe-health-section" class="mt-5 d-none">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h3 class="mb-0"><i class="bi bi-broadcast-pin me-2"></i>Stato Sonde</h3>
+                    <span id="probe-health-summary" class="badge bg-secondary"></span>
+                </div>
+                <p class="text-muted mb-3">
+                    Salute degli agenti di monitoraggio Kuma. Se una sonda non è
+                    operativa, il monitoraggio dei portali è meno affidabile.
+                </p>
+                <div id="probe-health-grid" class="inverter-card-grid mb-2">
+                    <!-- Populated by JS -->
+                </div>
+                <small class="text-muted" id="probe-health-timestamp"></small>
+            </div>
+
         </div>
     </div>
 

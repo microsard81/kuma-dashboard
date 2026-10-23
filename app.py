@@ -780,6 +780,19 @@ def api_inverter_data():
     return jsonify(data)
 
 
+@app.route("/api/probe-health")
+@login_required
+def api_probe_health():
+    """Stato delle sonde di monitoraggio Kuma (check NodePing).
+
+    Distinto dai portali: indica se gli agenti di monitoraggio stessi
+    sono operativi. Autenticazione: sessione Flask (@login_required).
+    """
+    from probe_health_client import fetch_probe_health
+
+    return jsonify(fetch_probe_health())
+
+
 @app.route("/api/events")
 @login_required
 def api_events():

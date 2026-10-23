@@ -24,6 +24,7 @@ from config import (
 from kuma_client import load_monitors
 from status_client import load_status
 from sensor_client import fetch_inverter_data
+from probe_health_client import fetch_probe_health
 from redis_history import (
     save_point,
     get_global_state,
@@ -36,6 +37,8 @@ from redis_history import (
     push_event,
     get_monitor_probes_state,
     set_monitor_probes_state,
+    get_probe_health_state,
+    set_probe_health_state,
 )
 from push_utils import send_push_to_all
 from apns_utils import send_apns_to_all
@@ -571,6 +574,82 @@ def _send_inverter_push(title, body, category="sensor"):
 
 
 # ------------------------------------------------------
+# PROBE HEALTH ALERTS — salute sonde Kuma (check NodePing)
+# ------------------------------------------------------
+# Stato precedente per-sonda in Redis: probe:health_state:<check_id>
+# Valori: "operative" / "down"
+# Push IMMEDIATO (nessun debounce): basta una sonda non operativa per segnalare.
+# Categoria push: "sonde" (attivabile per device come le altre).
+
+def check_probe_health_alerts():
+    """Controlla la salute delle sonde Kuma e invia push alle transizioni di stato.
+
+    Transizione operativa → non operativa: push immediato + evento critical.
+    Transizione non operativa → operativa: push di ripristino + evento normal.
+    """
+    if not PUSH_ENABLED:
+        return
+
+    data = fetch_probe_health()
+
+    # Monitor disabilitato o errore di connessione: non generare alert.
+    if data.get("status") != "ok":
+        if data.get("status") == "error":
+            logging.warning("Probe health check: %s", data.get("error"))
+        return
+
+    now_str = datetime.now().strftime("%H:%M")
+
+    for probe in data.get("probes", []):
+        check_id = probe.get("check_id", "")
+        label = probe.get("label", "Sonda")
+        is_operative = probe.get("is_operative", True)
+
+        if not check_id:
+            continue
+
+        new_state = "operative" if is_operative else "down"
+        prev_state = get_probe_health_state(check_id)
+
+        # Primo rilevamento: memorizza senza notificare.
+        if prev_state is None:
+            set_probe_health_state(check_id, new_state)
+            continue
+
+        if prev_state == new_state:
+            continue
+
+        # --- Transizione operativa → non operativa (immediata) ---
+        if new_state == "down":
+            set_probe_health_state(check_id, "down")
+            push_event("probe", f"⛔ {label}", "operative", "down",
+                       detail="Sonda non operativa", severity=2)
+            title = f"⛔ {label}"
+            body = f"Sonda di monitoraggio non operativa\nOre {now_str}"
+            _send_probe_health_push(title, body)
+
+        # --- Transizione non operativa → operativa (ripristino) ---
+        else:
+            set_probe_health_state(check_id, "operative")
+            push_event("probe", f"✅ {label}", "down", "operative",
+                       detail="Sonda tornata operativa", severity=0)
+            title = f"✅ {label}"
+            body = f"Sonda di monitoraggio ripristinata\nOre {now_str}"
+            _send_probe_health_push(title, body)
+
+
+def _send_probe_health_push(title, body):
+    """Invia notifica push sullo stato sonde a tutti i device (categoria 'sonde')."""
+    data = {"type": "probe_health"}
+    logging.info("Notifica sonde: %s — %s", title, body.replace('\n', ' | '))
+    send_push_to_all(title, body, data, max_down_probes=None, category="sonde")
+    try:
+        send_apns_to_all(title, body, data, max_down_probes=None, category="sonde")
+    except Exception:
+        logging.exception("Errore invio APNs per alert sonde")
+
+
+# ------------------------------------------------------
 # Ciclo unico del worker
 # ------------------------------------------------------
 def loop_once():
@@ -601,6 +680,7 @@ def loop_once():
         new_state = compute_global_state(severities)
         maybe_send_global_push(new_state, monitor_details)
         check_inverter_alerts()
+        check_probe_health_alerts()
         return
 
     # Processa monitor
@@ -648,6 +728,9 @@ def loop_once():
 
     # Check soglie sensori inverter
     check_inverter_alerts()
+
+    # Check salute sonde Kuma
+    check_probe_health_alerts()
 
 
 # ------------------------------------------------------
