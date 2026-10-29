@@ -160,6 +160,29 @@ struct WatchDashboardView: View {
                     }
                 }
             }
+
+            // Stato Sonde
+            if !viewModel.probes.isEmpty {
+                NavigationLink {
+                    WatchProbesDetailView()
+                        .environmentObject(viewModel)
+                } label: {
+                    HStack {
+                        Circle()
+                            .fill(probeColor)
+                            .frame(width: 8, height: 8)
+                        Image(systemName: "antenna.radiowaves.left.and.right")
+                            .font(.caption2)
+                            .foregroundColor(probeColor)
+                        Text("Sonde")
+                            .font(.caption)
+                        Spacer()
+                        Text(probeStatus)
+                            .font(.caption2)
+                            .foregroundColor(probeColor)
+                    }
+                }
+            }
         }
     }
 
@@ -238,6 +261,16 @@ struct WatchDashboardView: View {
     private var generatorStatus: String {
         let alerts = generatorSensors.filter { $0.status == .critical }.count
         if alerts > 0 { return "\(alerts) ⚠" }
+        return "OK"
+    }
+
+    private var probeColor: Color {
+        viewModel.probeNonOperativeCount > 0 ? .red : .green
+    }
+
+    private var probeStatus: String {
+        let down = viewModel.probeNonOperativeCount
+        if down > 0 { return "\(down) KO" }
         return "OK"
     }
 }

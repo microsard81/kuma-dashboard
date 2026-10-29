@@ -2,6 +2,13 @@ import Foundation
 import Combine
 import WatchConnectivity
 
+/// Sonda di monitoraggio Kuma (versione leggera per il Watch — solo stato).
+struct WatchProbe: Identifiable, Equatable {
+    let id: String      // label (il Watch non riceve check_id)
+    let label: String
+    let isOperative: Bool
+}
+
 /// ViewModel che riceve i dati della dashboard dall'iPhone via WatchConnectivity
 /// e può anche fare fetch diretto all'API del backend.
 final class WatchDashboardViewModel: NSObject, ObservableObject {
@@ -16,6 +23,19 @@ final class WatchDashboardViewModel: NSObject, ObservableObject {
     // MARK: - Sensor data
     @Published var sensors: [SensorReading] = []
     @Published var sensorError: String? = nil
+
+    // MARK: - Probe health (sonde Kuma)
+    @Published var probes: [WatchProbe] = []
+
+    /// Sonde ordinate: non operative prima, poi per label.
+    var sortedProbes: [WatchProbe] {
+        probes.sorted {
+            if $0.isOperative != $1.isOperative { return !$0.isOperative }
+            return $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending
+        }
+    }
+
+    var probeNonOperativeCount: Int { probes.filter { !$0.isOperative }.count }
 
     private var wcSession: WCSession?
     private var refreshTimer: Timer?
@@ -159,12 +179,16 @@ extension WatchDashboardViewModel: WCSessionDelegate {
         let parsedSensors = parseSensors(from: payload)
         let parsedSensorError = payload["sensor_error"] as? String
 
+        // Parse probe health (sonde Kuma)
+        let parsedProbes = parseProbes(from: payload)
+
         DispatchQueue.main.async {
             self.monitors = parsed
             self.globalState = payload["global_state"] as? String ?? "GREEN"
             self.lastUpdated = Date()
             self.sensors = parsedSensors
             self.sensorError = parsedSensorError
+            self.probes = parsedProbes
         }
     }
 
@@ -175,5 +199,16 @@ extension WatchDashboardViewModel: WCSessionDelegate {
         let data = try? JSONSerialization.data(withJSONObject: sensorsArray)
         guard let data else { return [] }
         return (try? JSONDecoder().decode([SensorReading].self, from: data)) ?? []
+    }
+
+    // MARK: - Probe Parsing
+
+    private func parseProbes(from payload: [String: Any]) -> [WatchProbe] {
+        guard let probesArray = payload["probes"] as? [[String: Any]] else { return [] }
+        return probesArray.compactMap { dict in
+            guard let label = dict["label"] as? String else { return nil }
+            let isOperative = dict["is_operative"] as? Bool ?? true
+            return WatchProbe(id: label, label: label, isOperative: isOperative)
+        }
     }
 }
