@@ -93,7 +93,20 @@ final class SettingsViewModel: ObservableObject {
     @Published var notificationsEnabled: Bool = false
     @Published var notificationPermissionDenied: Bool = false
     @Published var notificationThreshold: Int
-    @Published var notificationCategories: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "notificationCategories") ?? ["portali", "temperature", "power", "ups", "generator"])
+    @Published var notificationCategories: Set<String> = {
+        // Default: tutte le categorie abilitate (inclusa "sonde").
+        guard let saved = UserDefaults.standard.stringArray(forKey: "notificationCategories") else {
+            return ["portali", "temperature", "power", "ups", "generator", "sonde"]
+        }
+        // Migrazione: aggiungi "sonde" per gli utenti esistenti (categoria nuova,
+        // abilitata di default per coerenza con le altre).
+        var set = Set(saved)
+        if !set.contains("sonde") {
+            set.insert("sonde")
+            UserDefaults.standard.set(Array(set), forKey: "notificationCategories")
+        }
+        return set
+    }()
     @Published var connectionStatus: ConnectionStatus = .checking
 
     // MARK: - Computed properties

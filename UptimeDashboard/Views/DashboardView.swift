@@ -18,7 +18,7 @@ struct DashboardView: View {
     @State private var draggingPinnedItem: PinnedItem? = nil
     @State private var selectedPinnedItem: PinnedItem? = nil
     @State private var sectionOrder: [String] = {
-        let allSections = ["portali", "temperatura", "potenza", "ups", "generatori"]
+        let allSections = ["portali", "temperatura", "potenza", "ups", "generatori", "sonde"]
         guard var saved = UserDefaults.standard.stringArray(forKey: "ios_section_order") else {
             return allSections
         }
@@ -67,6 +67,24 @@ struct DashboardView: View {
     /// Global state color for portals.
     private var portalsColor: Color {
         viewModel.globalState.color
+    }
+
+    /// Colore stato sonde: rosso se almeno una non operativa, altrimenti verde.
+    private var probeStatusColor: Color {
+        (viewModel.probeHealth?.nonOperativeCount ?? 0) > 0 ? .red : .green
+    }
+
+    /// Numero di sonde non operative.
+    private var probeAlertCount: Int {
+        viewModel.probeHealth?.nonOperativeCount ?? 0
+    }
+
+    /// Sottotitolo della card sonde.
+    private var probeSubtitle: String {
+        let total = viewModel.probeHealth?.probes.count ?? 0
+        let down = viewModel.probeHealth?.nonOperativeCount ?? 0
+        if down > 0 { return "\(down) non operativa\(down > 1 ? "e" : "") su \(total)" }
+        return "Tutte operative (\(total))"
     }
 
     /// Number of temperature sensors in alert state.
@@ -198,6 +216,20 @@ struct DashboardView: View {
                                             withAnimation { isReorderingSections = true }
                                         }
                                     }
+                                case "sonde":
+                                    if viewModel.hasProbeHealth {
+                                        MacroAreaCard(
+                                            title: "Stato Sonde",
+                                            icon: "antenna.radiowaves.left.and.right",
+                                            statusColor: probeStatusColor,
+                                            subtitle: probeSubtitle,
+                                            alertCount: probeAlertCount
+                                        )
+                                        .onTapGesture { selectedSection = "sonde" }
+                                        .onLongPressGesture(minimumDuration: 0.5) {
+                                            withAnimation { isReorderingSections = true }
+                                        }
+                                    }
                                 default:
                                     EmptyView()
                                 }
@@ -223,6 +255,10 @@ struct DashboardView: View {
                             NavigationLink(
                                 destination: GeneratorDetailView(viewModel: viewModel),
                                 isActive: Binding(get: { selectedSection == "generatori" }, set: { if !$0 { selectedSection = nil } })
+                            ) { EmptyView() }.hidden()
+                            NavigationLink(
+                                destination: ProbeHealthDetailView(viewModel: viewModel),
+                                isActive: Binding(get: { selectedSection == "sonde" }, set: { if !$0 { selectedSection = nil } })
                             ) { EmptyView() }.hidden()
                         }
 
@@ -463,6 +499,7 @@ struct DashboardView: View {
         case "potenza": return "bolt.fill"
         case "ups": return "battery.75percent"
         case "generatori": return "fuelpump.fill"
+        case "sonde": return "antenna.radiowaves.left.and.right"
         default: return "questionmark"
         }
     }
@@ -474,6 +511,7 @@ struct DashboardView: View {
         case "potenza": return powerStatusColor
         case "ups": return upsStatusColor
         case "generatori": return generatorStatusColor
+        case "sonde": return probeStatusColor
         default: return .gray
         }
     }
@@ -485,6 +523,7 @@ struct DashboardView: View {
         case "potenza": return "Potenza"
         case "ups": return "UPS"
         case "generatori": return "Generatori"
+        case "sonde": return "Stato Sonde"
         default: return section
         }
     }
@@ -498,6 +537,7 @@ struct DashboardView: View {
         case .potenza: return "bolt.fill"
         case .ups: return "battery.75percent"
         case .generatore: return "fuelpump.fill"
+        case .sonda: return "antenna.radiowaves.left.and.right"
         }
     }
 
@@ -508,6 +548,7 @@ struct DashboardView: View {
         case .potenza: return .blue
         case .ups: return .purple
         case .generatore: return .orange
+        case .sonda: return .green
         }
     }
 
@@ -527,6 +568,8 @@ struct DashboardView: View {
             UPSDetailView(viewModel: viewModel, scrollToId: item.id)
         case .generatore:
             GeneratorDetailView(viewModel: viewModel, scrollToId: item.id)
+        case .sonda:
+            ProbeHealthDetailView(viewModel: viewModel, scrollToId: item.id)
         }
     }
 

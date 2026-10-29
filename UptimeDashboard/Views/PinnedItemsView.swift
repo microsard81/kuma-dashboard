@@ -14,6 +14,7 @@ struct PinnedItem: Identifiable, Codable, Equatable {
         case potenza
         case ups
         case generatore
+        case sonda
     }
 }
 
@@ -108,6 +109,10 @@ struct PinnedCardView: View {
             if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
                 return sensor.status == .critical
             }
+        case .sonda:
+            if let probe = viewModel.kumaProbes.first(where: { $0.id == item.id }) {
+                return !probe.isOperative
+            }
         }
         return false
     }
@@ -135,6 +140,11 @@ struct PinnedCardView: View {
                 if sensor.status == .critical { return Color.red.opacity(0.85) }
             }
             return Color(.systemGray6)
+        case .sonda:
+            if let probe = viewModel.kumaProbes.first(where: { $0.id == item.id }) {
+                if !probe.isOperative { return Color.red.opacity(0.85) }
+            }
+            return Color(.systemGray6)
         }
     }
 
@@ -144,7 +154,12 @@ struct PinnedCardView: View {
     }
 
     private var displayName: String {
-        item.id.replacingOccurrences(of: "INVA - ", with: "")
+        // Le sonde usano check_id come id: risolvi nella label leggibile.
+        if item.type == .sonda,
+           let probe = viewModel.kumaProbes.first(where: { $0.id == item.id }) {
+            return probe.label
+        }
+        return item.id.replacingOccurrences(of: "INVA - ", with: "")
     }
 
     private var iconName: String {
@@ -154,6 +169,7 @@ struct PinnedCardView: View {
         case .potenza: return "bolt.fill"
         case .ups: return "battery.75percent"
         case .generatore: return "fuelpump.fill"
+        case .sonda: return "antenna.radiowaves.left.and.right"
         }
     }
 
@@ -185,6 +201,11 @@ struct PinnedCardView: View {
                 if sensor.status == .critical { return .red }
             }
             return .orange
+        case .sonda:
+            if let probe = viewModel.kumaProbes.first(where: { $0.id == item.id }) {
+                if !probe.isOperative { return .red }
+            }
+            return .green
         }
     }
 
@@ -198,6 +219,11 @@ struct PinnedCardView: View {
         case .temperatura, .potenza, .ups, .generatore:
             if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
                 return sensor.displayValueWithUnit
+            }
+            return "—"
+        case .sonda:
+            if let probe = viewModel.kumaProbes.first(where: { $0.id == item.id }) {
+                return probe.isOperative ? "OK" : "KO"
             }
             return "—"
         }

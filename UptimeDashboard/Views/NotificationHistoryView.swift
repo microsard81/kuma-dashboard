@@ -55,6 +55,7 @@ private enum NotificationNavTarget: Identifiable {
     case potenza(scrollTo: String?)
     case ups(scrollTo: String?)
     case generatori(scrollTo: String?)
+    case sonde(scrollTo: String?)
 
     var id: String {
         switch self {
@@ -63,6 +64,7 @@ private enum NotificationNavTarget: Identifiable {
         case .potenza(let s): return "potenza-\(s ?? "")"
         case .ups(let s): return "ups-\(s ?? "")"
         case .generatori(let s): return "gen-\(s ?? "")"
+        case .sonde(let s): return "sonde-\(s ?? "")"
         }
     }
 }
@@ -387,7 +389,10 @@ struct NotificationHistoryView: View {
         }
         resourceName = resourceName.trimmingCharacters(in: .whitespaces)
 
-        if title.contains("temperatura") || title.contains("temp") {
+        if title.contains("sonda") {
+            // Le sonde usano check_id come id, non la label: apri la sezione senza scroll.
+            navigateToSection = .sonde(scrollTo: nil)
+        } else if title.contains("temperatura") || title.contains("temp") {
             navigateToSection = .temperatura(scrollTo: resourceName)
         } else if title.contains("carico kw") || title.contains("potenza") {
             navigateToSection = .potenza(scrollTo: resourceName)
@@ -414,6 +419,9 @@ struct NotificationHistoryView: View {
             UPSDetailView(viewModel: viewModel, scrollToId: scrollTo)
         case .generatori(let scrollTo):
             GeneratorDetailView(viewModel: viewModel, scrollToId: scrollTo)
+        case .sonde(let scrollTo):
+            ProbeHealthDetailView(viewModel: viewModel, scrollToId: scrollTo)
+                .environmentObject(SettingsViewModel())
         }
     }
 

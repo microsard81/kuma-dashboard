@@ -16,13 +16,14 @@ struct HelpView: View {
 
                 // Schermata principale
                 section("Schermata principale") {
-                    Text("La schermata principale mostra 5 aree:")
+                    Text("La schermata principale mostra 6 aree:")
                         .font(.subheadline)
                     areaRow(icon: "globe", color: .green, title: "Portali", description: "Stato dei servizi web monitorati da 5 sonde indipendenti")
                     areaRow(icon: "thermometer.medium", color: .orange, title: "Temperatura", description: "Sensori di temperatura del datacenter (°C)")
                     areaRow(icon: "bolt.fill", color: .blue, title: "Potenza", description: "Sensori di potenza elettrica (kW)")
                     areaRow(icon: "battery.75percent", color: .purple, title: "UPS", description: "Stato UPS: batteria, sorgente, capacità, durata, fasi")
                     areaRow(icon: "fuelpump.fill", color: .orange, title: "Generatori", description: "Stato gruppi elettrogeni: controller, tensione, carico, carburante")
+                    areaRow(icon: "antenna.radiowaves.left.and.right", color: .green, title: "Stato Sonde", description: "Salute degli agenti di monitoraggio Kuma. Se una sonda non è operativa, il monitoraggio dei portali è meno affidabile")
                     Text("Il pallino colorato indica lo stato globale dell'area. Tocca una card per vedere i dettagli.")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -91,6 +92,7 @@ struct HelpView: View {
                     infoRow(icon: "bolt.fill", text: "Potenza — alert sensori potenza")
                     infoRow(icon: "battery.75percent", text: "UPS — alert UPS (batteria, sorgente, capacità)")
                     infoRow(icon: "fuelpump.fill", text: "Generatori — alert gruppi elettrogeni")
+                    infoRow(icon: "antenna.radiowaves.left.and.right", text: "Stato Sonde — alert immediato quando una sonda di monitoraggio non è operativa")
                     Text("Disabilitando una categoria non riceverai push per quella tipologia. La configurazione è per-dispositivo.")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -109,7 +111,7 @@ struct HelpView: View {
 
                 // Riordino manuale
                 section("Riordino manuale") {
-                    infoRow(icon: "hand.press", text: "Tieni premuto su una delle 5 sezioni principali (Portali, Temperatura, Potenza, UPS, Generatori) per riordinarle con drag & drop.")
+                    infoRow(icon: "hand.press", text: "Tieni premuto su una delle 6 sezioni principali (Portali, Temperatura, Potenza, UPS, Generatori, Stato Sonde) per riordinarle con drag & drop.")
                     infoRow(icon: "arrow.up.arrow.down", text: "Nelle schede di dettaglio, scorri verso destra su un elemento per riordinare i singoli elementi.")
                     infoRow(icon: "hand.draw", text: "In modalità riordino, trascina gli elementi nell'ordine desiderato.")
                     infoRow(icon: "checkmark.circle", text: "Tocca 'Termina' per salvare. L'ordine viene mantenuto anche chiudendo l'app.")

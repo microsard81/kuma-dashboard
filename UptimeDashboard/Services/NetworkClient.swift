@@ -48,6 +48,7 @@ protocol NetworkClientProtocol {
     func getBiometricToken() async throws -> String
     func biometricLogin(username: String, biometricToken: String) async throws
     func fetchSensorData() async throws -> Data
+    func fetchProbeHealth() async throws -> ProbeHealthResponse
 }
 
 // MARK: - Redirect-aware delegate
@@ -307,7 +308,7 @@ final class NetworkClient: NetworkClientProtocol {
 
         // Includi la soglia notifica corrente (salvata in UserDefaults)
         let threshold = UserDefaults.standard.object(forKey: "notificationThreshold") as? Int ?? 1
-        let categories = UserDefaults.standard.stringArray(forKey: "notificationCategories") ?? ["portali", "temperature", "power", "ups", "generator"]
+        let categories = UserDefaults.standard.stringArray(forKey: "notificationCategories") ?? ["portali", "temperature", "power", "ups", "generator", "sonde"]
 
         let payload: [String: Any] = [
             "device_token": deviceToken,
@@ -368,6 +369,34 @@ final class NetworkClient: NetworkClientProtocol {
         }
 
         return data
+    }
+
+    // MARK: - fetchProbeHealth
+    func fetchProbeHealth() async throws -> ProbeHealthResponse {
+        let url = baseURL.appendingPathComponent("api/probe-health")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 15
+
+        let delegate = RedirectCapturingDelegate()
+        let delegateSession = makeSessionWithDelegate(delegate)
+
+        let (data, response) = try await performRequest(request, session: delegateSession)
+
+        // Detect session expiry
+        if let destination = delegate.finalURL, destination.path.hasPrefix("/login") {
+            throw NetworkError.sessionExpired
+        }
+
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw NetworkError.invalidResponse(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0)
+        }
+
+        do {
+            return try JSONDecoder().decode(ProbeHealthResponse.self, from: data)
+        } catch {
+            throw NetworkError.decodingError(error)
+        }
     }
 
     // MARK: - Private helpers

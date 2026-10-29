@@ -23,6 +23,9 @@ final class DashboardViewModel: ObservableObject {
     @Published var sensorAlerts: SensorAlerts?
     @Published var sensorError: String?
 
+    // MARK: - Probe health (sonde Kuma)
+    @Published var probeHealth: ProbeHealthResponse?
+
     // MARK: - Computed properties
 
     /// Returns filtered items based on the current filter state.
@@ -73,6 +76,19 @@ final class DashboardViewModel: ObservableObject {
     var generatorSensors: [SensorReading] {
         sensors.filter { $0.category == .generator }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Sonde Kuma ordinate: le non operative prima, poi per label.
+    var kumaProbes: [KumaProbe] {
+        (probeHealth?.probes ?? []).sorted {
+            if $0.isOperative != $1.isOperative { return !$0.isOperative }
+            return $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending
+        }
+    }
+
+    /// True se c'è una sezione "Stato Sonde" da mostrare.
+    var hasProbeHealth: Bool {
+        probeHealth?.hasData ?? false
     }
 
     // MARK: - Dependencies
@@ -136,6 +152,28 @@ final class DashboardViewModel: ObservableObject {
 
         // Fetch sensor data independently (graceful degradation)
         await fetchSensorData()
+
+        // Fetch probe health independently (graceful degradation)
+        await fetchProbeHealth()
+    }
+
+    // MARK: - Probe health fetching
+
+    /// Recupera lo stato delle sonde Kuma da `/api/probe-health`.
+    /// Non distruttivo: in caso di errore di rete mantiene i dati precedenti
+    /// (come fa fetchSensorData), così la sezione non sparisce a ogni refresh.
+    /// Aggiorna solo se la risposta è valida (status ok/disabled).
+    private func fetchProbeHealth() async {
+        do {
+            let response = try await network.fetchProbeHealth()
+            // Aggiorna solo con una risposta valida; ignora stati di errore
+            // transitori per non svuotare la sezione.
+            if response.status != .error {
+                probeHealth = response
+            }
+        } catch {
+            // Errore di rete: preserva i dati precedenti (non azzerare).
+        }
     }
 
     // MARK: - Sensor data fetching

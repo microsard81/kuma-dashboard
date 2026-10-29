@@ -114,6 +114,10 @@ struct SettingsView: View {
                         get: { settingsVM.notificationCategories.contains("generator") },
                         set: { _ in settingsVM.toggleNotificationCategory("generator") }
                     ))
+                    Toggle("Stato Sonde", isOn: Binding(
+                        get: { settingsVM.notificationCategories.contains("sonde") },
+                        set: { _ in settingsVM.toggleNotificationCategory("sonde") }
+                    ))
                 }
             }
 

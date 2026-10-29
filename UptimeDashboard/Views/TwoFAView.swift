@@ -127,6 +127,7 @@ private final class Preview2FANetworkClient: NetworkClientProtocol {
     func getBiometricToken() async throws -> String { return "mock_token" }
     func biometricLogin(username: String, biometricToken: String) async throws {}
     func fetchSensorData() async throws -> Data { return Data("{}".utf8) }
+    func fetchProbeHealth() async throws -> ProbeHealthResponse { ProbeHealthResponse(status: .ok, probes: []) }
 }
 
 private final class Preview2FAKeychainStore: KeychainStoreProtocol {
