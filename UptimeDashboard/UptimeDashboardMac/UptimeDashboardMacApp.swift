@@ -21,7 +21,7 @@ struct UptimeDashboardMacApp: App {
                     UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
                 }
         }
-        .windowStyle(.titleBar)
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 900, height: 650)
         .commands {
             CommandGroup(after: .toolbar) {
