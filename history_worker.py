@@ -39,6 +39,7 @@ from redis_history import (
     set_monitor_probes_state,
     get_probe_health_state,
     set_probe_health_state,
+    save_probe_point,
 )
 from push_utils import send_push_to_all
 from apns_utils import send_apns_to_all
@@ -609,6 +610,10 @@ def check_probe_health_alerts():
             continue
 
         new_state = "operative" if is_operative else "down"
+
+        # Salva sempre un punto nello storico sonda (0 = operativa, 2 = non operativa)
+        save_probe_point(check_id, 0 if is_operative else 2)
+
         prev_state = get_probe_health_state(check_id)
 
         # Primo rilevamento: memorizza senza notificare.

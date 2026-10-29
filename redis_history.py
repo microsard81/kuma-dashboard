@@ -274,3 +274,28 @@ def get_probe_health_state(check_id: str) -> str | None:
 def set_probe_health_state(check_id: str, state: str) -> None:
     """Salva lo stato operativo corrente della sonda."""
     r.set(f"probe:health_state:{check_id}", state)
+
+
+# ------------------ STORICO PER SONDA (sparkline) ------------------ #
+# Serie storica dello stato di ogni sonda, analoga a save_point per i monitor.
+# Chiave: history:probe:<check_id>  — valore per punto: "severity"
+# severity: 0 = operativa, 2 = non operativa (coerente con i colori sparkline).
+
+def save_probe_point(check_id: str, severity: int) -> None:
+    """Salva un punto nello storico di una sonda (max MAX_HISTORY_POINTS)."""
+    key = f"history:probe:{check_id}"
+    r.rpush(key, str(severity))
+    r.ltrim(key, -MAX_HISTORY_POINTS, -1)
+
+
+def load_probe_history(check_id: str) -> list[int]:
+    """Carica lo storico di una sonda come lista di severity (0 o 2)."""
+    key = f"history:probe:{check_id}"
+    data = r.lrange(key, 0, -1)
+    result = []
+    for raw in (data or []):
+        try:
+            result.append(int(raw))
+        except (ValueError, TypeError):
+            result.append(0)
+    return result

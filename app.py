@@ -786,11 +786,24 @@ def api_probe_health():
     """Stato delle sonde di monitoraggio Kuma (check NodePing).
 
     Distinto dai portali: indica se gli agenti di monitoraggio stessi
-    sono operativi. Autenticazione: sessione Flask (@login_required).
+    sono operativi. Include lo storico per-sonda (sparkline) da Redis.
+    Autenticazione: sessione Flask (@login_required).
     """
     from probe_health_client import fetch_probe_health
+    from redis_history import load_probe_history
 
-    return jsonify(fetch_probe_health())
+    data = fetch_probe_health()
+
+    # Arricchisci con lo storico per-sonda (gestito da noi in Redis, non dal webhook)
+    history = {}
+    if data.get("status") == "ok":
+        for probe in data.get("probes", []):
+            check_id = probe.get("check_id")
+            if check_id:
+                history[check_id] = load_probe_history(check_id)
+    data["history"] = history
+
+    return jsonify(data)
 
 
 @app.route("/api/events")
