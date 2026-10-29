@@ -34,6 +34,7 @@ enum DashboardSection: String, CaseIterable, Identifiable {
     case potenza
     case ups
     case generatori
+    case sonde
 
     var id: String { rawValue }
 
@@ -44,6 +45,7 @@ enum DashboardSection: String, CaseIterable, Identifiable {
         case .potenza: return "Potenza"
         case .ups: return "UPS"
         case .generatori: return "Generatori"
+        case .sonde: return "Stato Sonde"
         }
     }
 
@@ -54,6 +56,7 @@ enum DashboardSection: String, CaseIterable, Identifiable {
         case .potenza: return "Potenza"
         case .ups: return "UPS"
         case .generatori: return "GE"
+        case .sonde: return "Sonde"
         }
     }
 
@@ -64,6 +67,7 @@ enum DashboardSection: String, CaseIterable, Identifiable {
         case .potenza: return "bolt.fill"
         case .ups: return "battery.75percent"
         case .generatori: return "fuelpump.fill"
+        case .sonde: return "antenna.radiowaves.left.and.right"
         }
     }
 }
@@ -135,6 +139,10 @@ struct MacDashboardView: View {
         return .orange
     }
 
+    private var probeStatusColor: Color {
+        viewModel.probeNonOperativeCount > 0 ? .red : .green
+    }
+
     private func sectionStatusColor(for section: DashboardSection) -> Color {
         switch section {
         case .portali: return ledColor
@@ -142,6 +150,7 @@ struct MacDashboardView: View {
         case .potenza: return powerStatusColor
         case .ups: return upsStatusColor
         case .generatori: return generatorStatusColor
+        case .sonde: return probeStatusColor
         }
     }
 
@@ -326,6 +335,9 @@ struct MacDashboardView: View {
         case .generatori:
             let c = viewModel.generatorSensors.filter { $0.status == .critical }.count
             return c > 0 ? "\(c)" : nil
+        case .sonde:
+            let c = viewModel.probeNonOperativeCount
+            return c > 0 ? "\(c)" : nil
         }
     }
 
@@ -413,6 +425,7 @@ struct MacDashboardView: View {
         case .potenza: return .potenza
         case .ups: return .ups
         case .generatore: return .generatori
+        case .sonda: return .sonde
         }
     }
 
@@ -451,6 +464,11 @@ struct MacDashboardView: View {
             let critical = sensors.filter { $0.status == .critical }.count
             if critical > 0 { return "\(critical)/\(sensors.count) Critical" }
             return "OK (\(sensors.count))"
+        case .sonde:
+            let total = viewModel.probes.count
+            let down = viewModel.probeNonOperativeCount
+            if down > 0 { return "\(down)/\(total) KO" }
+            return "OK (\(total))"
         }
     }
 
@@ -489,6 +507,67 @@ struct MacDashboardView: View {
                 icon: "fuelpump.fill",
                 color: generatorStatusColor
             )
+        case .sonde:
+            probesDetail
+        }
+    }
+
+    // MARK: - Probes Detail (Stato Sonde) — struttura identica ai Portali
+
+    private var probesDetail: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                    .foregroundColor(probeStatusColor)
+                Text("Stato Sonde")
+                    .font(.scaled(.headline, scale: scale))
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(probeStatusColor.opacity(0.05))
+
+            Divider()
+
+            if viewModel.kumaProbes.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .font(.system(size: 36))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("Nessuna sonda disponibile")
+                        .font(.scaled(.subheadline, scale: scale))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        let probes = viewModel.kumaProbes
+                        let downItems = probes.filter { !$0.isOperative }
+                        let upItems = probes.filter { $0.isOperative }
+                        let allUp = downItems.isEmpty
+
+                        if !downItems.isEmpty {
+                            SectionHeader(title: "Non operative", icon: "xmark.circle.fill", color: .red)
+                            ForEach(downItems) { probe in
+                                MacProbeRow(probe: probe)
+                                    .background(Color.red.opacity(0.12))
+                                    .contextMenu { pinContextMenu(for: probe.id, type: .sonda) }
+                            }
+                        }
+
+                        if !upItems.isEmpty {
+                            if !allUp {
+                                SectionHeader(title: "Operative", icon: "checkmark.circle.fill", color: .green)
+                            }
+                            ForEach(upItems) { probe in
+                                MacProbeRow(probe: probe)
+                                    .contextMenu { pinContextMenu(for: probe.id, type: .sonda) }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -934,6 +1013,45 @@ private struct MacMonitorRow: View {
     }
 }
 
+// MARK: - Probe Row (sonde Kuma) — modellata su MacMonitorRow
+
+private struct MacProbeRow: View {
+    let probe: MacProbe
+    @Environment(\.textScale) var scale
+    @State private var selectionLabel: String? = nil
+    @State private var hoveredSegment: MacSparklineSegment? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(probe.label).font(.scaled(.body, scale: scale, weight: .semibold))
+                Spacer()
+                if let label = selectionLabel {
+                    Text(label)
+                        .font(.scaled(.caption2, scale: scale, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .transition(.opacity)
+                }
+                Text(probe.isOperative ? "OK" : "KO")
+                    .font(.scaled(.caption, scale: scale, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(probe.isOperative ? Color.green : Color.red)
+                    .clipShape(Capsule())
+            }
+            .animation(.easeInOut(duration: 0.12), value: selectionLabel)
+
+            MacSparklineView(history: probe.history, selectionLabel: $selectionLabel, hoveredSegment: $hoveredSegment)
+                .frame(height: 28)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+
+        Divider().padding(.leading, 16)
+    }
+}
+
 // MARK: - Probe Indicator
 
 private struct ProbeIndicator: View {
@@ -1101,7 +1219,12 @@ private struct MacPinnedCardView: View {
     }
 
     private var displayName: String {
-        item.id.replacingOccurrences(of: "INVA - ", with: "")
+        // Le sonde usano check_id come id: risolvi nella label leggibile.
+        if item.type == .sonda,
+           let probe = viewModel.kumaProbes.first(where: { $0.id == item.id }) {
+            return probe.label
+        }
+        return item.id.replacingOccurrences(of: "INVA - ", with: "")
     }
 
     private var iconName: String {
@@ -1111,6 +1234,7 @@ private struct MacPinnedCardView: View {
         case .potenza: return "bolt.fill"
         case .ups: return "battery.75percent"
         case .generatore: return "fuelpump.fill"
+        case .sonda: return "antenna.radiowaves.left.and.right"
         }
     }
 
@@ -1121,6 +1245,7 @@ private struct MacPinnedCardView: View {
         case .potenza: return .potenza
         case .ups: return .ups
         case .generatore: return .generatori
+        case .sonda: return .sonde
         }
     }
 
@@ -1152,6 +1277,11 @@ private struct MacPinnedCardView: View {
                 if sensor.status == .critical { return .red }
             }
             return .orange
+        case .sonda:
+            if let probe = viewModel.kumaProbes.first(where: { $0.id == item.id }) {
+                if !probe.isOperative { return .red }
+            }
+            return .green
         }
     }
 
@@ -1165,6 +1295,11 @@ private struct MacPinnedCardView: View {
         case .temperatura, .potenza, .ups, .generatore:
             if let sensor = viewModel.sensors.first(where: { $0.id == item.id }) {
                 return sensor.displayValueWithUnit
+            }
+            return "—"
+        case .sonda:
+            if let probe = viewModel.kumaProbes.first(where: { $0.id == item.id }) {
+                return probe.isOperative ? "OK" : "KO"
             }
             return "—"
         }
@@ -1330,7 +1465,9 @@ private struct MacNotificationInlineView: View {
     private func navigateToResource(_ notif: NotificationRecord) {
         let title = notif.title.lowercased()
         let section: DashboardSection
-        if title.contains("temperatura") || title.contains("temp") {
+        if title.contains("sonda") {
+            section = .sonde
+        } else if title.contains("temperatura") || title.contains("temp") {
             section = .temperatura
         } else if title.contains("carico kw") || title.contains("potenza") {
             section = .potenza

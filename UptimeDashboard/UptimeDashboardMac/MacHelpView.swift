@@ -74,6 +74,7 @@ struct HelpWebView: NSViewRepresentable {
     <tr><td>Potenza</td><td>Sensori di potenza elettrica (kW) con grafico storico.</td></tr>
     <tr><td>UPS</td><td>Stato UPS: batteria, sorgente, capacità, durata, fasi.</td></tr>
     <tr><td>Generatori</td><td>Stato gruppi elettrogeni: controller, tensione, carico, carburante.</td></tr>
+    <tr><td>Stato Sonde</td><td>Salute degli agenti di monitoraggio Kuma (operative / non operative) con sparkline storica. Se una sonda non è operativa il monitoraggio dei portali è meno affidabile.</td></tr>
     </table>
 
     <h2>Sonde di monitoraggio</h2>
@@ -142,6 +143,7 @@ struct HelpWebView: NSViewRepresentable {
     <li><strong>Potenza</strong> — alert sensori potenza</li>
     <li><strong>UPS</strong> — alert UPS</li>
     <li><strong>Generatori</strong> — alert gruppi elettrogeni</li>
+    <li><strong>Stato Sonde</strong> — alert immediato quando una sonda di monitoraggio non è operativa</li>
     </ul>
     <p>La configurazione è per-dispositivo.</p>
 

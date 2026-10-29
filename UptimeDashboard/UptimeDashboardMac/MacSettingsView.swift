@@ -128,6 +128,10 @@ struct MacSettingsView: View {
                     get: { viewModel.notificationCategories.contains("generator") },
                     set: { _ in viewModel.toggleNotificationCategory("generator") }
                 ))
+                Toggle("Stato Sonde", isOn: Binding(
+                    get: { viewModel.notificationCategories.contains("sonde") },
+                    set: { _ in viewModel.toggleNotificationCategory("sonde") }
+                ))
             }
 
             // Salvataggio eventi in locale

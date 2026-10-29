@@ -12,6 +12,7 @@ struct MacPinnedItem: Identifiable, Codable, Equatable {
         case potenza
         case ups
         case generatore
+        case sonda
     }
 }
 

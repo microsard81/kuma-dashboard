@@ -38,6 +38,19 @@ struct MacMonitor: Identifiable, Equatable {
     }
 }
 
+// MARK: - Probe Model (sonde Kuma)
+
+struct MacProbe: Identifiable, Equatable {
+    let id: String          // check_id
+    let label: String
+    let isOperative: Bool
+    let history: [[String: Any]]   // [["s": severity], ...] per MacSparklineView
+
+    static func == (lhs: MacProbe, rhs: MacProbe) -> Bool {
+        lhs.id == rhs.id && lhs.label == rhs.label && lhs.isOperative == rhs.isOperative
+    }
+}
+
 // MARK: - ViewModel
 
 @MainActor
@@ -55,6 +68,24 @@ final class MacAppViewModel: ObservableObject {
     @Published var sensorHistory: [String: [SensorHistoryPoint]] = [:]
     @Published var sensorAlerts: SensorAlerts?
     @Published var sensorError: String?
+
+    // MARK: - Probe health (sonde Kuma)
+    @Published var probes: [MacProbe] = []
+    @Published var probeStatusAvailable: Bool = false   // true se status == ok
+
+    /// Sonde ordinate: non operative prima, poi per label.
+    var kumaProbes: [MacProbe] {
+        probes.sorted {
+            if $0.isOperative != $1.isOperative { return !$0.isOperative }
+            return $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending
+        }
+    }
+
+    /// True se c'è una sezione Sonde da mostrare.
+    var hasProbeHealth: Bool { probeStatusAvailable && !probes.isEmpty }
+
+    /// Numero di sonde non operative.
+    var probeNonOperativeCount: Int { probes.filter { !$0.isOperative }.count }
 
     /// Temperature sensors filtered from the full sensors array.
     var temperatureSensors: [SensorReading] {
@@ -270,9 +301,18 @@ final class MacAppViewModel: ObservableObject {
         let storedThreshold = defaults.object(forKey: "mac_notification_threshold") as? Int ?? 1
         self.notificationThreshold = (1...5).contains(storedThreshold) ? storedThreshold : 1
 
-        // Notification categories (default: all enabled)
-        let storedCategories = defaults.stringArray(forKey: "mac_notification_categories") ?? ["portali", "temperature", "power", "ups", "generator"]
-        self.notificationCategories = Set(storedCategories)
+        // Notification categories (default: all enabled, inclusa "sonde")
+        if let storedCategories = defaults.stringArray(forKey: "mac_notification_categories") {
+            // Migrazione: aggiungi "sonde" per gli utenti esistenti (nuova categoria, ON di default)
+            var set = Set(storedCategories)
+            if !set.contains("sonde") {
+                set.insert("sonde")
+                defaults.set(Array(set), forKey: "mac_notification_categories")
+            }
+            self.notificationCategories = set
+        } else {
+            self.notificationCategories = ["portali", "temperature", "power", "ups", "generator", "sonde"]
+        }
 
         // Biometric enabled (default: true)
         self.biometricEnabled = defaults.object(forKey: "mac_biometric_enabled") as? Bool ?? true
@@ -497,6 +537,53 @@ final class MacAppViewModel: ObservableObject {
 
         // Fetch sensor data independently (graceful degradation)
         await fetchSensorData()
+
+        // Fetch probe health independently (graceful degradation)
+        await fetchProbeHealth()
+    }
+
+    // MARK: - Fetch Probe Health
+
+    /// Recupera lo stato delle sonde Kuma da `/api/probe-health` (cookie di sessione).
+    /// Non distruttivo: su errore mantiene i dati precedenti (come i sensori),
+    /// così la sezione non sparisce a ogni refresh.
+    func fetchProbeHealth() async {
+        guard let url = URL(string: "\(baseURL)/api/probe-health") else { return }
+        let request = makeAuthenticatedRequest(url: url, method: "GET")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            saveCookies(from: response)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return  // preserva i dati precedenti
+            }
+
+            let status = json["status"] as? String ?? "error"
+            guard status == "ok" else {
+                // disabled/error: nascondi la sezione ma non azzerare se già popolata
+                if status == "disabled" {
+                    probes = []
+                    probeStatusAvailable = false
+                }
+                return
+            }
+
+            let historyMap = json["history"] as? [String: [Int]] ?? [:]
+            let rawProbes = json["probes"] as? [[String: Any]] ?? []
+
+            probes = rawProbes.compactMap { dict in
+                guard let checkId = dict["check_id"] as? String,
+                      let label = dict["label"] as? String else { return nil }
+                let isOperative = dict["is_operative"] as? Bool ?? true
+                let severities = historyMap[checkId] ?? []
+                let history: [[String: Any]] = severities.map { ["s": $0] }
+                return MacProbe(id: checkId, label: label, isOperative: isOperative, history: history)
+            }
+            probeStatusAvailable = true
+        } catch {
+            // Errore di rete: preserva i dati precedenti
+        }
     }
 
     // MARK: - Fetch Sensor Data
