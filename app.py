@@ -864,10 +864,25 @@ def api_watch_data():
     inverter = fetch_inverter_data()
     sensor_payload = build_sensor_payload(inverter)
 
+    # Probe health (sonde Kuma) — graceful degradation
+    from probe_health_client import fetch_probe_health
+    probe_data = fetch_probe_health()
+    if probe_data.get("status") == "ok":
+        watch_probes = [
+            {"label": p.get("label", ""), "is_operative": bool(p.get("is_operative", True))}
+            for p in probe_data.get("probes", [])
+        ]
+        probe_non_operative = probe_data.get("non_operative_count", 0)
+    else:
+        watch_probes = []
+        probe_non_operative = 0
+
     response = {
         "items": rows,
         "global_state": global_state,
         "timestamp": datetime.now().isoformat(),
+        "probes": watch_probes,
+        "probe_non_operative_count": probe_non_operative,
     }
     response.update(sensor_payload)
     return jsonify(response)
