@@ -92,7 +92,13 @@ private struct MacForgotPasswordSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
+        // Stesso linguaggio visivo di MacLoginView: icona accent, titolo,
+        // campo roundedBorder 300pt, pulsante primario borderedProminent, azione secondaria .link
+        VStack(spacing: 20) {
+            Image(systemName: "key.fill")
+                .font(.system(size: 40))
+                .foregroundColor(.accentColor)
+
             Text("Password dimenticata")
                 .font(.title2.bold())
 
@@ -101,51 +107,56 @@ private struct MacForgotPasswordSheet: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 300)
 
             TextField("Username", text: $username)
                 .textContentType(.username)
                 .textFieldStyle(.roundedBorder)
-                .frame(width: 280)
+                .frame(maxWidth: 300)
                 .disabled(isSending || isSent)
 
             if let outcome {
                 switch outcome {
                 case .sent(let message):
-                    Label(message, systemImage: "envelope")
+                    Label(message, systemImage: "envelope.badge")
                         .foregroundColor(.green)
                         .font(.footnote)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: 300)
                 case .failed(let message):
                     Text(message)
                         .foregroundColor(.red)
                         .font(.footnote)
                         .multilineTextAlignment(.center)
+                        .frame(maxWidth: 300)
                 }
             }
 
-            HStack(spacing: 12) {
-                Button("Chiudi") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-
-                Button {
-                    Task {
-                        isSending = true
-                        outcome = await viewModel.requestPasswordReset(username: trimmedUsername)
-                        isSending = false
-                    }
-                } label: {
-                    if isSending {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Text("Invia link")
-                    }
+            // Pulsante primario, stesso stile di "Accedi"
+            Button {
+                Task {
+                    isSending = true
+                    outcome = await viewModel.requestPasswordReset(username: trimmedUsername)
+                    isSending = false
                 }
-                .keyboardShortcut(.defaultAction)
-                .disabled(trimmedUsername.isEmpty || isSending || isSent)
+            } label: {
+                if isSending {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Text(isSent ? "Link inviato" : "Invia link")
+                }
             }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut(.defaultAction)
+            .disabled(trimmedUsername.isEmpty || isSending || isSent)
+
+            // Azione secondaria, stesso stile di "Password dimenticata?"
+            Button(isSent ? "Torna al login" : "Chiudi") { dismiss() }
+                .buttonStyle(.link)
+                .keyboardShortcut(.cancelAction)
         }
-        .padding(24)
-        .frame(width: 380)
+        .padding(32)
+        .frame(width: 400)
     }
 }

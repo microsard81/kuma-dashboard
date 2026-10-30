@@ -181,31 +181,57 @@ private struct ForgotPasswordSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
+        ZStack {
+            // Stesso sfondo della schermata di login
+            Color(hex: "#141c2b")
+                .ignoresSafeArea()
+
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header: titolo + Chiudi
+                    HStack {
+                        Text("Password dimenticata")
+                            .font(.title3.bold())
+                            .accessibilityAddTraits(.isHeader)
+                        Spacer()
+                        Button("Chiudi") { dismiss() }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .padding(.top, 24)
+
+                    Text("Inserisci il tuo username. Riceverai via email un link valido 30 minuti. Dopo il reset il 2FA verrà reimpostato e sarai disconnesso da tutti i dispositivi.")
+                        .font(.footnote)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    // Campo identico a quello del login
                     TextField("Username", text: $username)
                         .textContentType(.username)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
-                } footer: {
-                    Text("Riceverai via email un link valido 30 minuti. Dopo il reset il 2FA verrà reimpostato e sarai disconnesso da tutti i dispositivi.")
-                }
+                        .padding()
+                        .foregroundColor(.primary)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(10)
+                        .disabled(isSent)
 
-                if let outcome {
-                    Section {
+                    if let outcome {
                         switch outcome {
                         case .sent(let message):
-                            Label(message, systemImage: "envelope")
+                            Label(message, systemImage: "envelope.badge")
+                                .font(.footnote)
                                 .foregroundStyle(.green)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         case .failed(let message):
                             Text(message)
+                                .font(.footnote)
                                 .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
-                }
 
-                Section {
+                    // Pulsante pieno, stesso stile di "Accedi"
                     Button {
                         Task {
                             isSending = true
@@ -213,23 +239,30 @@ private struct ForgotPasswordSheet: View {
                             isSending = false
                         }
                     } label: {
-                        HStack {
-                            Text("Invia link")
+                        Group {
                             if isSending {
-                                Spacer()
-                                ProgressView()
+                                ProgressView().progressViewStyle(.circular).tint(.white)
+                            } else {
+                                Text(isSent ? "Link inviato" : "Invia link").fontWeight(.semibold)
                             }
                         }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(canSend || isSending ? Color.accentColor : Color.gray)
+                        .foregroundStyle(.white)
+                        .cornerRadius(10)
                     }
                     .disabled(!canSend)
+
+                    if isSent {
+                        Button("Torna al login") { dismiss() }
+                            .font(.footnote)
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Color.accentColor)
+                    }
                 }
-            }
-            .navigationTitle("Password dimenticata")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Chiudi") { dismiss() }
-                }
+                .padding(.horizontal)
+                .foregroundStyle(.white)
             }
         }
         .presentationDetents([.medium, .large])
