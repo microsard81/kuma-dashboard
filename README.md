@@ -121,6 +121,18 @@ Copia `.env.example` in `.env` e compila tutti i campi:
 | `REDIS_HOST` | — | Host Redis (default: `127.0.0.1`) |
 | `REDIS_PORT` | — | Porta Redis (default: `6379`) |
 | `REDIS_DB` | — | Database Redis (default: `0`) |
+| `SMTP_HOST` | 📧 | Host del server SMTP per le email di reset password |
+| `SMTP_PORT` | 📧 | Porta SMTP (default: `587`). `465` = SMTPS (TLS implicito); valore non valido → mailer disabilitato |
+| `SMTP_USERNAME` | — | Utente SMTP (vuoto = nessun login SMTP) |
+| `SMTP_PASSWORD` | — | Password SMTP |
+| `SMTP_FROM` | 📧 | Mittente delle email (es. `noreply@example.com`) |
+| `SMTP_STARTTLS` | — | `true`/`false` (anche `1/0`, `yes/no`, `on/off`). Su porte diverse da 465 deve essere `true`: senza TLS l'invio viene rifiutato |
+| `PASSWORD_RESET_TOKEN_TTL_MINUTES` | — | Validità del link di reset in minuti (1..1440, default: `30`; valore non valido → 30 + WARNING) |
+| `PUBLIC_BASE_URL` | 📧 | URL pubblico usato nei link delle email, deve iniziare con `https://` (es. `https://kuma-dashboard.sundata.cloud`) |
+| `ADMIN_NOTIFY_EMAIL` | — | Email dell'admin avvisata a ogni reset completato (vuota = avviso disattivato) |
+| `TRUSTED_PROXY_COUNT` | — | Numero di reverse proxy fidati davanti a gunicorn per `X-Forwarded-For` (1..5, default: `2`) |
+
+> 📧 Necessarie per il reset password self-service. Se `SMTP_HOST`, `SMTP_FROM`, `SMTP_PORT` o `PUBLIC_BASE_URL` mancano o non sono validi, il reset è disabilitato: le richieste ricevono comunque la risposta generica, nessun token viene creato e nel journal compare un ERROR "reset disabilitato: configurazione mancante".
 
 > ⚠️ Le variabili APNs sono opzionali se non si usa l'app iOS nativa. Se assenti, le notifiche APNs vengono silenziosamente saltate.
 
@@ -154,12 +166,14 @@ push_utils.py           # Web Push VAPID (browser/PWA)
 apns_utils.py           # APNs push (app iOS nativa)
 redis_history.py        # Lettura/scrittura storico e stato globale su Redis
 severity.py             # Calcolo severità, stato globale, conteggio sonde DOWN, validazione soglia
-manage_users.py         # CLI gestione utenti (add, remove, list, reset)
+rate_limit.py           # Rate limiting a finestra fissa su Redis (login, 2FA, biometria, reset)
+mailer.py               # Invio email SMTP con TLS obbligatorio, asincrono (link e conferma reset)
+manage_users.py         # CLI gestione utenti (add, remove, list, set-email, reset)
 manage_push.py          # CLI gestione e test notifiche push (list, test, remove)
 wsgi.py                 # Entry point WSGI per produzione
 keys/                   # Chiavi .p8 APNs (non committare, solo deploy)
 static/                 # Asset PWA (CSS, JS, immagini, manifest.json)
-templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, change_password)
+templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, change_password, forgot_password, reset_password)
 ```
 
 ### API endpoints
@@ -170,6 +184,9 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 | `GET/POST` | `/2fa` | — | Verifica codice TOTP |
 | `GET/POST` | `/change-password` | — | Cambio password obbligatorio (primo accesso / reset) |
 | `GET/POST` | `/totp-setup` | — | Enrollment TOTP con QR code (primo accesso / reset) |
+| `GET/POST` | `/forgot-password` | — | Richiesta del link di reset password via email (risposta sempre generica) |
+| `GET/POST` | `/reset-password?token=…` | — | Impostazione della nuova password dal link ricevuto via email |
+| `POST` | `/api/password-reset/request` | — | Richiesta link di reset JSON (app iOS/macOS): body `{"username": "..."}`, risposta sempre `200 {"ok": true, "message": ...}` (400 se il body non è un oggetto JSON, 429 se rate limit) |
 | `GET` | `/logout` | ✅ | Logout |
 | `GET` | `/` | ✅ | Dashboard web |
 | `GET` | `/api/dashboard-data` | ✅ | Dati dashboard in JSON |
@@ -189,6 +206,7 @@ templates/              # Template Jinja2 (login, 2fa, dashboard, totp_setup, ch
 | `POST` | `/push/apns/subscribe` | ✅ | Registra device token APNs (iOS) |
 | `POST` | `/push/apns/unsubscribe` | ✅ | Rimuove device token APNs (iOS) |
 | `POST` | `/push/apns/threshold` | ✅ | Aggiorna soglia notifica APNs (iOS) |
+| `POST` | `/auth/biometric/token` | ✅ | Emissione token biometrico per la sessione corrente |
 | `POST` | `/auth/biometric/login` | — | Login con token biometrico (Face ID / Touch ID) |
 | `GET` | `/api/events` | ✅ | Storico eventi (transizioni stato, alert sensori) con paginazione |
 | `GET` | `/api/watch-data` | Token | Dati dashboard per Apple Watch (header `X-Watch-Token`) |
@@ -417,8 +435,11 @@ Ore 14:35
 | `push:subs_by_endpoint` | Hash | Subscription Web Push VAPID (con campo `threshold` opzionale, default 1) |
 | `apns:subs_by_token` | Hash | Device token APNs iOS/Mac (con `bundle_id` opzionale per Mac, `threshold` opzionale, default 1) |
 | `anomalous_resources` | Set | Nomi risorse anomale del ciclo corrente (per notifiche same-state) |
-| `user:<username>` | Hash | Credenziali utente (`password_hash`, `totp_secret`, `totp_enrolled`, `must_change_password`, `password_history`) |
-| `biometric:<username>:<token>` | String | Token biometrico con TTL 90 giorni |
+| `user:<username>` | Hash | Credenziali utente (`password_hash`, `totp_secret`, `totp_enrolled`, `must_change_password`, `password_history`, `email` opzionale in minuscolo, `session_epoch` intero, assente = 0, incrementato a ogni reset password) |
+| `biometric:<username>:<token>` | String | Token biometrico con TTL 90 giorni. Valore `e<epoch>` (es. `e0`) legato al `session_epoch`; il valore legacy `1` resta valido solo finché l'epoch è 0 |
+| `pwreset:<sha256 del token>` | String | Username a cui appartiene il token di reset; TTL `PASSWORD_RESET_TOKEN_TTL_MINUTES`. Il token in chiaro non è mai salvato |
+| `pwreset_user:<username>` | String | Hash dell'unico token di reset attivo dell'utente (una nuova richiesta invalida il precedente); stesso TTL |
+| `rl:<scope>:<kind>:<hash>:<finestra>` | String | Contatore di rate limiting (identificatore hashato con SHA-256, mai in chiaro); TTL = finestra + 5 s |
 | `inverter:alert_state:<sensor_name>` | String | Stato alert sensore inverter (`normal`/`warning`/`critical`) |
 | `monitor_probes_state` | Hash | Sonde DOWN per monitor (nome → lista sonde separate da virgola) per event log granulare |
 | `events:log` | List | Event log con le ultime 500 transizioni di stato (JSON, più recenti in testa) |
@@ -430,11 +451,14 @@ Gli utenti sono salvati in Redis. Usa lo script CLI per gestirli:
 ```bash
 source /home/venvs/kuma-dashboard/bin/activate
 
-# Aggiungi un utente (chiede password interattivamente)
+# Aggiungi un utente (valida lo username, chiede password ed email opzionale)
 python manage_users.py add <username>
 
-# Lista utenti
+# Lista utenti con email associata ("—" se assente)
 python manage_users.py list
+
+# Imposta o aggiorna l'email per il reset password self-service
+python manage_users.py set-email <username> <email>
 
 # Reset password (obbliga il cambio al prossimo login)
 python manage_users.py reset-password <username>
@@ -459,6 +483,96 @@ python manage_users.py remove <username>
 > Requisiti password: almeno 8 caratteri, una maiuscola, una minuscola, un numero e un carattere speciale. Le ultime 5 password non possono essere riutilizzate (il reset da CLI azzera lo storico).
 
 > Al primo avvio, se le variabili `AUTH_PASSWORD_HASH` e `AUTH_TOTP_SECRET` sono presenti in `.env`, l'utente legacy viene migrato automaticamente in Redis come già enrolled.
+
+> `add`: lo username deve rispettare `^[A-Za-z0-9._-]{1,64}$`; l'email è opzionale ma, se inserita e non valida, il comando esce con codice 1 prima di creare l'utente. `set-email`: utente inesistente o email non valida → messaggio ed exit code 1; l'email viene salvata in minuscolo. `remove` cancella anche i token biometrici (via `SCAN`) e l'eventuale token di reset pendente.
+
+> `reset-password` e `reset-totp` da CLI **non** revocano le sessioni attive (comportamento invariato). Per chiudere tutte le sessioni di un utente usare il reset password self-service.
+
+### Reset password self-service
+
+Gli utenti con un'email associata (`manage_users.py set-email`) possono reimpostare la password da soli, dalla PWA (link "Password dimenticata?" sotto "Accedi") o dalle app iOS/macOS (pulsante "Password dimenticata?" nella schermata di login).
+
+**Flusso:**
+1. L'utente inserisce lo username su `/forgot-password` (PWA) o nello sheet nativo delle app (`POST /api/password-reset/request`)
+2. La risposta è sempre la stessa, che l'utente esista o meno e che abbia o meno un'email: "Se l'account esiste ed ha un'email associata, riceverai un link a breve." (nessuna enumerazione degli utenti; l'invio è asincrono, quindi anche i tempi di risposta non cambiano in modo apprezzabile)
+3. Se l'utente esiste e ha un'email, il backend genera un token (`secrets.token_urlsafe(32)`), salva in Redis solo il suo hash SHA-256 e invia l'email con il link `PUBLIC_BASE_URL/reset-password?token=…`, valido `PASSWORD_RESET_TOKEN_TTL_MINUTES` minuti (default 30). Una nuova richiesta invalida il link precedente
+4. L'utente apre il link nel browser e sceglie la nuova password (stessi requisiti di complessità, massimo 128 caratteri, non tra le ultime 5; spazi iniziali/finali rimossi come nelle altre form)
+5. Il token è monouso (`GETDEL`): un secondo invio o una seconda scheda ricevono "Link non valido o scaduto."
+
+**Effetti del reset completato** (in un'unica transazione Redis):
+- nuova password salvata, `must_change_password` azzerato, storico aggiornato
+- **2FA invalidato**: nuovo secret TOTP e `totp_enrolled=0`; al login successivo (web o app) l'utente rifà l'enrollment con QR code. Fino ad allora l'unico fattore è la password
+- **tutte le sessioni chiuse**: `session_epoch` incrementato, quindi sessioni web, cookie "Ricordami", sessioni delle app e sessioni a metà login (pending) diventano non valide
+- token biometrici (Face ID / Touch ID) cancellati e comunque inutilizzabili perché legati al vecchio epoch
+- email di conferma all'utente ("password modificata il …") e, se `ADMIN_NOTIFY_EMAIL` è impostata, avviso all'admin con username, data/ora e IP da cui è stato completato il reset
+- nessun login automatico: l'utente torna alla pagina di login
+
+**Pagine:** `/forgot-password` e `/reset-password` hanno una `Content-Security-Policy` restrittiva (nessun JS), `Referrer-Policy: no-referrer` e `Cache-Control: no-store`, così il token non finisce nel Referer né nella cache del browser.
+
+**Email:** inviate via SMTP con TLS obbligatorio (porta 465 = SMTPS, altre porte solo con STARTTLS); un errore SMTP non cambia la risposta all'utente e viene registrato nel journal come `Invio email fallito ref=… errore=<tipo>` senza destinatario, corpo, token o credenziali.
+
+**Rischio residuo accettato:** il link contiene il token nella query string (`?token=`), quindi la request line finisce negli access log di gunicorn (`/var/log/kuma-dashboard/access.log`), di Apache e del reverse proxy upstream (non nel journal né nei log applicativi). Mitigazioni: token monouso, durata 30 minuti, in Redis solo l'hash, log leggibili solo da root.
+
+**Log (journal di `kuma-dashboard.service`):** INFO per ogni richiesta (`esito` = `inviata`, `utente_sconosciuto_o_senza_email` o `disabilitato`) e per ogni reset completato, WARNING per token non validi e rate limit, ERROR per Redis/SMTP non disponibili. Mai password, codici TOTP, token o email.
+
+### Rate limiting
+
+Contatori a finestra fissa in Redis (`rate_limit.py`), solo sulle richieste POST. Si conta ogni tentativo, anche riuscito. Prima si controlla il limite per IP, poi quello per username/token; se il primo blocca, il secondo non viene incrementato.
+
+| Scope | Route | Limite |
+|---|---|---|
+| `login` | `/login`, `/api/login` | 10 / 15 min per IP, 5 / 15 min per username |
+| `totp` | `/2fa`, `/totp-setup`, `/api/2fa`, `/api/totp/enroll` | 5 / 15 min per username (pending) |
+| `bio` | `/auth/biometric/login` | 10 / 15 min per IP |
+| `chpw` | `/change-password`, `/api/change-password` | 10 / 15 min per username (pending) |
+| `pwreq` | `/forgot-password`, `/api/password-reset/request` | 10 / ora per IP, 3 / ora per username (anche inesistente) |
+| `pwreset` | `/reset-password` | 10 / 15 min per IP, 5 / 15 min per token |
+
+Oltre il limite: HTTP **429** con header `Retry-After` (secondi alla fine della finestra). Le API JSON rispondono `{"ok": false, "error": "Troppi tentativi, riprova più tardi"}`, le pagine web mostrano "Troppi tentativi, riprova più tardi." nella stessa pagina. Le app iOS/macOS mostrano lo stesso messaggio e **non** cancellano il token Face ID / Touch ID.
+
+Se Redis non è disponibile il rate limiting è fail-open (la richiesta viene servita, ERROR nel journal). Un attaccante può esaurire i 5 tentativi per username di una vittima e bloccarne il login per 15 minuti: è un throttling temporaneo, non un lockout.
+
+Per sbloccare subito un utente (azzera **tutti** i contatori):
+
+```bash
+redis-cli --scan --pattern 'rl:*' | xargs -r redis-cli del
+```
+
+### Reverse proxy e IP client (ProxyFix)
+
+La catena è client → reverse proxy upstream (termina il TLS) → Apache → gunicorn `127.0.0.1:9200`. gunicorn riceve `X-Forwarded-For: <client>, <upstream>`. `app.py` usa `ProxyFix(x_for=TRUSTED_PROXY_COUNT, x_proto=1, x_host=1)` con `TRUSTED_PROXY_COUNT=2` di default: l'IP client usato da rate limiting e log è quello aggiunto dal proxy upstream, e valori falsificati in testa a `X-Forwarded-For` vengono ignorati. Se la catena di proxy cambia, aggiornare `TRUSTED_PROXY_COUNT`.
+
+Casi limite: richieste dirette a `127.0.0.1:9200` (es. curl di test) o con un solo valore in `X-Forwarded-For` restano con IP `127.0.0.1` e condividono quel contatore; un client della rete interna che chiama Apache direttamente può falsificare l'IP (rischio residuo accettato: i limiti per username restano attivi).
+
+### Header di sicurezza
+
+Tutte le risposte Flask includono (senza sovrascrivere header già impostati):
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Strict-Transport-Security: max-age=31536000` (senza `includeSubDomains`, per non toccare gli altri host del dominio)
+
+Solo su `/forgot-password` e `/reset-password`: `Content-Security-Policy: default-src 'none'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`. Nessuna CSP globale (la dashboard usa script inline e CDN).
+
+### Effetto al deploy
+
+Nessun logout di massa: le sessioni, i cookie "Ricordami" e i token biometrici emessi prima del deploy (senza epoch) restano validi finché l'utente non esegue un reset password self-service. Le nuove sessioni usano l'id `username:epoch`.
+
+### Note di sicurezza / cambiamenti
+
+Comportamenti esistenti modificati dall'introduzione del reset password e del rate limiting:
+1. `/2fa` e `/api/2fa` richiedono il flag `2fa_pending`; `/login` e `/api/login` ripuliscono le chiavi pending di tentativi precedenti (chiude il bypass del cambio password obbligatorio).
+2. Id di sessione Flask-Login `username:epoch`; le sessioni esistenti senza epoch restano valide finché l'utente non fa un reset.
+3. Token biometrici nuovi salvati con valore `e<epoch>` (i vecchi `1` restano validi con epoch 0); emissione centralizzata in `_issue_biometric_token`.
+4. Header di sicurezza globali (nosniff, `X-Frame-Options: DENY`, Referrer-Policy, HSTS) su tutte le risposte Flask.
+5. `logging.basicConfig` in `app.py`: i WARNING/ERROR applicativi compaiono nel journal di `kuma-dashboard.service`.
+6. `login.html` e `2fa.html` mostrano finalmente gli errori "Credenziali non valide." / "Codice 2FA non valido." (prima non venivano mai visualizzati) e il messaggio di rate limit.
+7. Limite di 128 caratteri sulla nuova password anche in `/change-password` e `/api/change-password`. `manage_users add`/`reset-password` restano invariati su questo punto.
+8. Redis non disponibile durante la verifica della sessione → HTTP 503 (JSON su `/api/`, `/auth/`, `/push/`; testo sulle pagine web) invece di servire la richiesta senza controlli. I client non vengono sloggati.
+9. macOS `fetchDashboard` e PWA `refreshDashboard` riportano al login se la richiesta viene rediretta a `/login` (sessione revocata).
+10. `manage_users.py remove` usa `scan_iter` invece di `keys` e cancella anche le chiavi di reset; `add` valida lo username e chiede l'email.
+11. Le route biometriche e `/api/2fa`, `/api/totp/enroll` usano il client Redis di modulo invece di crearne uno a ogni richiesta (nessun effetto funzionale).
+12. iOS: un 429 o un 5xx sul login Face ID non cancella più il token biometrico dal Keychain (prima ogni non-200 lo cancellava).
 
 ### Gestione notifiche push
 
@@ -531,6 +645,9 @@ python -m pytest tests/ -v
 
 # Solo i test APNs
 python -m pytest tests/test_apns_utils.py tests/test_apns_endpoints.py -v
+
+# Reset password, revoca sessioni, rate limiting e mailer
+python -m pytest tests/test_auth_reset.py tests/test_password_reset.py tests/test_session_epoch.py tests/test_rate_limit.py tests/test_mailer.py -v
 ```
 
 I test coprono 5 proprietà di correttezza verificate con Hypothesis (property-based testing):
@@ -646,7 +763,8 @@ UptimeDashboardTests/
 - **Autenticazione** — login username/password + TOTP 2FA, "Ricordami" con session token nel Keychain
 - **Cambio password obbligatorio** — al primo accesso o dopo reset da parte dell'admin
 - **Enrollment TOTP** — configurazione 2FA con QR code al primo accesso o dopo reset
-- **Biometria** — accesso rapido con Face ID / Touch ID quando c'è una sessione salvata nel Keychain
+- **Biometria** — accesso rapido con Face ID / Touch ID quando c'è una sessione salvata nel Keychain; un 429 o un errore del server (5xx) non cancella il token Face ID
+- **Password dimenticata** — pulsante sotto "Accedi" che apre uno sheet nativo per richiedere il link di reset via email (`/api/password-reset/request`); la nuova password si imposta dalla pagina web del link. Gestione del 429 ("Troppi tentativi, riprova più tardi") su login, 2FA, cambio password ed enrollment
 - **Schermata principale** — 5 macro-aree (Portali, Temperatura, Potenza, UPS, Generatori) con stato globale e conteggio alert per ciascuna; tap per entrare nel dettaglio
 - **Portali** — lista monitor con stato per sonda, colore riga, sparkline storico, raggruppamento per stato (DOWN/Mismatch/UP)
 - **Sensori Temperatura** — lista sensori con sparkline, badge valore, colore arancione (normal), rosso (critical); ordinati per gravità
@@ -666,7 +784,7 @@ UptimeDashboardTests/
 - **Badge icona app** — numero di risorse con problemi mostrato sull'icona dell'app (disattivabile)
 - **Notifiche push** — notifiche native APNs al cambio di stato globale e al superamento soglie sensori
 - **Impostazioni** — tema (auto default/chiaro/scuro), ordinamento, intervallo auto-refresh, notifiche, biometria, haptic feedback, badge, limiti grafici configurabili (°C, V, %, min, kW), info app
-- **Help** — documentazione completa in-app con tutte le funzionalità
+- **Help** — documentazione completa in-app, inclusa la sezione "Password dimenticata" (link valido 30 minuti, 2FA da riconfigurare, sessioni e Face ID disattivati, attesa dopo troppi tentativi), con tutte le funzionalità
 - **Logout** — con conferma, elimina il token dal Keychain
 
 ### Test iOS
@@ -731,7 +849,8 @@ App nativa macOS (SwiftUI) con le stesse funzionalità dell'app iPad.
 - ⌘Q chiude l'app normalmente
 - Widget macOS (small/medium/large) con stato servizi, LED globale, 5 pallini sonde per monitor
 - Icona nella barra dei menu con pallino stato globale e menu a tendina (risorse anomale, azioni rapide)
-- Help macOS nativo (menu Help → Aiuto Dashboard INVA MAC)
+- Help macOS nativo (menu Help → Aiuto Dashboard INVA MAC), con la sezione "Password dimenticata"
+- **Password dimenticata** — link sotto "Accedi" che apre uno sheet per richiedere il link di reset via email; gestione del 429 su login, 2FA, cambio password ed enrollment; se la sessione viene revocata (es. dopo un reset) la dashboard torna al login
 - **Autenticazione biometrica** — Touch ID e Apple Watch unlock per accesso rapido
 
 ### Autenticazione Biometrica (Touch ID / Apple Watch)
@@ -922,3 +1041,7 @@ Ore 14:32
 - Credenziali e token mai scritti nei log
 - Namespace Redis separati per VAPID (`push:`), APNs (`apns:`), utenti (`user:`), biometria (`biometric:`)
 - Endpoint protetti da `@login_required`
+- Reset password self-service via email: token monouso con TTL, solo hash SHA-256 in Redis, risposta identica per utenti esistenti e inesistenti; il reset invalida il 2FA e revoca tutte le sessioni (`session_epoch`) e i token biometrici (vedi [Reset password self-service](#reset-password-self-service))
+- Rate limiting su login, 2FA, biometria, cambio password e reset (HTTP 429 + `Retry-After`)
+- Header di sicurezza HTTP (nosniff, `X-Frame-Options`, Referrer-Policy, HSTS; CSP sulle pagine di reset)
+- Email SMTP solo con TLS (SMTPS o STARTTLS); credenziali SMTP solo da `.env`
