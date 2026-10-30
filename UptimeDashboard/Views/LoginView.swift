@@ -181,56 +181,44 @@ private struct ForgotPasswordSheet: View {
     }
 
     var body: some View {
-        ZStack {
-            // Stesso sfondo della schermata di login
-            Color(hex: "#141c2b")
-                .ignoresSafeArea()
-
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Header: titolo + Chiudi
-                    HStack {
-                        Text("Password dimenticata")
-                            .font(.title3.bold())
-                            .accessibilityAddTraits(.isHeader)
-                        Spacer()
-                        Button("Chiudi") { dismiss() }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(Color.accentColor)
-                    }
-                    .padding(.top, 24)
-
-                    Text("Inserisci il tuo username. Riceverai via email un link valido 30 minuti. Dopo il reset il 2FA verrà reimpostato e sarai disconnesso da tutti i dispositivi.")
-                        .font(.footnote)
-                        .foregroundStyle(.white.opacity(0.7))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
+        // Struttura Form (gestione tastiera/focus affidabile nel sheet),
+        // personalizzata per avere lo stesso aspetto della schermata di login.
+        NavigationStack {
+            Form {
+                Section {
                     // Campo identico a quello del login
                     TextField("Username", text: $username)
                         .textContentType(.username)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                         .padding()
-                        .foregroundColor(.primary)
                         .background(Color(.secondarySystemBackground))
                         .cornerRadius(10)
                         .disabled(isSent)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                } footer: {
+                    Text("Riceverai via email un link valido 30 minuti. Dopo il reset il 2FA verrà reimpostato e sarai disconnesso da tutti i dispositivi.")
+                        .foregroundStyle(.white.opacity(0.7))
+                }
 
-                    if let outcome {
+                if let outcome {
+                    Section {
                         switch outcome {
                         case .sent(let message):
                             Label(message, systemImage: "envelope.badge")
                                 .font(.footnote)
                                 .foregroundStyle(.green)
-                                .frame(maxWidth: .infinity, alignment: .leading)
                         case .failed(let message):
                             Text(message)
                                 .font(.footnote)
                                 .foregroundStyle(.red)
-                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
+                    .listRowBackground(Color.clear)
+                }
 
+                Section {
                     // Pulsante pieno, stesso stile di "Accedi"
                     Button {
                         Task {
@@ -252,17 +240,24 @@ private struct ForgotPasswordSheet: View {
                         .foregroundStyle(.white)
                         .cornerRadius(10)
                     }
+                    .buttonStyle(.plain)
                     .disabled(!canSend)
-
-                    if isSent {
-                        Button("Torna al login") { dismiss() }
-                            .font(.footnote)
-                            .buttonStyle(.plain)
-                            .foregroundStyle(Color.accentColor)
-                    }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 }
-                .padding(.horizontal)
-                .foregroundStyle(.white)
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color(hex: "#141c2b"))
+            .navigationTitle("Password dimenticata")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color(hex: "#141c2b"), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(isSent ? "Fine" : "Chiudi") { dismiss() }
+                        .tint(Color.accentColor)
+                }
             }
         }
         .presentationDetents([.medium, .large])
