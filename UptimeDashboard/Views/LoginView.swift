@@ -181,51 +181,61 @@ private struct ForgotPasswordSheet: View {
     }
 
     var body: some View {
-        // Struttura Form (gestione tastiera/focus affidabile nel sheet),
-        // personalizzata per avere lo stesso aspetto della schermata di login.
-        NavigationStack {
-            Form {
-                Section {
+        ZStack {
+            // Stesso sfondo della schermata di login
+            Color(hex: "#141c2b")
+                .ignoresSafeArea()
+
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header: titolo + Chiudi
+                    HStack {
+                        Text("Password dimenticata")
+                            .font(.title3.bold())
+                            .accessibilityAddTraits(.isHeader)
+                        Spacer()
+                        Button("Chiudi") { dismiss() }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .padding(.top, 24)
+
+                    Text("Inserisci il tuo username. Riceverai via email un link valido 30 minuti. Dopo il reset il 2FA verrà reimpostato e sarai disconnesso da tutti i dispositivi.")
+                        .font(.footnote)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
                     // Campo identico a quello del login
                     TextField("Username", text: $username)
                         .textContentType(.username)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                         .padding()
+                        .foregroundColor(.primary)
                         .background(Color(.secondarySystemBackground))
                         .cornerRadius(10)
                         .disabled(isSent)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                } footer: {
-                    Text("Riceverai via email un link valido 30 minuti. Dopo il reset il 2FA verrà reimpostato e sarai disconnesso da tutti i dispositivi.")
-                        .foregroundStyle(.white.opacity(0.7))
-                }
 
-                if let outcome {
-                    Section {
+                    if let outcome {
                         switch outcome {
                         case .sent(let message):
                             Label(message, systemImage: "envelope.badge")
                                 .font(.footnote)
                                 .foregroundStyle(.green)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         case .failed(let message):
                             Text(message)
                                 .font(.footnote)
                                 .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
-                    .listRowBackground(Color.clear)
-                }
 
-                Section {
-                    // Pulsante pieno, stesso stile di "Accedi"
+                    // Pulsante pieno, stesso stile di "Accedi".
+                    // Sempre attivo (aspetto stabile mentre si digita): senza
+                    // username non invia e mostra un messaggio.
                     Button {
-                        Task {
-                            isSending = true
-                            outcome = await authViewModel.requestPasswordReset(username: username)
-                            isSending = false
-                        }
+                        sendResetLink()
                     } label: {
                         Group {
                             if isSending {
@@ -236,31 +246,39 @@ private struct ForgotPasswordSheet: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(canSend || isSending ? Color.accentColor : Color.gray)
+                        .background(Color.accentColor)
                         .foregroundStyle(.white)
                         .cornerRadius(10)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!canSend)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                    .disabled(isSending || isSent)
+
+                    if isSent {
+                        Button("Torna al login") { dismiss() }
+                            .font(.footnote)
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Color.accentColor)
+                    }
                 }
-            }
-            .scrollContentBackground(.hidden)
-            .background(Color(hex: "#141c2b"))
-            .navigationTitle("Password dimenticata")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color(hex: "#141c2b"), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(isSent ? "Fine" : "Chiudi") { dismiss() }
-                        .tint(Color.accentColor)
-                }
+                .padding(.horizontal)
+                .foregroundStyle(.white)
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    /// Invia la richiesta di reset; se lo username è vuoto non chiama il backend.
+    private func sendResetLink() {
+        let trimmed = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            outcome = .failed("Inserisci lo username")
+            return
+        }
+        guard !isSending, !isSent else { return }
+        Task {
+            isSending = true
+            outcome = await authViewModel.requestPasswordReset(username: trimmed)
+            isSending = false
+        }
     }
 }
 
