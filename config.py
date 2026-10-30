@@ -109,3 +109,75 @@ PUSH_NOTIFY_ON = {
 
 # Log file per le notifiche push (VAPID + APNs). Se vuoto, il log push è disabilitato.
 PUSH_LOG_FILE = os.environ.get("PUSH_LOG_FILE", "")
+
+# ------------------------------------------------------------
+# EMAIL (SMTP) – RESET PASSWORD SELF-SERVICE
+# ------------------------------------------------------------
+# Tutti i valori arrivano da variabili d'ambiente (.env). Nessun segreto nel codice.
+# I valori di SMTP_USERNAME / SMTP_PASSWORD non vengono mai loggati.
+
+import logging as _logging
+
+_config_logger = _logging.getLogger("kuma.config")
+
+
+def _env_int(name: str, default: int, min_value: int, max_value: int) -> int:
+    """Legge un intero da env nel range [min_value, max_value]; non valido -> default + WARNING."""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        value = None
+    if value is None or not (min_value <= value <= max_value):
+        _config_logger.warning(
+            "%s non valido (atteso intero %d..%d): uso il default %d",
+            name, min_value, max_value, default,
+        )
+        return default
+    return value
+
+
+def _env_smtp_port() -> int | None:
+    """Porta SMTP: default 587; valore non valido -> None (mailer disabilitato)."""
+    raw = os.environ.get("SMTP_PORT", "").strip()
+    if not raw:
+        return 587
+    try:
+        port = int(raw)
+    except ValueError:
+        port = None
+    if port is None or not (1 <= port <= 65535):
+        _config_logger.warning("SMTP_PORT non valido: invio email disabilitato")
+        return None
+    return port
+
+
+def _env_public_base_url() -> str:
+    """URL pubblico per i link nelle email: deve iniziare con https://."""
+    url = os.environ.get("PUBLIC_BASE_URL", "").strip().rstrip("/")
+    if url and not url.startswith("https://"):
+        _config_logger.warning("PUBLIC_BASE_URL deve iniziare con https://: ignorato")
+        return ""
+    return url
+
+
+SMTP_HOST     = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT     = _env_smtp_port()
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SMTP_FROM     = os.environ.get("SMTP_FROM", "").strip()
+SMTP_STARTTLS = os.environ.get("SMTP_STARTTLS", "").strip().lower() in ("1", "true", "yes", "on")
+
+# Durata del link di reset password (minuti, 1..1440)
+PASSWORD_RESET_TOKEN_TTL_MINUTES = _env_int("PASSWORD_RESET_TOKEN_TTL_MINUTES", 30, 1, 1440)
+
+# URL pubblico della dashboard (es. https://kuma-dashboard.example.com), senza slash finale
+PUBLIC_BASE_URL = _env_public_base_url()
+
+# Email admin per l'avviso di reset completato (vuota = avviso disattivato)
+ADMIN_NOTIFY_EMAIL = os.environ.get("ADMIN_NOTIFY_EMAIL", "").strip()
+
+# Numero di reverse proxy fidati davanti a gunicorn (ProxyFix x_for), 1..5
+TRUSTED_PROXY_COUNT = _env_int("TRUSTED_PROXY_COUNT", 2, 1, 5)
