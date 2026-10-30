@@ -434,6 +434,10 @@ final class MacBiometricManager: ObservableObject {
                 try? keychainStore.deleteAll()
                 return .tokenExpired
 
+            case 429:
+                // Rate limit: token conservato nel Keychain
+                return .failed("Troppi tentativi, riprova più tardi")
+
             default:
                 return .failed("Autenticazione non riuscita. Riprova.")
             }

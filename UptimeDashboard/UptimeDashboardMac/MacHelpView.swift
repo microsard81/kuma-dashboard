@@ -153,6 +153,15 @@ struct HelpWebView: NSViewRepresentable {
     <h2>Autenticazione biometrica</h2>
     <p>Al primo login con username + password + 2FA, l'app salva un token nel Keychain protetto da Touch ID o Apple Watch. Ai successivi avvii puoi sbloccare con la biometria senza reinserire le credenziali. Il token scade dopo 90 giorni.</p>
 
+    <h2>Password dimenticata</h2>
+    <ul>
+    <li>Dalla schermata di login clicca <strong>Password dimenticata?</strong>: riceverai via email un link valido 30 minuti</li>
+    <li>La nuova password si imposta dalla pagina web aperta dal link</li>
+    <li>Al primo accesso successivo dovrai riconfigurare il 2FA (Google Authenticator o simili)</li>
+    <li>Tutte le sessioni attive e lo sblocco con Touch ID vengono disattivati: accedi di nuovo con la nuova password</li>
+    <li>Dopo troppi tentativi attendi qualche minuto prima di riprovare</li>
+    </ul>
+
     <h2>Limiti Grafici</h2>
     <p>Nelle Impostazioni puoi personalizzare i range dell'asse Y dei grafici sparkline per ogni tipo di sensore:</p>
     <table>

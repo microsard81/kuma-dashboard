@@ -13,6 +13,13 @@ enum MacAuthState: Equatable {
     case authenticated
 }
 
+// MARK: - Password Reset Outcome
+
+enum MacPasswordResetOutcome: Equatable {
+    case sent(String)
+    case failed(String)
+}
+
 // MARK: - Monitor Model
 
 struct MacMonitor: Identifiable, Equatable {
@@ -348,6 +355,10 @@ final class MacAppViewModel: ObservableObject {
             saveCookies(from: response)
 
             guard let http = response as? HTTPURLResponse else { return }
+            if http.statusCode == 429 {
+                errorMessage = "Troppi tentativi, riprova più tardi"
+                return
+            }
             if http.statusCode == 401 {
                 errorMessage = "Credenziali non valide"
                 return
@@ -399,6 +410,10 @@ final class MacAppViewModel: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
             saveCookies(from: response)
             guard let http = response as? HTTPURLResponse else { return }
+            if http.statusCode == 429 {
+                errorMessage = "Troppi tentativi, riprova più tardi"
+                return
+            }
 
             if http.statusCode == 400,
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -434,6 +449,10 @@ final class MacAppViewModel: ObservableObject {
             let (_, response) = try await URLSession.shared.data(for: request)
             saveCookies(from: response)
             guard let http = response as? HTTPURLResponse else { return }
+            if http.statusCode == 429 {
+                errorMessage = "Troppi tentativi, riprova più tardi"
+                return
+            }
 
             if http.statusCode == 401 {
                 errorMessage = "Codice non valido"
@@ -467,6 +486,10 @@ final class MacAppViewModel: ObservableObject {
             let (_, response) = try await URLSession.shared.data(for: request)
             saveCookies(from: response)
             guard let http = response as? HTTPURLResponse else { return }
+            if http.statusCode == 429 {
+                errorMessage = "Troppi tentativi, riprova più tardi"
+                return
+            }
 
             if http.statusCode == 401 {
                 errorMessage = "Codice non valido"
@@ -485,6 +508,44 @@ final class MacAppViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Password Reset
+
+    /// Richiede l'invio del link di reset via email. Il server risponde sempre con
+    /// un messaggio generico (nessuna enumerazione utenti). Non usa cookie di sessione
+    /// e non tocca isLoading/errorMessage (lo stato è gestito dallo sheet).
+    func requestPasswordReset(username: String) async -> MacPasswordResetOutcome {
+        let genericError = MacPasswordResetOutcome.failed("Errore di connessione. Riprova.")
+        guard let url = URL(string: "\(baseURL)/api/password-reset/request") else { return genericError }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpShouldHandleCookies = false
+        request.timeoutInterval = 15
+        guard let body = try? JSONSerialization.data(withJSONObject: ["username": username]) else {
+            return genericError
+        }
+        request.httpBody = body
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { return genericError }
+            switch http.statusCode {
+            case 200:
+                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                let message = json?["message"] as? String
+                    ?? "Se l'account esiste ed ha un'email associata, riceverai un link a breve."
+                return .sent(message)
+            case 429:
+                return .failed("Troppi tentativi, riprova più tardi")
+            default:
+                return genericError
+            }
+        } catch {
+            return genericError
+        }
+    }
+
     // MARK: - Fetch Dashboard
 
     func fetchDashboard() async {
@@ -496,8 +557,8 @@ final class MacAppViewModel: ObservableObject {
             saveCookies(from: response)
             guard let http = response as? HTTPURLResponse else { return }
 
-            if http.statusCode == 302 || http.statusCode == 401 {
-                // Sessione scaduta
+            if http.statusCode == 302 || http.statusCode == 401 || http.url?.path.hasPrefix("/login") == true {
+                // Sessione scaduta o revocata (URLSession segue il redirect verso /login)
                 logout()
                 return
             }
