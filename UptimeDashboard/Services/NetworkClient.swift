@@ -49,6 +49,7 @@ protocol NetworkClientProtocol {
     func biometricLogin(username: String, biometricToken: String) async throws
     func fetchSensorData() async throws -> Data
     func fetchProbeHealth() async throws -> ProbeHealthResponse
+    func requestPasswordReset(username: String) async throws -> String
 }
 
 // MARK: - Redirect-aware delegate
@@ -466,9 +467,38 @@ final class NetworkClient: NetworkClientProtocol {
         guard let http = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse(statusCode: 0)
         }
+        // Errori transitori (rate limit, server/Redis non disponibile): non sono un token non valido
+        if http.statusCode == 429 || http.statusCode >= 500 {
+            throw NetworkError.invalidResponse(statusCode: http.statusCode)
+        }
         guard http.statusCode == 200 else {
             throw NetworkError.unauthorized
         }
+    }
+
+    // MARK: - requestPasswordReset
+    /// Richiede l'invio del link di reset via email. La risposta del server è
+    /// volutamente generica (non rivela se l'account esiste).
+    func requestPasswordReset(username: String) async throws -> String {
+        let url = baseURL.appendingPathComponent("api/password-reset/request")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["username": username])
+
+        let (data, response) = try await performRequest(request, session: session)
+        guard let http = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse(statusCode: 0)
+        }
+        guard http.statusCode == 200 else {
+            throw NetworkError.invalidResponse(statusCode: http.statusCode)
+        }
+
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let message = json["message"] as? String {
+            return message
+        }
+        return "Se l'account esiste ed ha un'email associata, riceverai un link a breve."
     }
 
     // MARK: - Cookie persistence

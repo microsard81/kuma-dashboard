@@ -132,6 +132,15 @@ struct HelpView: View {
                     infoRow(icon: "clock", text: "Se una sonda mostra DOWN, significa che rileva il problema da almeno 10 minuti consecutivi.")
                 }
 
+                // Password dimenticata
+                section("Password dimenticata") {
+                    infoRow(icon: "envelope", text: "Dalla schermata di login tocca 'Password dimenticata?': riceverai via email un link valido 30 minuti.")
+                    infoRow(icon: "lock.shield", text: "La nuova password si imposta dalla pagina web aperta dal link.")
+                    infoRow(icon: "qrcode", text: "Al primo accesso dopo il reset dovrai riconfigurare il 2FA (Google Authenticator o simili).")
+                    infoRow(icon: "rectangle.portrait.and.arrow.right", text: "Tutte le sessioni attive e il Face ID vengono disattivati: accedi di nuovo con la nuova password.")
+                    infoRow(icon: "clock", text: "Dopo troppi tentativi le richieste vengono bloccate: attendi qualche minuto e riprova.")
+                }
+
                 // Supporto
                 section("Supporto") {
                     Text("Per assistenza tecnica contattare ABISSI S.r.l.")

@@ -16,6 +16,13 @@ enum AuthState: Equatable {
     case unauthenticated
 }
 
+// MARK: - PasswordResetOutcome
+
+enum PasswordResetOutcome: Equatable {
+    case sent(String)
+    case failed(String)
+}
+
 // MARK: - AuthViewModel
 
 @MainActor
@@ -74,6 +81,10 @@ final class AuthViewModel: ObservableObject {
                 try await network.biometricLogin(username: username, biometricToken: biometricToken)
                 try? keychain.save(token: "active", forKey: "session_token")
                 state = .authenticated
+            } catch NetworkError.invalidResponse(let code) where code == 429 || code >= 500 {
+                // Errore transitorio (rate limit o server/Redis non disponibile): conserva il token Face ID
+                errorMessage = code == 429 ? "Troppi tentativi, riprova più tardi" : "Servizio non disponibile, riprova più tardi"
+                state = .unauthenticated
             } catch {
                 // Token scaduto o non valido — vai al login manuale
                 try? keychain.delete(forKey: "biometric_token")
@@ -128,6 +139,8 @@ final class AuthViewModel: ObservableObject {
             }
         } catch NetworkError.unauthorized {
             errorMessage = "Credenziali non valide"
+        } catch NetworkError.invalidResponse(statusCode: 429) {
+            errorMessage = "Troppi tentativi, riprova più tardi"
         } catch {
             errorMessage = "Errore di connessione"
         }
@@ -155,6 +168,8 @@ final class AuthViewModel: ObservableObject {
             }
         } catch NetworkError.validationError(let message) {
             errorMessage = message
+        } catch NetworkError.invalidResponse(statusCode: 429) {
+            errorMessage = "Troppi tentativi, riprova più tardi"
         } catch NetworkError.invalidResponse(statusCode: 400) {
             errorMessage = "La password non rispetta i requisiti di complessità"
         } catch {
@@ -186,6 +201,8 @@ final class AuthViewModel: ObservableObject {
             } else {
                 errorMessage = "Codice non valido. Riprova."
             }
+        } catch NetworkError.invalidResponse(statusCode: 429) {
+            errorMessage = "Troppi tentativi, riprova più tardi"
         } catch {
             errorMessage = "Codice non valido"
         }
@@ -217,8 +234,29 @@ final class AuthViewModel: ObservableObject {
             } else {
                 errorMessage = "Codice non valido"
             }
+        } catch NetworkError.invalidResponse(statusCode: 429) {
+            errorMessage = "Troppi tentativi, riprova più tardi"
         } catch {
             errorMessage = "Codice non valido"
+        }
+    }
+
+    // MARK: - requestPasswordReset
+
+    /// Richiede il link di reset password via email. Non modifica `isLoading`
+    /// né `errorMessage`: l'esito è gestito dallo sheet che lo invoca.
+    func requestPasswordReset(username: String) async -> PasswordResetOutcome {
+        let trimmedUser = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedUser.isEmpty else {
+            return .failed("Inserisci lo username")
+        }
+        do {
+            let message = try await network.requestPasswordReset(username: trimmedUser)
+            return .sent(message)
+        } catch NetworkError.invalidResponse(statusCode: 429) {
+            return .failed("Troppi tentativi, riprova più tardi")
+        } catch {
+            return .failed("Errore di connessione. Riprova.")
         }
     }
 

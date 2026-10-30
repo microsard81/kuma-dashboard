@@ -12,6 +12,7 @@ struct LoginView: View {
     @State private var username: String = ""
     @State private var password: String = ""
     @State private var rememberMe: Bool = false
+    @State private var showForgotPassword = false
 
     private var isFormValid: Bool {
         !username.isEmpty && !password.isEmpty
@@ -96,6 +97,13 @@ struct LoginView: View {
                 .disabled(!isFormValid || authViewModel.isLoading)
                 .padding(.horizontal)
 
+                Button("Password dimenticata?") {
+                    showForgotPassword = true
+                }
+                .font(.footnote)
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+
                 // Pulsante Face ID / Touch ID — visibile solo se c'è una sessione salvata
                 if canUseBiometrics {
                     Button {
@@ -121,6 +129,10 @@ struct LoginView: View {
             } // ScrollView
             .navigationBarHidden(true)
             } // ZStack
+            .sheet(isPresented: $showForgotPassword) {
+                ForgotPasswordSheet(initialUsername: username)
+                    .environmentObject(authViewModel)
+            }
         }
     }
 
@@ -140,6 +152,87 @@ struct LoginView: View {
             return "Face ID"
         }
         return context.biometryType == .faceID ? "Face ID" : "Touch ID"
+    }
+}
+
+// MARK: - ForgotPasswordSheet
+
+/// Sheet nativo per richiedere il link di reset password via email.
+private struct ForgotPasswordSheet: View {
+
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var username: String
+    @State private var isSending = false
+    @State private var outcome: PasswordResetOutcome?
+
+    init(initialUsername: String) {
+        _username = State(initialValue: initialUsername)
+    }
+
+    private var isSent: Bool {
+        if case .sent = outcome { return true }
+        return false
+    }
+
+    private var canSend: Bool {
+        !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending && !isSent
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Username", text: $username)
+                        .textContentType(.username)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                } footer: {
+                    Text("Riceverai via email un link valido 30 minuti. Dopo il reset il 2FA verrà reimpostato e sarai disconnesso da tutti i dispositivi.")
+                }
+
+                if let outcome {
+                    Section {
+                        switch outcome {
+                        case .sent(let message):
+                            Label(message, systemImage: "envelope")
+                                .foregroundStyle(.green)
+                        case .failed(let message):
+                            Text(message)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                }
+
+                Section {
+                    Button {
+                        Task {
+                            isSending = true
+                            outcome = await authViewModel.requestPasswordReset(username: username)
+                            isSending = false
+                        }
+                    } label: {
+                        HStack {
+                            Text("Invia link")
+                            if isSending {
+                                Spacer()
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(!canSend)
+                }
+            }
+            .navigationTitle("Password dimenticata")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Chiudi") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 
@@ -169,6 +262,7 @@ private final class PreviewNetworkClient: NetworkClientProtocol {
     func biometricLogin(username: String, biometricToken: String) async throws {}
     func fetchSensorData() async throws -> Data { return Data("{}".utf8) }
     func fetchProbeHealth() async throws -> ProbeHealthResponse { ProbeHealthResponse(status: .ok, probes: []) }
+    func requestPasswordReset(username: String) async throws -> String { "ok" }
 }
 
 private final class PreviewKeychainStore: KeychainStoreProtocol {
