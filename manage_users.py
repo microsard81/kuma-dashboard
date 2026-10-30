@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
 CLI per gestire gli utenti del dashboard.
-Salva username, password (hashata con bcrypt) e TOTP secret in Redis.
+Salva username, password (hashata con bcrypt), email (opzionale, per il reset
+password self-service) e TOTP secret in Redis.
 Il TOTP secret non viene mai mostrato nel terminale — l'utente lo configura al primo login.
 
 Uso:
     python manage_users.py add <username>
     python manage_users.py remove <username>
     python manage_users.py list
+    python manage_users.py set-email <username> <email>
     python manage_users.py reset-password <username>
     python manage_users.py reset-totp <username>
 """
@@ -19,7 +21,14 @@ import redis
 from werkzeug.security import generate_password_hash
 
 from config import REDIS_HOST, REDIS_PORT, REDIS_DB
-from auth import validate_password_complexity, PasswordValidationError
+from auth import (
+    validate_password_complexity,
+    PasswordValidationError,
+    is_valid_username,
+    validate_email,
+    set_user_email,
+    delete_password_reset_for_user,
+)
 
 USER_PREFIX = "user:"
 
@@ -31,6 +40,10 @@ def user_key(username: str) -> str:
 
 
 def cmd_add(username: str):
+    if not is_valid_username(username):
+        print("Errore: username non valido (ammessi lettere, cifre, '.', '_', '-', max 64 caratteri).")
+        sys.exit(1)
+
     key = user_key(username)
     if r.exists(key):
         print(f"Errore: l'utente '{username}' esiste già.")
@@ -48,15 +61,26 @@ def cmd_add(username: str):
         print(f"Errore: {e}")
         sys.exit(1)
 
+    email = input("Email (opzionale): ").strip()
+    if email:
+        try:
+            email = validate_email(email)
+        except ValueError as e:
+            print(f"Errore: {e}")
+            sys.exit(1)
+
     totp_secret = pyotp.random_base32()
     password_hash = generate_password_hash(password)
 
-    r.hset(key, mapping={
+    mapping = {
         "password_hash": password_hash,
         "totp_secret": totp_secret,
         "totp_enrolled": "0",
         "must_change_password": "1",
-    })
+    }
+    if email:
+        mapping["email"] = email
+    r.hset(key, mapping=mapping)
 
     print(f"\nUtente '{username}' creato.")
     print("Al primo accesso dovrà cambiare la password e configurare il 2FA.")
@@ -73,25 +97,41 @@ def cmd_remove(username: str):
         print("Annullato.")
         return
 
-    # Rimuovi anche eventuali token biometrici
-    bio_keys = r.keys(f"biometric:{username}:*")
-    for bk in bio_keys:
+    # Rimuovi anche eventuali token biometrici e di reset password
+    for bk in r.scan_iter(match=f"biometric:{username}:*", count=100):
         r.delete(bk)
+    delete_password_reset_for_user(username)
 
     r.delete(key)
     print(f"Utente '{username}' eliminato.")
 
 
 def cmd_list():
-    keys = r.keys(f"{USER_PREFIX}*")
+    keys = sorted(r.scan_iter(match=f"{USER_PREFIX}*", count=100))
     if not keys:
         print("Nessun utente registrato.")
         return
 
     print("Utenti registrati:")
-    for key in sorted(keys):
+    for key in keys:
         username = key.removeprefix(USER_PREFIX)
-        print(f"  - {username}")
+        email = r.hget(key, "email") or "—"
+        print(f"  - {username:<20} {email}")
+
+
+def cmd_set_email(username: str, email: str):
+    try:
+        set_user_email(username, email)
+    except KeyError:
+        print(f"Errore: l'utente '{username}' non esiste.")
+        sys.exit(1)
+    except ValueError as e:
+        print(f"Errore: {e}")
+        sys.exit(1)
+    except redis.RedisError:
+        print("Errore: Redis non disponibile.")
+        sys.exit(1)
+    print(f"Email aggiornata per '{username}'.")
 
 
 def cmd_reset_password(username: str):
@@ -155,6 +195,11 @@ def main():
             print("Uso: python manage_users.py remove <username>")
             sys.exit(1)
         cmd_remove(sys.argv[2])
+    elif command == "set-email":
+        if len(sys.argv) < 4:
+            print("Uso: python manage_users.py set-email <username> <email>")
+            sys.exit(1)
+        cmd_set_email(sys.argv[2], sys.argv[3])
     elif command == "reset-password":
         if len(sys.argv) < 3:
             print("Uso: python manage_users.py reset-password <username>")

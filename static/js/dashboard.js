@@ -765,6 +765,11 @@ function clearInverterError() {
 async function refreshDashboard() {
     try {
         const res = await fetch("/api/dashboard-data", { cache: "no-store" });
+        // Sessione scaduta o revocata: fetch segue il 302 verso /login
+        if (res.redirected && new URL(res.url).pathname.startsWith("/login")) {
+            window.location.href = "/login";
+            return;
+        }
         if (!res.ok) return;
 
         const data = await res.json();

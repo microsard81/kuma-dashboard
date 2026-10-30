@@ -31,8 +31,10 @@ def client():
     flask_app.config["WTF_CSRF_ENABLED"] = False
     # Disabilita il redirect HTTPS per i test
     flask_app.config["SESSION_COOKIE_SECURE"] = False
-    with flask_app.test_client() as c:
-        yield c
+    # La sessione legacy iniettata ("testuser", senza epoch) resta valida con epoch 0
+    with patch("app.get_session_epoch", return_value=0):
+        with flask_app.test_client() as c:
+            yield c
 
 
 def _authenticate(client):
@@ -79,7 +81,8 @@ def test_apns_subscribe_missing_token_returns_400(payload):
     with flask_app.test_client() as c:
         _authenticate(c)
         with patch("apns_utils.add_apns_subscription"), \
-             patch("apns_utils.remove_apns_subscription"):
+             patch("apns_utils.remove_apns_subscription"), \
+             patch("app.get_session_epoch", return_value=0):
             response = c.post(
                 "/push/apns/subscribe",
                 json=payload,
